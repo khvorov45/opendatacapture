@@ -8,3 +8,4 @@ edition = "2018"
 tokio = { version = "0.2", features = ["macros"] }
 warp = "0.2"
 tokio-postgres = "0.5"
+structopt = "0.3"
