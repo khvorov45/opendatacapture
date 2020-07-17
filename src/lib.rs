@@ -28,6 +28,7 @@ pub struct Opt {
 
 pub async fn run(opt: Opt) -> Result<(), Error> {
     pretty_env_logger::init();
+    // Database config
     let mut dbconfig = tokio_postgres::config::Config::new();
     dbconfig
         .host(opt.dbhost.as_str())
@@ -37,8 +38,7 @@ pub async fn run(opt: Opt) -> Result<(), Error> {
         .password(opt.dbpassword);
     // Connect to the database.
     let (client, connection) = dbconfig.connect(NoTls).await?;
-    // The connection object performs the actual communication with
-    // the database, so spawn it off to run on its own.
+    // Spawn off the connection
     tokio::spawn(async move {
         if let Err(e) = connection.await {
             error!("connection error: {}", e);
