@@ -12,15 +12,15 @@ pub struct Opt {
     /// Database host port
     #[structopt(long, default_value = "5432")]
     pub dbport: u16,
-    /// Default database name
-    #[structopt(long, default_value = "odcdefault")]
-    pub dbname: String,
-    /// User to connect to the database as
-    #[structopt(long, default_value = "odcdefault")]
-    pub dbuser: String,
-    /// Database user password
-    #[structopt(long, default_value = "odcdefault")]
-    pub dbpassword: String,
+    /// Admin database name
+    #[structopt(long, default_value = "odcadmin")]
+    pub admindbname: String,
+    /// Admin user name
+    #[structopt(long, default_value = "odcadmin")]
+    pub adminusername: String,
+    /// Admin user password
+    #[structopt(long, default_value = "odcadmin")]
+    pub adminpassword: String,
     /// Port for the api to listen to
     #[structopt(long, default_value = "4321")]
     pub apiport: u16,
@@ -33,9 +33,9 @@ pub async fn run(opt: Opt) -> Result<(), Error> {
     dbconfig
         .host(opt.dbhost.as_str())
         .port(opt.dbport)
-        .dbname(opt.dbname.as_str())
-        .user(opt.dbuser.as_str())
-        .password(opt.dbpassword);
+        .dbname(opt.admindbname.as_str())
+        .user(opt.adminusername.as_str())
+        .password(opt.adminpassword);
     // Connect to the database.
     let (client, connection) = dbconfig.connect(NoTls).await?;
     // Spawn off the connection

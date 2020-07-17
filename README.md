@@ -7,9 +7,9 @@ connect to.
     arguments at launch. The defaults are:
         - dbhost: localhost
         - dbport: 5432
-        - dbname: odcdefault
-        - dbuser: odcdefault
-        - dbpassword: odcdefault
+        - admindbname: odcadmin
+        - adminusername: odcadmin
+        - adminpassword: odcadmin
 
 - Launch the app, pass the port it's supposed to listen to (--apiport) with
 the default being 4321.
