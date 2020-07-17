@@ -1,7 +1,8 @@
-use log::error;
 use structopt::StructOpt;
-use tokio_postgres::{Error, NoTls};
+use tokio_postgres::Error;
 use warp::Filter;
+
+mod admindb;
 
 /// opendatacapture
 #[derive(StructOpt, Debug)]
@@ -28,7 +29,7 @@ pub struct Opt {
 
 pub async fn run(opt: Opt) -> Result<(), Error> {
     pretty_env_logger::init();
-    // Database config
+    // Default database config as per the passed parameters
     let mut dbconfig = tokio_postgres::config::Config::new();
     dbconfig
         .host(opt.dbhost.as_str())
@@ -36,16 +37,13 @@ pub async fn run(opt: Opt) -> Result<(), Error> {
         .dbname(opt.admindbname.as_str())
         .user(opt.adminusername.as_str())
         .password(opt.adminpassword);
-    // Connect to the database.
-    let (client, connection) = dbconfig.connect(NoTls).await?;
-    // Spawn off the connection
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            error!("connection error: {}", e);
-        }
-    });
+    // Connect to the admin database as the default admin user
+    let admindb = admindb::AdminDB::connect(dbconfig).await?;
     // Now we can execute a simple statement that just returns its parameter.
-    let rows = client.query("SELECT $1::TEXT", &[&"hello world"]).await?;
+    let rows = admindb
+        .client
+        .query("SELECT $1::TEXT", &[&"hello world"])
+        .await?;
     println!("rows: {:?}", rows);
     let routes = warp::any().map(|| "Hello, World!");
     warp::serve(routes).run(([127, 0, 0, 1], opt.apiport)).await;
