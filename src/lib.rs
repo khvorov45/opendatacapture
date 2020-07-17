@@ -1,3 +1,4 @@
+use log::error;
 use structopt::StructOpt;
 use tokio_postgres::{Error, NoTls};
 use warp::Filter;
@@ -26,6 +27,7 @@ pub struct Opt {
 }
 
 pub async fn run(opt: Opt) -> Result<(), Error> {
+    pretty_env_logger::init();
     let mut dbconfig = tokio_postgres::config::Config::new();
     dbconfig
         .host(opt.dbhost.as_str())
@@ -39,7 +41,7 @@ pub async fn run(opt: Opt) -> Result<(), Error> {
     // the database, so spawn it off to run on its own.
     tokio::spawn(async move {
         if let Err(e) = connection.await {
-            eprintln!("connection error: {}", e);
+            error!("connection error: {}", e);
         }
     });
     // Now we can execute a simple statement that just returns its parameter.
