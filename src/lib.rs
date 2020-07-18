@@ -1,8 +1,12 @@
+use std::error::Error;
 use structopt::StructOpt;
-use tokio_postgres::Error;
 use warp::Filter;
 
 mod admindb;
+mod error;
+
+use admindb::DBState;
+use error::APIError;
 
 /// opendatacapture
 #[derive(StructOpt, Debug)]
@@ -27,7 +31,8 @@ pub struct Opt {
     pub apiport: u16,
 }
 
-pub async fn run(opt: Opt) -> Result<(), Error> {
+/// Runs the API with the supplied options
+pub async fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
     pretty_env_logger::init();
     // Default database config as per the passed parameters
     let mut dbconfig = tokio_postgres::config::Config::new();
@@ -39,12 +44,20 @@ pub async fn run(opt: Opt) -> Result<(), Error> {
         .password(opt.adminpassword);
     // Connect to the admin database as the default admin user
     let admindb = admindb::AdminDB::connect(dbconfig).await?;
-    // Now we can execute a simple statement that just returns its parameter.
-    let rows = admindb
-        .client
-        .query("SELECT $1::TEXT", &[&"hello world"])
-        .await?;
-    println!("rows: {:?}", rows);
+    // The database can be in one of 3 states
+    // Empty - need to init before use
+    // Have the correct structure - no need to do anything
+    // Have an incorrect structure - need to reset before use
+    match admindb.state().await? {
+        DBState::Empty => admindb.init().await?,
+        DBState::Correct => (),
+        DBState::Incorrect => {
+            return Err(Box::new(APIError::new(
+                "Admin database has incorrect structure, \
+                    clear or reset it before use",
+            )))
+        }
+    }
     let routes = warp::any().map(|| "Hello, World!");
     warp::serve(routes).run(([127, 0, 0, 1], opt.apiport)).await;
     Ok(())

@@ -1,9 +1,8 @@
 use opendatacapture::{run, Opt};
 use structopt::StructOpt;
-use tokio_postgres::Error;
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let opt = Opt::from_args();
     run(opt).await
 }
