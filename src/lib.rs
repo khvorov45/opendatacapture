@@ -36,8 +36,6 @@ pub struct Opt {
 
 /// Runs the API with the supplied options
 pub async fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
-    pretty_env_logger::init(); // MOVE THIS
-
     // Config
     let mut dbconfig = tokio_postgres::config::Config::new();
     dbconfig
