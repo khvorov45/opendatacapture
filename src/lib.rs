@@ -17,15 +17,18 @@ pub struct Opt {
     /// Database host port
     #[structopt(long, default_value = "5432")]
     pub dbport: u16,
-    /// Admin database name
+    /// Admin database name.
+    ///
+    /// Will be used as an administrative database
+    /// for keeping track of users.
     #[structopt(long, default_value = "odcadmin")]
     pub admindbname: String,
-    /// Admin user name
-    #[structopt(long, default_value = "odcadmin")]
-    pub adminusername: String,
-    /// Admin user password
-    #[structopt(long, default_value = "odcadmin")]
-    pub adminpassword: String,
+    /// API user name. Will be used to perform all database actions.
+    #[structopt(long, default_value = "odcapi")]
+    pub apiusername: String,
+    /// API user password
+    #[structopt(long, default_value = "odcapi")]
+    pub apiuserpassword: String,
     /// Port for the api to listen to
     #[structopt(long, default_value = "4321")]
     pub apiport: u16,
@@ -40,8 +43,8 @@ pub async fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
         .host(opt.dbhost.as_str())
         .port(opt.dbport)
         .dbname(opt.admindbname.as_str())
-        .user(opt.adminusername.as_str())
-        .password(opt.adminpassword);
+        .user(opt.apiusername.as_str())
+        .password(opt.apiuserpassword);
     // Connect to the admin database as the default admin user
     let admindb = admindb::AdminDB::connect(dbconfig).await?;
     // The database can be in one of 3 states
