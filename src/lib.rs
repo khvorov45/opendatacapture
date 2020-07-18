@@ -3,10 +3,7 @@ use structopt::StructOpt;
 use warp::Filter;
 
 mod admindb;
-mod error;
-
-use admindb::DBState;
-use error::APIError;
+pub mod error;
 
 /// opendatacapture
 #[derive(StructOpt, Debug)]
@@ -45,21 +42,7 @@ pub async fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
         .user(opt.apiusername.as_str())
         .password(opt.apiuserpassword);
     // Connect to the admin database as the default api user
-    let admindb = admindb::AdminDB::new(&dbconfig).await?;
-    // The database can be in one of 3 states
-    // Empty - need to init before use
-    // Have the correct structure - no need to do anything
-    // Have an incorrect structure - need to reset before use
-    match admindb.state().await? {
-        DBState::Empty => admindb.init().await?,
-        DBState::Correct => (),
-        DBState::Incorrect => {
-            return Err(Box::new(APIError::new(
-                "Admin database has incorrect structure, \
-                    clear or reset it before use",
-            )))
-        }
-    }
+    let _admindb = admindb::AdminDB::new(&dbconfig).await?;
     let routes = warp::any().map(|| "Hello, World!");
     warp::serve(routes).run(([127, 0, 0, 1], opt.apiport)).await;
     Ok(())

@@ -1,20 +1,38 @@
 use log::{debug, error};
 use tokio_postgres::{Client, Error};
 
+use crate::error::APIError;
+
 /// Administrative database
 pub struct AdminDB {
-    pub client: Client,
+    client: Client,
 }
 
 impl AdminDB {
-    /// Create a new admin database given a reference to config
-    pub async fn new(config: &tokio_postgres::Config) -> Result<Self, Error> {
+    /// Create a new admin database given a reference to config.
+    /// Checks that the structure is correct before returning.
+    pub async fn new(
+        config: &tokio_postgres::Config,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        // Connect
         let client = connect(config).await?;
-        Ok(Self { client })
+        let db = Self { client };
+        // Check state
+        match db.state().await? {
+            DBState::Empty => db.init().await?,
+            DBState::Correct => (),
+            DBState::Incorrect => {
+                return Err(Box::new(APIError::new(
+                    "Admin database has incorrect structure, \
+                        clear or reset it before use",
+                )))
+            }
+        }
+        Ok(db)
     }
     /// Find out if the database is empty, corrently structured or
     /// incorrectly structured
-    pub async fn state(&self) -> Result<DBState, Error> {
+    async fn state(&self) -> Result<DBState, Error> {
         // Vector of rows
         let all_tables = self
             .client
@@ -54,7 +72,7 @@ impl AdminDB {
         Ok(DBState::Correct)
     }
     /// Create the required database tables. Assumes the database is empty.
-    pub async fn init(&self) -> Result<(), Error> {
+    async fn init(&self) -> Result<(), Error> {
         self.client
             .execute("CREATE TABLE admin (name TEXT);", &[])
             .await?;
@@ -63,7 +81,7 @@ impl AdminDB {
 }
 
 /// Possible database states.
-pub enum DBState {
+enum DBState {
     /// No tables
     Empty,
     /// All the correct tables
