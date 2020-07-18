@@ -1,6 +1,6 @@
 # Intended use
 
-- Install Postgres, create the default user and database for this api to
+- Install Postgres, create the user and database for this api to
 connect to.
 
     - Postgres connection details can be passed to the api via command-line
@@ -8,8 +8,8 @@ connect to.
         - dbhost: localhost
         - dbport: 5432
         - admindbname: odcadmin
-        - adminusername: odcadmin
-        - adminpassword: odcadmin
+        - apiusername: odcapi
+        - apiuserpassword: odcapi
 
 - Launch the app, pass the port it's supposed to listen to (--apiport) with
 the default being 4321.
