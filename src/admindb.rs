@@ -1,26 +1,19 @@
 use log::{debug, error};
-use tokio_postgres::{Client, Error, NoTls};
+use tokio_postgres::{Client, Error};
 
+/// Administrative database
 pub struct AdminDB {
     pub client: Client,
 }
 
 impl AdminDB {
-    pub async fn connect(
-        config: tokio_postgres::config::Config,
-    ) -> Result<Self, Error> {
-        // Connect
-        let (client, connection) = config.connect(NoTls).await?;
-        // Spawn off the connection
-        tokio::spawn(async move {
-            if let Err(e) = connection.await {
-                error!("connection error: {}", e);
-            }
-        });
-        // Return the database object
-        let admindb = Self { client };
-        Ok(admindb)
+    /// Create a new admin database given a reference to config
+    pub async fn new(config: &tokio_postgres::Config) -> Result<Self, Error> {
+        let client = connect(config).await?;
+        Ok(Self { client })
     }
+    /// Find out if the database is empty, corrently structured or
+    /// incorrectly structured
     pub async fn state(&self) -> Result<DBState, Error> {
         // Vector of rows
         let all_tables = self
@@ -60,6 +53,7 @@ impl AdminDB {
         debug!("database structure correct");
         Ok(DBState::Correct)
     }
+    /// Create the required database tables. Assumes the database is empty.
     pub async fn init(&self) -> Result<(), Error> {
         self.client
             .execute("CREATE TABLE admin (name TEXT);", &[])
@@ -68,8 +62,27 @@ impl AdminDB {
     }
 }
 
+/// Possible database states.
 pub enum DBState {
+    /// No tables
     Empty,
+    /// All the correct tables
     Correct,
+    /// Wrong tables or not enough tables
     Incorrect,
+}
+
+/// Creates a new connection
+async fn connect(
+    config: &tokio_postgres::Config,
+) -> Result<tokio_postgres::Client, tokio_postgres::Error> {
+    // Connect
+    let (client, connection) = config.connect(tokio_postgres::NoTls).await?;
+    // Spawn off the connection
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            error!("connection error: {}", e);
+        }
+    });
+    Ok(client)
 }

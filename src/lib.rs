@@ -36,8 +36,9 @@ pub struct Opt {
 
 /// Runs the API with the supplied options
 pub async fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
-    pretty_env_logger::init();
-    // Default database config as per the passed parameters
+    pretty_env_logger::init(); // MOVE THIS
+
+    // Config
     let mut dbconfig = tokio_postgres::config::Config::new();
     dbconfig
         .host(opt.dbhost.as_str())
@@ -45,8 +46,8 @@ pub async fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
         .dbname(opt.admindbname.as_str())
         .user(opt.apiusername.as_str())
         .password(opt.apiuserpassword);
-    // Connect to the admin database as the default admin user
-    let admindb = admindb::AdminDB::connect(dbconfig).await?;
+    // Connect to the admin database as the default api user
+    let admindb = admindb::AdminDB::new(&dbconfig).await?;
     // The database can be in one of 3 states
     // Empty - need to init before use
     // Have the correct structure - no need to do anything
