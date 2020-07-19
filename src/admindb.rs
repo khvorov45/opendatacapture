@@ -21,7 +21,7 @@ impl AdminDB {
         // Check state
         match db.state().await? {
             DBState::Empty => db.init().await?,
-            DBState::Correct => (),
+            DBState::Correct => (), // @TODO table-level checking
             DBState::Incorrect => {
                 if forcereset {
                     db.reset().await?
