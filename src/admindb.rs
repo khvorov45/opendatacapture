@@ -112,6 +112,9 @@ impl AdminDB {
             .collect::<Vec<String>>()
             // Join into a comma-separated string
             .join(",");
+        if all_tables.is_empty() {
+            return Ok(());
+        }
         self.client
             .execute(format!("DROP TABLE {};", all_tables).as_str(), &[])
             .await?;
@@ -120,6 +123,7 @@ impl AdminDB {
 }
 
 /// Possible database states.
+#[derive(Debug, PartialEq)]
 enum DBState {
     /// No tables
     Empty,
@@ -144,8 +148,50 @@ async fn connect(
     Ok(client)
 }
 
-// @TODO
-// Test database connection
-// When empty
-// When wrong
-// When correct
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Assume that ther is a database called odctest, connect with the same user
+    // and password
+    fn get_test_config() -> tokio_postgres::Config {
+        let mut dbconfig = tokio_postgres::Config::new();
+        dbconfig
+            .host("localhost")
+            .port(5432)
+            .dbname("odctest")
+            .user("odcapi")
+            .password("odcapi");
+        dbconfig
+    }
+
+    #[tokio::test]
+    async fn test_db_creation() {
+        // Connect to test database
+        let db = AdminDB {
+            client: connect(&get_test_config()).await.unwrap(),
+        };
+        // Clear
+        db.clear().await.unwrap();
+        let all_tables = db.get_all_table_names().await.unwrap();
+        assert!(all_tables.is_empty());
+        assert_eq!(db.state().await.unwrap(), DBState::Empty);
+        // Initialise
+        db.init().await.unwrap();
+        let all_tables = db.get_all_table_names().await.unwrap();
+        assert!(!all_tables.is_empty());
+        assert_eq!(db.state().await.unwrap(), DBState::Correct);
+        db.reset().await.unwrap();
+        assert_eq!(db.state().await.unwrap(), DBState::Correct);
+        // Insert an extra table
+        db.client
+            .execute("CREATE TABLE extratable (name TEXT);", &[])
+            .await
+            .unwrap();
+        // See if the incorrect state is detected
+        assert_eq!(db.state().await.unwrap(), DBState::Incorrect);
+        // Reset
+        db.reset().await.unwrap();
+        assert_eq!(db.state().await.unwrap(), DBState::Correct);
+    }
+}
