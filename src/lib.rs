@@ -29,6 +29,9 @@ pub struct Opt {
     /// Port for the api to listen to
     #[structopt(long, default_value = "4321")]
     pub apiport: u16,
+    /// Force reset if database structure is incorrect
+    #[structopt(short, long)]
+    pub forcereset: bool,
 }
 
 /// Runs the API with the supplied options
@@ -42,7 +45,7 @@ pub async fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
         .user(opt.apiusername.as_str())
         .password(opt.apiuserpassword);
     // Connect to the admin database as the default api user
-    let _admindb = admindb::AdminDB::new(&dbconfig).await?;
+    let _admindb = admindb::AdminDB::new(&dbconfig, opt.forcereset).await?;
     let routes = warp::any().map(|| "Hello, World!");
     warp::serve(routes).run(([127, 0, 0, 1], opt.apiport)).await;
     Ok(())
