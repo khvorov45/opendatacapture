@@ -36,7 +36,7 @@ impl AdminDB {
         }
         Ok(db)
     }
-    /// Find out if the database is empty, corrently structured or
+    /// Find out if the database is empty, correctly structured or
     /// incorrectly structured
     async fn state(&self) -> Result<DBState, Error> {
         let all_tables = self.get_all_table_names().await?;
@@ -60,7 +60,7 @@ impl AdminDB {
         for tablename in all_tables {
             if !expected_tables.contains(&tablename.as_str()) {
                 debug!(
-                    "database stucture incorrect because table name \"{}\" \
+                    "database structure incorrect because table name \"{}\" \
                         was not expected",
                     tablename
                 );
@@ -152,7 +152,7 @@ async fn connect(
 mod tests {
     use super::*;
 
-    // Assume that ther is a database called odctest, connect with the same user
+    // Assume that there is a database called odctest, connect with the same user
     // and password
     fn get_test_config() -> tokio_postgres::Config {
         let mut dbconfig = tokio_postgres::Config::new();
