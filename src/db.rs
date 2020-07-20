@@ -1,8 +1,11 @@
 use log::{debug, error};
-use std::collections::HashMap;
 use tokio_postgres::{Client, Error};
 
 use crate::error::APIError;
+
+pub mod table;
+
+pub use table::{Table, TableSpec};
 
 /// Administrative database
 pub struct DB {
@@ -236,73 +239,6 @@ async fn connect(
         }
     });
     Ok(client)
-}
-
-/// Compares 2 column types. Case-insensitive.
-fn compare_coltypes(t1: &str, t2: &str) -> bool {
-    recode_coltype(t1) == recode_coltype(t2)
-}
-
-/// Recodes coltypes to make them comparable
-fn recode_coltype(coltype: &str) -> String {
-    let coltype = coltype.to_lowercase();
-    let mut codes = HashMap::new();
-    codes.insert("serial", "integer");
-    match codes.get(coltype.as_str()) {
-        Some(alt) => String::from(*alt),
-        None => coltype,
-    }
-}
-
-/// A standard table
-pub struct Table {
-    name: String,
-    cols: HashMap<String, String>,
-}
-
-impl Table {
-    /// New table with name and a column specification
-    fn new(name: &str, cols: HashMap<String, String>) -> Self {
-        Self {
-            name: String::from(name),
-            cols,
-        }
-    }
-    /// Returns the create query requiring no parameters
-    fn construct_create_query(&self) -> String {
-        let coltypes = self
-            .cols
-            // Surround colnames by quotation marks
-            .iter()
-            .map(|(colname, coltype)| format! {"\"{}\" {}", colname, coltype})
-            .collect::<Vec<String>>()
-            // Join into a comma-separated string
-            .join(",");
-        format!(
-            "CREATE TABLE IF NOT EXISTS \"{}\" ({});",
-            self.name, coltypes
-        )
-    }
-    /// Checks that the table has the given column with the given type
-    fn contains(&self, colname: &str, coltype: &str) -> bool {
-        match self.cols.get(colname) {
-            Some(coltype_present) => compare_coltypes(coltype_present, coltype),
-            None => false,
-        }
-    }
-}
-
-/// Table column specification
-struct TableSpec;
-
-impl TableSpec {
-    /// admin table
-    fn admin() -> HashMap<String, String> {
-        let mut cols = HashMap::new();
-        cols.insert(String::from("id"), String::from("SERIAL"));
-        cols.insert(String::from("email"), String::from("TEXT"));
-        cols
-    }
 }
 
 /// Table set for one database
