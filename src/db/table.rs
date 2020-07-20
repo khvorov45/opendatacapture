@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+type ColSpec = HashMap<String, String>;
+
 /// Compares 2 column types. Case-insensitive.
 fn compare_coltypes(t1: &str, t2: &str) -> bool {
     recode_coltype(t1) == recode_coltype(t2)
@@ -19,12 +21,12 @@ fn recode_coltype(coltype: &str) -> String {
 /// A standard table
 pub struct Table {
     pub name: String,
-    pub cols: HashMap<String, String>,
+    pub cols: ColSpec,
 }
 
 impl Table {
     /// New table with name and a column specification
-    pub fn new(name: &str, cols: HashMap<String, String>) -> Self {
+    pub fn new(name: &str, cols: ColSpec) -> Self {
         Self {
             name: String::from(name),
             cols,
@@ -59,8 +61,8 @@ pub struct TableSpec;
 
 impl TableSpec {
     /// admin table
-    pub fn admin() -> HashMap<String, String> {
-        let mut cols = HashMap::new();
+    pub fn admin() -> ColSpec {
+        let mut cols = ColSpec::new();
         cols.insert(String::from("id"), String::from("SERIAL"));
         cols.insert(String::from("email"), String::from("TEXT"));
         cols
