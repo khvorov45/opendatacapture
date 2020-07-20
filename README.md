@@ -22,3 +22,8 @@ If its table structure is incorrect,
 the api will throw an error unless it was given the `--forcereset` option in
 which case it will attempt to drop all tables in that database and then
 initialise it.
+
+- The tables will be checked on initalisation to contain the expected names and
+types. If a wrong table is found, the api will fail by default.
+With `--forcetables` option, it will attempt to cascade-drop the wrong tables
+and re-create only the dropped tables.
