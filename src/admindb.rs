@@ -1,4 +1,5 @@
 use log::{debug, error};
+use std::collections::HashMap;
 use tokio_postgres::{Client, Error};
 
 use crate::error::APIError;
@@ -6,6 +7,7 @@ use crate::error::APIError;
 /// Administrative database
 pub struct AdminDB {
     client: Client,
+    tables: Vec<Table>,
 }
 
 impl AdminDB {
@@ -17,7 +19,10 @@ impl AdminDB {
     ) -> Result<Self, Box<dyn std::error::Error>> {
         // Connect
         let client = connect(config).await?;
-        let db = Self { client };
+        // Build tables
+        let tables = vec![Table::new("admin", TableSpec::admin())];
+        // The database object
+        let db = Self { client, tables };
         // Check state
         match db.state().await? {
             DBState::Empty => db.init().await?,
@@ -45,20 +50,21 @@ impl AdminDB {
             debug!("database is empty");
             return Ok(DBState::Empty);
         }
-        let expected_tables = ["admin"];
+        let expected_tables: Vec<&String> =
+            self.tables.iter().map(|t| &t.name).collect();
         // Wrong table amount
-        if expected_tables.len() != all_tables.len() {
+        if self.tables.len() != all_tables.len() {
             debug!(
                 "database structure incorrect because wrong number of tables: \
                     found {} while expected {}",
                 all_tables.len(),
-                expected_tables.len()
+                self.tables.len()
             );
             return Ok(DBState::Incorrect);
         }
         // Check that all tables present in the database are the required ones
         for tablename in all_tables {
-            if !expected_tables.contains(&tablename.as_str()) {
+            if !expected_tables.contains(&&tablename) {
                 debug!(
                     "database structure incorrect because table name \"{}\" \
                         was not expected",
@@ -71,6 +77,7 @@ impl AdminDB {
         Ok(DBState::Correct)
     }
 
+    /// Returns all current table names regardless of database correctness
     async fn get_all_table_names(&self) -> Result<Vec<String>, Error> {
         // Vector of rows
         let all_tables = self
@@ -90,9 +97,11 @@ impl AdminDB {
     }
     /// Create the required database tables. Assumes the database is empty.
     async fn init(&self) -> Result<(), Error> {
-        self.client
-            .execute("CREATE TABLE admin (name TEXT);", &[])
-            .await?;
+        for table in &self.tables {
+            self.client
+                .execute(table.construct_create_query().as_str(), &[])
+                .await?;
+        }
         Ok(())
     }
     /// Clear followed by init
@@ -100,7 +109,7 @@ impl AdminDB {
         self.clear().await?;
         self.init().await
     }
-    /// Drops all tables
+    /// Drops all tables regardles of the correctness of the database
     async fn clear(&self) -> Result<(), Error> {
         let all_tables: String = self
             // Vector of strings
@@ -148,6 +157,47 @@ async fn connect(
     Ok(client)
 }
 
+/// A standard table
+struct Table {
+    name: String,
+    cols: HashMap<String, String>,
+}
+
+impl Table {
+    /// New table with name and a column specification
+    fn new(name: &str, cols: HashMap<String, String>) -> Self {
+        Self {
+            name: String::from(name),
+            cols,
+        }
+    }
+    /// Returns the create query requiring no parameters
+    fn construct_create_query(&self) -> String {
+        let coltypes = self
+            .cols
+            // Surround colnames by quotation marks
+            .iter()
+            .map(|(colname, coltype)| format! {"\"{}\" {}", colname, coltype})
+            .collect::<Vec<String>>()
+            // Join into a comma-separated string
+            .join(",");
+        format!("CREATE TABLE \"{}\" ({});", self.name, coltypes)
+    }
+}
+
+/// Table column specification
+struct TableSpec;
+
+impl TableSpec {
+    /// admin table
+    fn admin() -> HashMap<String, String> {
+        let mut cols = HashMap::new();
+        cols.insert(String::from("id"), String::from("SERIAL"));
+        cols.insert(String::from("email"), String::from("TEXT"));
+        cols
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -167,9 +217,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_db_creation() {
+        pretty_env_logger::init();
         // Connect to test database
         let db = AdminDB {
             client: connect(&get_test_config()).await.unwrap(),
+            tables: vec![Table::new("admin", TableSpec::admin())],
         };
         // Clear
         db.clear().await.unwrap();
