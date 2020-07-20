@@ -45,7 +45,9 @@ pub async fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
         .user(opt.apiusername.as_str())
         .password(opt.apiuserpassword);
     // Connect to the admin database as the default api user
-    let _admindb = admindb::AdminDB::new(&dbconfig, opt.forcereset).await?;
+    let _admindb =
+        admindb::DB::new(&dbconfig, admindb::Tableset::admin(), opt.forcereset)
+            .await?;
     let routes = warp::any().map(|| "Hello, World!");
     warp::serve(routes).run(([127, 0, 0, 1], opt.apiport)).await;
     Ok(())

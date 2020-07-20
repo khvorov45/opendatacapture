@@ -5,22 +5,21 @@ use tokio_postgres::{Client, Error};
 use crate::error::APIError;
 
 /// Administrative database
-pub struct AdminDB {
+pub struct DB {
     client: Client,
     tables: Vec<Table>,
 }
 
-impl AdminDB {
-    /// Create a new admin database given a reference to config.
+impl DB {
+    /// Create a new database given a reference to config.
     /// Checks that the structure is correct before returning.
     pub async fn new(
         config: &tokio_postgres::Config,
+        tables: Vec<Table>,
         forcereset: bool,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         // Connect
         let client = connect(config).await?;
-        // Build tables
-        let tables = vec![Table::new("admin", TableSpec::admin())];
         // The database object
         let db = Self { client, tables };
         // Check state
@@ -158,7 +157,7 @@ async fn connect(
 }
 
 /// A standard table
-struct Table {
+pub struct Table {
     name: String,
     cols: HashMap<String, String>,
 }
@@ -198,6 +197,16 @@ impl TableSpec {
     }
 }
 
+/// Table set for one database
+pub struct Tableset;
+
+impl Tableset {
+    /// The administrative database
+    pub fn admin() -> Vec<Table> {
+        vec![Table::new("admin", TableSpec::admin())]
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -219,7 +228,7 @@ mod tests {
     async fn test_db_creation() {
         pretty_env_logger::init();
         // Connect to test database
-        let db = AdminDB {
+        let db = DB {
             client: connect(&get_test_config()).await.unwrap(),
             tables: vec![Table::new("admin", TableSpec::admin())],
         };
