@@ -1,7 +1,21 @@
 use log::debug;
 use std::collections::HashMap;
 
-pub type ColSpec = HashMap<String, String>;
+pub type ColSpec = HashMap<String, ColAttrib>;
+
+pub struct ColAttrib {
+    coltype: String,
+    other: String,
+}
+
+impl ColAttrib {
+    pub fn new(coltype: &str, other: &str) -> Self {
+        Self {
+            coltype: String::from(coltype),
+            other: String::from(other),
+        }
+    }
+}
 
 /// Compares 2 column types. Case-insensitive.
 pub fn compare_coltypes(t1: &str, t2: &str) -> bool {
@@ -22,7 +36,7 @@ pub fn construct_create_query(name: &str, cols: &ColSpec) -> String {
     let coltypes = cols
         // Surround colnames by quotation marks
         .iter()
-        .map(|(colname, coltype)| format! {"\"{}\" {}", colname, coltype})
+        .map(|(colname, colattrib)| format! {"\"{}\" {} {}", colname, colattrib.coltype, colattrib.other})
         .collect::<Vec<String>>()
         // Join into a comma-separated string
         .join(",");
@@ -45,8 +59,12 @@ pub fn verify(
         return false;
     }
     // Name or type may be wrong
-    for (colname_obtained, coltype_obtained) in cols_obtained {
-        if !verify_column(colname_obtained, coltype_obtained, cols_expected) {
+    for (colname_obtained, colattrib_obtained) in cols_obtained {
+        if !verify_column(
+            colname_obtained,
+            &colattrib_obtained.coltype,
+            cols_expected,
+        ) {
             debug!(
                 "Table \"{}\" column \"{}\" failed verification",
                 name, colname_obtained
@@ -65,11 +83,11 @@ fn verify_column(
 ) -> bool {
     match cols_expected.get(colname) {
         // This column name should be in the table
-        Some(coltype_expected) => {
-            if !compare_coltypes(coltype_expected, coltype) {
+        Some(colattrib_expected) => {
+            if !compare_coltypes(&colattrib_expected.coltype, coltype) {
                 debug!(
                     "Column \"{}\" has type \"{}\" while expected \"{}\"",
-                    colname, coltype, coltype_expected
+                    colname, coltype, colattrib_expected.coltype
                 );
                 return false;
             }

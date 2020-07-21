@@ -17,8 +17,10 @@ fn get_test_config() -> tokio_postgres::Config {
 async fn get_clear_test_db() -> DB {
     let mut test_tables = TableSpec::new();
     let mut admin_cols = ColSpec::new();
-    admin_cols.insert(String::from("id"), String::from("SERIAL"));
-    admin_cols.insert(String::from("email"), String::from("TEXT"));
+    admin_cols
+        .insert(String::from("id"), ColAttrib::new("SERIAL", "PRIMARY KEY"));
+    admin_cols
+        .insert(String::from("email"), ColAttrib::new("TEXT", "NOT NULL"));
     test_tables.insert(String::from("admin"), admin_cols);
     let db = DB {
         client: connect(&get_test_config()).await.unwrap(),
