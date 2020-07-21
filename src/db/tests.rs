@@ -1,4 +1,5 @@
 use super::*;
+use log::info;
 
 // Assume that there is a database called odctest,
 // connect with the same user and password
@@ -17,8 +18,10 @@ fn get_test_config() -> tokio_postgres::Config {
 async fn get_clear_test_db() -> DB {
     let mut test_tables = TableSpec::new();
     let mut admin_cols = ColSpec::new();
-    admin_cols.insert(String::from("id"), String::from("SERIAL"));
-    admin_cols.insert(String::from("email"), String::from("TEXT"));
+    admin_cols
+        .insert(String::from("id"), ColAttrib::new("SERIAL", "PRIMARY KEY"));
+    admin_cols
+        .insert(String::from("email"), ColAttrib::new("TEXT", "NOT NULL"));
     test_tables.insert(String::from("admin"), admin_cols);
     let db = DB {
         client: connect(&get_test_config()).await.unwrap(),
@@ -70,6 +73,7 @@ async fn test_db() {
     db.clear().await.unwrap();
     // Check that it's empty
     assert!(is_empty(&db).await);
+    info!("Test verification");
     // Create a table that looks like what we want but has
     // a wrong type or name
     insert_table(&db, "admin (id SERIAL, name TEXT)").await;

@@ -7,7 +7,7 @@ use crate::error::APIError;
 pub mod constants;
 pub mod table;
 
-pub use table::ColSpec;
+pub use table::{ColAttrib, ColSpec};
 
 pub type TableSpec = HashMap<String, ColSpec>;
 
@@ -178,7 +178,7 @@ impl DB {
             .await?;
         let mut cols_obtained = ColSpec::new();
         for row in &names_and_types_got {
-            cols_obtained.insert(row.get(0), row.get(1));
+            cols_obtained.insert(row.get(0), ColAttrib::new(row.get(1), ""));
         }
         Ok(table::verify(name, &cols_obtained, cols_expected))
     }

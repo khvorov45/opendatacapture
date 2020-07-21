@@ -69,7 +69,13 @@ fn get_admin_tablespec() -> db::TableSpec {
 
 fn get_admin_colspec() -> db::ColSpec {
     let mut set = db::ColSpec::new();
-    set.insert(String::from("id"), String::from("SERIAL"));
-    set.insert(String::from("email"), String::from("TEXT"));
+    set.insert(
+        String::from("id"),
+        db::ColAttrib::new("SERIAL", "Primary Key"),
+    );
+    set.insert(
+        String::from("email"),
+        db::ColAttrib::new("TEXT", "NOT NULL"),
+    );
     set
 }
