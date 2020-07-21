@@ -11,9 +11,7 @@ pub fn compare_coltypes(t1: &str, t2: &str) -> bool {
 /// Recodes coltypes to make them comparable
 fn recode_coltype(coltype: &str) -> String {
     let coltype = coltype.to_lowercase();
-    let mut codes = HashMap::new();
-    codes.insert("serial", "integer");
-    match codes.get(coltype.as_str()) {
+    match super::constants::TYPES.get(coltype.as_str()) {
         Some(alt) => String::from(*alt),
         None => coltype,
     }

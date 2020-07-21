@@ -4,6 +4,7 @@ use tokio_postgres::{Client, Error};
 
 use crate::error::APIError;
 
+pub mod constants;
 pub mod table;
 
 pub use table::ColSpec;
