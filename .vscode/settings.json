@@ -1,5 +1,6 @@
 {
     "cSpell.words": [
+        "Initialises",
         "admindb",
         "admindbname",
         "dbconfig",
@@ -8,6 +9,7 @@
         "dbport",
         "initialise",
         "initialised",
+        "nobackup",
         "odcadmin",
         "odcapi",
         "odctest",

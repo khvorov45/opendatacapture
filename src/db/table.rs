@@ -1,102 +1,59 @@
-use log::debug;
-use std::collections::HashMap;
+/// Column specification
+pub type ColSpec = Vec<Column>;
 
-pub type ColSpec = HashMap<String, ColAttrib>;
-
-pub struct ColAttrib {
-    coltype: String,
-    other: String,
+/// Column
+pub struct Column {
+    pub name: String,
+    pub postgres_type: String,
+    pub attr: String,
 }
 
-impl ColAttrib {
-    pub fn new(coltype: &str, other: &str) -> Self {
+impl Column {
+    /// New column
+    pub fn new(name: &str, postgres_type: &str, attr: &str) -> Self {
         Self {
-            coltype: String::from(coltype),
-            other: String::from(other),
+            name: String::from(name),
+            postgres_type: String::from(postgres_type),
+            attr: String::from(attr),
         }
+    }
+    /// Entry for the create query
+    pub fn construct_create_query_entry(&self) -> String {
+        format!("{} {} {}", self.name, self.postgres_type, self.attr)
     }
 }
 
-/// Compares 2 column types. Case-insensitive.
-pub fn compare_coltypes(t1: &str, t2: &str) -> bool {
-    recode_coltype(t1) == recode_coltype(t2)
+/// Table specification
+pub type TableSpec = Vec<Table>;
+
+/// Table
+pub struct Table {
+    pub name: String,
+    pub cols: ColSpec,
+    pub constraints: String,
 }
 
-/// Recodes coltypes to make them comparable
-fn recode_coltype(coltype: &str) -> String {
-    let coltype = coltype.to_lowercase();
-    match super::constants::TYPES.get(coltype.as_str()) {
-        Some(alt) => String::from(*alt),
-        None => coltype,
-    }
-}
-
-/// Returns the create query requiring no parameters
-pub fn construct_create_query(name: &str, cols: &ColSpec) -> String {
-    let coltypes = cols
-        // Surround colnames by quotation marks
-        .iter()
-        .map(|(colname, colattrib)| format! {"\"{}\" {} {}", colname, colattrib.coltype, colattrib.other})
-        .collect::<Vec<String>>()
-        // Join into a comma-separated string
-        .join(",");
-    format!("CREATE TABLE IF NOT EXISTS \"{}\" ({});", name, coltypes)
-}
-
-pub fn verify(
-    name: &str,
-    cols_obtained: &ColSpec,
-    cols_expected: &ColSpec,
-) -> bool {
-    // Check number of columns
-    if cols_expected.len() != cols_obtained.len() {
-        debug!(
-            "Table \"{}\" is expected to have {} columns but has {}",
-            name,
-            cols_expected.len(),
-            cols_obtained.len()
-        );
-        return false;
-    }
-    // Name or type may be wrong
-    for (colname_obtained, colattrib_obtained) in cols_obtained {
-        if !verify_column(
-            colname_obtained,
-            &colattrib_obtained.coltype,
-            cols_expected,
-        ) {
-            debug!(
-                "Table \"{}\" column \"{}\" failed verification",
-                name, colname_obtained
-            );
-            return false;
+impl Table {
+    /// New table
+    pub fn new(name: &str, cols: ColSpec, constraints: &str) -> Self {
+        Self {
+            name: String::from(name),
+            cols,
+            constraints: String::from(constraints),
         }
     }
-    true
-}
-
-/// Checks if given column name and type are present in ColSpec
-fn verify_column(
-    colname: &str,
-    coltype: &str,
-    cols_expected: &ColSpec,
-) -> bool {
-    match cols_expected.get(colname) {
-        // This column name should be in the table
-        Some(colattrib_expected) => {
-            if !compare_coltypes(&colattrib_expected.coltype, coltype) {
-                debug!(
-                    "Column \"{}\" has type \"{}\" while expected \"{}\"",
-                    colname, coltype, colattrib_expected.coltype
-                );
-                return false;
-            }
-            true
+    /// Create query
+    pub fn construct_create_query(&self) -> String {
+        let all_columns: String = self
+            .cols
+            .iter()
+            .map(|c| c.construct_create_query_entry())
+            .collect::<Vec<String>>()
+            .join(",");
+        let init_query = format!("CREATE TABLE IF NOT EXISTS {}", self.name);
+        if self.constraints.is_empty() {
+            return format!("{} ({});", init_query, all_columns);
         }
-        // Obtained column name is not expected
-        None => {
-            debug!("Column \"{}\" is not expected", colname);
-            false
-        }
+        format!("{} ({}, {});", init_query, all_columns, self.constraints)
     }
 }

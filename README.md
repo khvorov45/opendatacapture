@@ -17,13 +17,6 @@ the default being 4321.
 - The database this api connects to is used the as admin database to keep
 track of users. If it's empty, it will be initialised
 (by creating the appropriate table structure).
-If its table structure is correct it won't be immediately modified.
-If its table structure is incorrect,
-the api will throw an error unless it was given the `--forcereset` option in
-which case it will attempt to drop all tables in that database and then
-initialise it.
-
-- The tables will be checked on initalisation to contain the expected names and
-types. If a wrong table is found, the api will fail by default.
-With `--forcetables` option, it will attempt to cascade-drop the wrong tables
-and re-create only the dropped tables.
+If it's not empty, the data will be backed up, all tables removed, then
+re-created and the the data will be restored. Pass `--clean` option to not
+back up any data.

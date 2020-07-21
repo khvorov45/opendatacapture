@@ -1,105 +1,70 @@
 use log::{debug, error};
-use std::collections::HashMap;
 use tokio_postgres::{Client, Error};
 
-use crate::error::APIError;
-
-pub mod constants;
 pub mod table;
 
-pub use table::{ColAttrib, ColSpec};
+pub use table::{ColSpec, Column, Table, TableSpec};
 
-pub type TableSpec = HashMap<String, ColSpec>;
-
-/// Administrative database
+/// Database
 pub struct DB {
     client: Client,
     tables: TableSpec,
 }
 
 impl DB {
-    /// Create a new database given a reference to config.
-    /// Checks that the structure is correct before returning.
-    /// Checks that the tables are correct before returning.
+    /// Create a new database given a reference to config
+    /// and a table specification.
+    /// If any tables are present in the database, will attempt to backup
+    /// the data, clear the database, initialise it and fill it with the
+    /// data that's been backed up.
+    /// If `nobackup` is `true`, then will not backup/restore if tables are
+    /// found - will just reset instead.
     pub async fn new(
         config: &tokio_postgres::Config,
         tables: TableSpec,
-        forcereset: bool,
-        forcetables: bool,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+        nobackup: bool,
+    ) -> Result<Self, Error> {
         // Connect
         let client = connect(config).await?;
         // The database object
         let db = Self { client, tables };
-        // Check state
-        match db.state().await? {
-            DBState::Empty => db.init().await?,
-            DBState::Correct => {
-                let incorrect_tables = db.find_incorrect_tables().await?;
-                if !incorrect_tables.is_empty() {
-                    if !forcetables {
-                        return Err(Box::new(APIError::new(
-                            format!(
-                                "Database has incorrect tables: {}. \
-                            Run with option \
-                            --forcetables to cascade reset them.",
-                                incorrect_tables.join(", ")
-                            )
-                            .as_str(),
-                        )));
-                    }
-                    db.reset_tables(incorrect_tables).await?;
-                }
-            }
-            DBState::Incorrect => {
-                if forcereset {
-                    db.reset().await?
-                } else {
-                    return Err(Box::new(APIError::new(
-                        "Database has incorrect structure. \
-                        Clear or reset it before use. Run with option \
-                        --forcereset to do this automatically.",
-                    )));
-                }
-            }
-        }
+        // Attempt to initialise
+        db.init(nobackup).await?;
         Ok(db)
     }
-    /// Find out if the database is empty, correctly structured or
-    /// incorrectly structured
-    async fn state(&self) -> Result<DBState, Error> {
-        let all_tables = self.get_all_table_names().await?;
-        // Empty
-        if all_tables.is_empty() {
-            debug!("database is empty");
-            return Ok(DBState::Empty);
+    /// Initialises the database.
+    /// No tables - creates them and does nothing else.
+    /// Attempts to backup-clear-init-restore if tables are found
+    /// (unless `nobackup` is true in which case just clear-init).
+    async fn init(&self, nobackup: bool) -> Result<(), Error> {
+        // Empty database - only table creation required
+        if self.is_empty().await? {
+            self.create_all_tables().await?;
+            return Ok(());
         }
-        // Wrong table amount
-        if self.tables.len() != all_tables.len() {
-            debug!(
-                "database structure incorrect because wrong number of tables: \
-                    found {} while expected {}",
-                all_tables.len(),
-                self.tables.len()
-            );
-            return Ok(DBState::Incorrect);
+        // Not empty - need to do backup-clear-init-restore
+        if nobackup {
+            self.drop_all_tables().await?;
+            self.create_all_tables().await?;
+            return Ok(());
         }
-        let expected_tables: Vec<&String> = self.tables.keys().collect();
-        // Check that all tables present in the database are the required ones
-        for tablename in all_tables {
-            if !expected_tables.contains(&&tablename) {
-                debug!(
-                    "database structure incorrect because table name \"{}\" \
-                        was not expected",
-                    tablename
-                );
-                return Ok(DBState::Incorrect);
-            }
-        }
-        debug!("database structure correct");
-        Ok(DBState::Correct)
+        self.backup().await?;
+        self.drop_all_tables().await?;
+        self.create_all_tables().await?;
+        self.restore().await?;
+        Ok(())
     }
-
+    async fn backup(&self) -> Result<(), Error> {
+        Ok(())
+    }
+    async fn restore(&self) -> Result<(), Error> {
+        Ok(())
+    }
+    /// See if the database is empty (no tables)
+    async fn is_empty(&self) -> Result<bool, Error> {
+        let all_tables = self.get_all_table_names().await?;
+        Ok(all_tables.is_empty())
+    }
     /// Returns all current table names regardless of database correctness
     async fn get_all_table_names(&self) -> Result<Vec<String>, Error> {
         // Vector of rows
@@ -119,25 +84,8 @@ impl DB {
         debug!("Found table names: {:?}", table_names);
         Ok(table_names)
     }
-    /// Create the required database tables. Assumes the database is empty.
-    async fn init(&self) -> Result<(), Error> {
-        for (name, cols) in &self.tables {
-            self.client
-                .execute(
-                    table::construct_create_query(name, cols).as_str(),
-                    &[],
-                )
-                .await?;
-        }
-        Ok(())
-    }
-    /// Clear followed by init
-    async fn reset(&self) -> Result<(), Error> {
-        self.clear().await?;
-        self.init().await
-    }
-    /// Drops all tables regardles of the correctness of the database
-    async fn clear(&self) -> Result<(), Error> {
+    /// Drops all tables found in the database
+    async fn drop_all_tables(&self) -> Result<(), Error> {
         let all_tables: Vec<String> = self
             // Vector of strings
             .get_all_table_names()
@@ -146,47 +94,6 @@ impl DB {
             return Ok(());
         }
         self.drop_tables(all_tables).await?;
-        Ok(())
-    }
-    /// Checks all tables for correctness. Assumes the database is correctly
-    /// structured.
-    async fn find_incorrect_tables(&self) -> Result<Vec<String>, Error> {
-        let mut incorrect_tables = Vec::new();
-        for (name, cols) in &self.tables {
-            if !self.verify_table(name, cols).await? {
-                incorrect_tables.push(String::from(name));
-            }
-        }
-        debug!("Found incorrect tables: {:?}", incorrect_tables);
-        Ok(incorrect_tables)
-    }
-    /// Checks if one table is correct
-    async fn verify_table(
-        &self,
-        name: &str,
-        cols_expected: &ColSpec,
-    ) -> Result<bool, Error> {
-        // Pull all names and types
-        let names_and_types_got = self
-            .client
-            .query(
-                "SELECT column_name, data_type \
-                FROM information_schema.columns \
-                WHERE table_name = $1",
-                &[&name],
-            )
-            .await?;
-        let mut cols_obtained = ColSpec::new();
-        for row in &names_and_types_got {
-            cols_obtained.insert(row.get(0), ColAttrib::new(row.get(1), ""));
-        }
-        Ok(table::verify(name, &cols_obtained, cols_expected))
-    }
-    /// Resets the given tables
-    async fn reset_tables(&self, names: Vec<String>) -> Result<(), Error> {
-        self.drop_tables(names).await?;
-        // Need init because may have cascade-dropped more tables than passed
-        self.init().await?;
         Ok(())
     }
     /// Drops the given tables
@@ -207,17 +114,25 @@ impl DB {
             .await?;
         Ok(())
     }
-}
-
-/// Possible database states.
-#[derive(Debug, PartialEq)]
-enum DBState {
-    /// No tables
-    Empty,
-    /// All the correct tables
-    Correct,
-    /// Wrong tables or not enough tables
-    Incorrect,
+    /// Creates all stored tables
+    async fn create_all_tables(&self) -> Result<(), Error> {
+        self.create_tables(&self.tables).await?;
+        Ok(())
+    }
+    /// Creates the given tables
+    async fn create_tables(&self, tables: &[Table]) -> Result<(), Error> {
+        for table in tables {
+            self.create_table(table).await?;
+        }
+        Ok(())
+    }
+    /// Creates the given table
+    async fn create_table(&self, table: &Table) -> Result<(), Error> {
+        self.client
+            .execute(table.construct_create_query().as_str(), &[])
+            .await?;
+        Ok(())
+    }
 }
 
 /// Creates a new connection
