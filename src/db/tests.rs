@@ -1,4 +1,5 @@
 use super::*;
+use log::info;
 
 // Assume that there is a database called odctest,
 // connect with the same user and password
@@ -72,6 +73,7 @@ async fn test_db() {
     db.clear().await.unwrap();
     // Check that it's empty
     assert!(is_empty(&db).await);
+    info!("Test verification");
     // Create a table that looks like what we want but has
     // a wrong type or name
     insert_table(&db, "admin (id SERIAL, name TEXT)").await;
