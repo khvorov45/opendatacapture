@@ -15,9 +15,14 @@ fn get_test_config() -> tokio_postgres::Config {
 
 // Clear (no tables) test database
 async fn get_clear_test_db() -> DB {
+    let mut test_tables = TableSpec::new();
+    let mut admin_cols = ColSpec::new();
+    admin_cols.insert(String::from("id"), String::from("SERIAL"));
+    admin_cols.insert(String::from("email"), String::from("TEXT"));
+    test_tables.insert(String::from("admin"), admin_cols);
     let db = DB {
         client: connect(&get_test_config()).await.unwrap(),
-        tables: vec![Table::new("admin", TableSpec::admin())],
+        tables: test_tables,
     };
     db.clear().await.unwrap();
     db
@@ -66,9 +71,11 @@ async fn test_db() {
     // Check that it's empty
     assert!(is_empty(&db).await);
     // Create a table that looks like what we want but has
-    // a wrong type
-    insert_table(&db, "admin (id SERIAL, name CHAR(50))").await;
-    // Table admin is incorrect
+    // a wrong type or name
+    insert_table(&db, "admin (id SERIAL, name TEXT)").await;
+    assert_eq!(db.find_incorrect_tables().await.unwrap(), ["admin"]);
+    db.clear().await.unwrap();
+    insert_table(&db, "admin (id SERIAL, email VARCHAR(50))").await;
     assert_eq!(db.find_incorrect_tables().await.unwrap(), ["admin"]);
     // Clear and make correct
     db.clear().await.unwrap();

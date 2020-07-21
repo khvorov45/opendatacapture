@@ -51,7 +51,7 @@ pub async fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
     // Connect to the admin database as the default api user
     let _admindb = db::DB::new(
         &dbconfig,
-        db::Tableset::admin(),
+        get_admin_tablespec(),
         opt.forcereset,
         opt.forcetables,
     )
@@ -59,4 +59,17 @@ pub async fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
     let routes = warp::any().map(|| "Hello, World!");
     warp::serve(routes).run(([127, 0, 0, 1], opt.apiport)).await;
     Ok(())
+}
+
+fn get_admin_tablespec() -> db::TableSpec {
+    let mut set = db::TableSpec::new();
+    set.insert(String::from("admin"), get_admin_colspec());
+    set
+}
+
+fn get_admin_colspec() -> db::ColSpec {
+    let mut set = db::ColSpec::new();
+    set.insert(String::from("id"), String::from("SERIAL"));
+    set.insert(String::from("email"), String::from("TEXT"));
+    set
 }

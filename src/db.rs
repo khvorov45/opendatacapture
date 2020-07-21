@@ -1,16 +1,19 @@
 use log::{debug, error};
+use std::collections::HashMap;
 use tokio_postgres::{Client, Error};
 
 use crate::error::APIError;
 
 pub mod table;
 
-pub use table::{Table, TableSpec};
+pub use table::ColSpec;
+
+pub type TableSpec = HashMap<String, ColSpec>;
 
 /// Administrative database
 pub struct DB {
     client: Client,
-    tables: Vec<Table>,
+    tables: TableSpec,
 }
 
 impl DB {
@@ -19,7 +22,7 @@ impl DB {
     /// Checks that the tables are correct before returning.
     pub async fn new(
         config: &tokio_postgres::Config,
-        tables: Vec<Table>,
+        tables: TableSpec,
         forcereset: bool,
         forcetables: bool,
     ) -> Result<Self, Box<dyn std::error::Error>> {
@@ -80,8 +83,7 @@ impl DB {
             );
             return Ok(DBState::Incorrect);
         }
-        let expected_tables: Vec<&String> =
-            self.tables.iter().map(|t| &t.name).collect();
+        let expected_tables: Vec<&String> = self.tables.keys().collect();
         // Check that all tables present in the database are the required ones
         for tablename in all_tables {
             if !expected_tables.contains(&&tablename) {
@@ -118,9 +120,12 @@ impl DB {
     }
     /// Create the required database tables. Assumes the database is empty.
     async fn init(&self) -> Result<(), Error> {
-        for table in &self.tables {
+        for (name, cols) in &self.tables {
             self.client
-                .execute(table.construct_create_query().as_str(), &[])
+                .execute(
+                    table::construct_create_query(name, cols).as_str(),
+                    &[],
+                )
                 .await?;
         }
         Ok(())
@@ -146,47 +151,35 @@ impl DB {
     /// structured.
     async fn find_incorrect_tables(&self) -> Result<Vec<String>, Error> {
         let mut incorrect_tables = Vec::new();
-        for table in &self.tables {
-            // Pull all names and types
-            let names_and_types = self
-                .client
-                .query(
-                    "SELECT column_name, data_type \
-                FROM information_schema.columns \
-                WHERE table_name = $1",
-                    &[&table.name],
-                )
-                .await?;
-            // Compare to the expected names and types
-            let mut table_is_wrong = false;
-            for row in &names_and_types {
-                let colname: String = row.get(0);
-                let coltype: String = row.get(1);
-                if !table.contains(&colname, &coltype) {
-                    debug!(
-                        "Table \"{}\" should not contain column \"{}\" \
-                        with type \"{}\"",
-                        table.name, colname, coltype
-                    );
-                    table_is_wrong = true;
-                    break;
-                }
-            }
-            if table.cols.len() != names_and_types.len() {
-                debug!(
-                    "Table \"{}\" has {} column(s) while expected {}",
-                    &table.name,
-                    names_and_types.len(),
-                    table.cols.len(),
-                );
-                table_is_wrong = true;
-            }
-            if table_is_wrong {
-                incorrect_tables.push(String::from(&table.name));
+        for (name, cols) in &self.tables {
+            if !self.verify_table(name, cols).await? {
+                incorrect_tables.push(String::from(name));
             }
         }
         debug!("Found incorrect tables: {:?}", incorrect_tables);
         Ok(incorrect_tables)
+    }
+    /// Checks if one table is correct
+    async fn verify_table(
+        &self,
+        name: &str,
+        cols_expected: &ColSpec,
+    ) -> Result<bool, Error> {
+        // Pull all names and types
+        let names_and_types_got = self
+            .client
+            .query(
+                "SELECT column_name, data_type \
+                FROM information_schema.columns \
+                WHERE table_name = $1",
+                &[&name],
+            )
+            .await?;
+        let mut cols_obtained = ColSpec::new();
+        for row in &names_and_types_got {
+            cols_obtained.insert(row.get(0), row.get(1));
+        }
+        Ok(table::verify(name, &cols_obtained, cols_expected))
     }
     /// Resets the given tables
     async fn reset_tables(&self, names: Vec<String>) -> Result<(), Error> {
@@ -239,16 +232,6 @@ async fn connect(
         }
     });
     Ok(client)
-}
-
-/// Table set for one database
-pub struct Tableset;
-
-impl Tableset {
-    /// The administrative database
-    pub fn admin() -> Vec<Table> {
-        vec![Table::new("admin", TableSpec::admin())]
-    }
 }
 
 #[cfg(test)]
