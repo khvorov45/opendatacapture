@@ -2,7 +2,7 @@ use std::error::Error;
 use structopt::StructOpt;
 use warp::Filter;
 
-mod db;
+pub mod db;
 pub mod error;
 
 /// opendatacapture
@@ -49,7 +49,7 @@ pub async fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
         .password(opt.apiuserpassword);
     // Connect to the admin database as the default api user
     let _admindb =
-        db::DB::new(&dbconfig, get_admin_tablespec(), opt.clean).await?;
+        db::DB::new(&dbconfig, get_admin_tablespec(), !opt.clean).await?;
     let routes = warp::any().map(|| "Hello, World!");
     warp::serve(routes).run(([127, 0, 0, 1], opt.apiport)).await;
     Ok(())

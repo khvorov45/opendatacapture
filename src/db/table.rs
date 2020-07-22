@@ -19,7 +19,7 @@ impl Column {
     }
     /// Entry for the create query
     pub fn construct_create_query_entry(&self) -> String {
-        format!("{} {} {}", self.name, self.postgres_type, self.attr)
+        format!("\"{}\" {} {}", self.name, self.postgres_type, self.attr)
     }
 }
 
@@ -50,10 +50,20 @@ impl Table {
             .map(|c| c.construct_create_query_entry())
             .collect::<Vec<String>>()
             .join(",");
-        let init_query = format!("CREATE TABLE IF NOT EXISTS {}", self.name);
+        let init_query =
+            format!("CREATE TABLE IF NOT EXISTS \"{}\"", self.name);
         if self.constraints.is_empty() {
             return format!("{} ({});", init_query, all_columns);
         }
         format!("{} ({}, {});", init_query, all_columns, self.constraints)
+    }
+    /// Insert query
+    pub fn construct_insert_query(&self) -> String {
+        let values = 1..=self.cols.len();
+        let values = values
+            .map(|v| format!("${}", v))
+            .collect::<Vec<String>>()
+            .join(",");
+        format!("INSERT INTO \"{}\" VALUES ({})", self.name, values)
     }
 }
