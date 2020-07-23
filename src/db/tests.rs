@@ -30,7 +30,10 @@ fn get_primary_entry_from_json(json: &str) -> RowJson {
 fn get_primary_sample_data() -> TableJson {
     let mut sample_data = Vec::new();
     sample_data.push(get_primary_entry_from_json(
-        r#"{"email": "test@example.com"}"#,
+        r#"{"email": "test1@example.com"}"#,
+    ));
+    sample_data.push(get_primary_entry_from_json(
+        r#"{"email": "test2@example.com"}"#,
     ));
     TableJson::new("primary", sample_data)
 }
@@ -113,8 +116,11 @@ async fn test_connection_to_nonempty() {
 async fn test_connection_with_backup() {
     let db = get_testdb(false).await;
     db.init(true).await.unwrap();
-    // The one test row should be preserved
-    assert_eq!(db.get_rows_json("primary").await.unwrap().len(), 1)
+    // The test rows should be preserved
+    assert_eq!(
+        db.get_rows_json("primary").await.unwrap().len(),
+        get_primary_sample_data().rows.len()
+    )
 }
 
 // No backup
