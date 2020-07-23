@@ -41,13 +41,26 @@ fn get_primary_sample_data() -> TableJson {
 // Test secondary table
 fn get_test_secondary_table() -> TableMeta {
     let mut cols = ColSpec::new();
-    cols.push(ColMeta::new("id", "INTEGER", "PRIMARY KEY"));
-    cols.push(ColMeta::new("timepoint", "INTEGER", "NOT NULL"));
+    cols.push(ColMeta::new("id", "INTEGER", ""));
+    cols.push(ColMeta::new("timepoint", "INTEGER", ""));
     TableMeta::new(
         "secondary",
         cols,
-        "FOREIGN KEY(\"id\") REFERENCES \"primary\"(\"id\")",
+        r#"
+        PRIMARY KEY("id", "timepoint"),
+        FOREIGN KEY("id") REFERENCES "primary"("id")
+        "#,
     )
+}
+
+// Some data for the secondary table
+fn get_secondary_sample_data() -> TableJson {
+    let mut sample_data = Vec::new();
+    sample_data
+        .push(get_primary_entry_from_json(r#"{"id": 1, "timepoint": 1}"#));
+    sample_data
+        .push(get_primary_entry_from_json(r#"{"id": 1, "timepoint": 2}"#));
+    TableJson::new("secondary", sample_data)
 }
 
 // Test database specification
@@ -85,6 +98,12 @@ async fn get_testdb(clear: bool) -> DB {
         db.get_rows_json("primary").await.unwrap().len(),
         primary_data.rows.len()
     );
+    let secondary_data = get_secondary_sample_data();
+    db.insert(&secondary_data).await.unwrap();
+    assert_eq!(
+        db.get_rows_json("secondary").await.unwrap().len(),
+        secondary_data.rows.len()
+    );
     db
 }
 
@@ -106,10 +125,10 @@ async fn test_connection_to_empty() {
 
 // Tests connection to a non-empty database
 async fn test_connection_to_nonempty() {
-    log::info!("test connection with backup");
-    test_connection_with_backup().await;
     log::info!("test connection with no backup");
     test_connection_no_backup().await;
+    log::info!("test connection with backup");
+    test_connection_with_backup().await;
 }
 
 // Backup
@@ -120,15 +139,20 @@ async fn test_connection_with_backup() {
     assert_eq!(
         db.get_rows_json("primary").await.unwrap().len(),
         get_primary_sample_data().rows.len()
-    )
+    );
+    assert_eq!(
+        db.get_rows_json("secondary").await.unwrap().len(),
+        get_secondary_sample_data().rows.len()
+    );
 }
 
 // No backup
 async fn test_connection_no_backup() {
     let db = get_testdb(false).await;
     db.init(false).await.unwrap();
-    // The one test row should not be preserved
+    // The test rows should not be preserved
     assert!(db.get_rows_json("primary").await.unwrap().is_empty());
+    assert!(db.get_rows_json("secondary").await.unwrap().is_empty());
 }
 
 #[tokio::test]
