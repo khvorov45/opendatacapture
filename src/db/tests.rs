@@ -41,10 +41,7 @@ async fn get_testdb(clear: bool) -> DB {
     db.create_all_tables().await.unwrap();
     assert!(!db.is_empty().await.unwrap());
     // Tables should be empty
-    assert_eq!(
-        db.get_rows_json("admin").await.unwrap(),
-        serde_json::Value::Null
-    );
+    assert!(db.get_rows_json("admin").await.unwrap().is_empty());
     let admin1 = r#"
         {
             "email": "test1@example.com"
@@ -60,15 +57,7 @@ async fn get_testdb(clear: bool) -> DB {
         )
         .await
         .unwrap();
-    assert_eq!(
-        db.get_rows_json("admin")
-            .await
-            .unwrap()
-            .as_array()
-            .unwrap()
-            .len(),
-        1
-    );
+    assert_eq!(db.get_rows_json("admin").await.unwrap().len(), 1);
     db
 }
 
@@ -101,15 +90,7 @@ async fn test_connection_with_backup() {
     let db = get_testdb(false).await;
     db.init(true).await.unwrap();
     // The one test row should be preserved
-    assert_eq!(
-        db.get_rows_json("admin")
-            .await
-            .unwrap()
-            .as_array()
-            .unwrap()
-            .len(),
-        1
-    )
+    assert_eq!(db.get_rows_json("admin").await.unwrap().len(), 1)
 }
 
 // No backup
@@ -117,10 +98,7 @@ async fn test_connection_no_backup() {
     let db = get_testdb(false).await;
     db.init(false).await.unwrap();
     // The one test row should not be preserved
-    assert_eq!(
-        db.get_rows_json("admin").await.unwrap(),
-        serde_json::Value::Null
-    );
+    assert!(db.get_rows_json("admin").await.unwrap().is_empty());
 }
 
 #[tokio::test]

@@ -3,7 +3,9 @@ use tokio_postgres::{Client, Error};
 
 pub mod table;
 
-pub use table::{ColSpec, Column, Table, TableJson, TableSpec};
+pub use table::{
+    ColSpec, Column, DBJson, RowJson, Table, TableJson, TableSpec,
+};
 
 /// Database
 pub struct DB {
@@ -74,8 +76,8 @@ impl DB {
     /// Backup in json format
     async fn backup_json(&self) -> Result<(), Box<dyn std::error::Error>> {
         debug!("writing json backup to {:?}", self.backup_json_path);
-        let all_json = self.get_all_json().await?;
-        write_json(&all_json, self.backup_json_path.as_path())?;
+        let db_json = self.get_db_json().await?;
+        write_json(&db_json, self.backup_json_path.as_path())?;
         Ok(())
     }
     /// Restores data from json
@@ -86,21 +88,26 @@ impl DB {
         for table_json in tables_json {
             let this_table: &Table;
             match self.tables.iter().find(|t| t.name == table_json.name) {
-                None => continue,
+                None => {
+                    log::info!(
+                        "table \"{}\" found it backup but not in database",
+                        table_json.name
+                    );
+                    continue;
+                }
                 Some(table) => this_table = table,
             }
-            let table_rows: &Vec<serde_json::Value>;
-            match table_json.json.as_array() {
-                None => continue,
-                Some(rows) => table_rows = rows,
+            if table_json.rows.is_empty() {
+                log::info!("backup table \"{}\" is empty", table_json.name);
+                continue;
             }
-            for table_row in table_rows {
-                let row_values: &serde_json::Map<String, serde_json::Value>;
-                match table_row.as_object() {
-                    None => continue,
-                    Some(row) => row_values = row,
-                }
-                let query = this_table.construct_insert_query_json(row_values);
+            log::info!(
+                "restoring {} rows from \"{}\" table",
+                table_json.rows.len(),
+                table_json.name
+            );
+            for table_row in table_json.rows {
+                let query = this_table.construct_insert_query_json(&table_row);
                 self.client.execute(query.as_str(), &[]).await?;
             }
         }
@@ -179,16 +186,18 @@ impl DB {
             .await?;
         Ok(())
     }
-    /// Get all rows from the table
+    /// Get all rows from the table.
+    /// Collapse them into a map since we don't know the types in advance.
+    /// This way every table has only one column of the same type.
     pub async fn get_rows_json(
         &self,
         table_name: &str,
-    ) -> Result<serde_json::Value, Error> {
+    ) -> Result<Vec<RowJson>, Error> {
         let all_rows_json = self
             .client
-            .query_one(
+            .query(
                 format!(
-                    "SELECT ARRAY_TO_JSON(ARRAY_AGG(ROW_TO_JSON(\"{0}\"))) \
+                    "SELECT ROW_TO_JSON(\"{0}\") \
                     FROM \"{0}\";",
                     table_name
                 )
@@ -196,10 +205,23 @@ impl DB {
                 &[],
             )
             .await?;
-        match all_rows_json.get::<usize, Option<serde_json::Value>>(0) {
-            None => Ok(serde_json::Value::Null),
-            Some(v) => Ok(v),
+        let mut values: Vec<RowJson> = Vec::with_capacity(all_rows_json.len());
+        if all_rows_json.is_empty() {
+            return Ok(values);
         }
+        for row in all_rows_json {
+            let row_value: serde_json::Value = row.get(0);
+            let row_map;
+            match row_value.as_object() {
+                None => {
+                    log::error!("cannot parse as map: {}", row_value);
+                    row_map = serde_json::Map::new();
+                }
+                Some(m) => row_map = m.clone(),
+            }
+            values.push(row_map);
+        }
+        Ok(values)
     }
     /// Get one table's data
     pub async fn get_table_json(
@@ -210,16 +232,15 @@ impl DB {
         Ok(TableJson::new(table_name, table_json))
     }
     /// Get all data as json
-    pub async fn get_all_json(
+    pub async fn get_db_json(
         &self,
-    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
-        let mut table_json = Vec::with_capacity(self.tables.len());
+    ) -> Result<DBJson, Box<dyn std::error::Error>> {
+        let mut db_json = Vec::with_capacity(self.tables.len());
         for table in &self.tables {
             let json = self.get_table_json(table.name.as_str()).await?;
-            table_json.push(json);
+            db_json.push(json);
         }
-        let table_json_ser = serde_json::to_value(&table_json)?;
-        Ok(table_json_ser)
+        Ok(db_json)
     }
 }
 
@@ -239,12 +260,12 @@ async fn connect(
 }
 
 /// Write json
-pub fn write_json(
-    json: &serde_json::Value,
+pub fn write_json<T: serde::Serialize>(
+    json: T,
     filepath: &std::path::Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let file = std::fs::File::create(filepath)?;
-    serde_json::to_writer(&file, json)?;
+    serde_json::to_writer(&file, &serde_json::to_value(json)?)?;
     Ok(())
 }
 

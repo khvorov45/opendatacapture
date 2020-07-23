@@ -90,18 +90,25 @@ pub fn format_value_json(value: &serde_json::Value) -> String {
     }
 }
 
+/// Collection of tables
+/// Order matters for creation/data insertion
+pub type DBJson = Vec<TableJson>;
+
 /// Table json
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct TableJson {
     pub name: String,
-    pub json: serde_json::Value,
+    pub rows: Vec<RowJson>,
 }
 
 impl TableJson {
-    pub fn new(name: &str, json: serde_json::Value) -> Self {
+    pub fn new(name: &str, rows: Vec<RowJson>) -> Self {
         Self {
             name: String::from(name),
-            json,
+            rows,
         }
     }
 }
+
+/// Row json
+pub type RowJson = serde_json::Map<String, serde_json::Value>;
