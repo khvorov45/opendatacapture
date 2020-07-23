@@ -89,3 +89,19 @@ pub fn format_value_json(value: &serde_json::Value) -> String {
         }
     }
 }
+
+/// Table json
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct TableJson {
+    pub name: String,
+    pub json: serde_json::Value,
+}
+
+impl TableJson {
+    pub fn new(name: &str, json: serde_json::Value) -> Self {
+        Self {
+            name: String::from(name),
+            json,
+        }
+    }
+}

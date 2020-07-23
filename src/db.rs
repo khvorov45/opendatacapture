@@ -1,26 +1,9 @@
 use log::{debug, error};
-use serde::{Deserialize, Serialize};
 use tokio_postgres::{Client, Error};
 
 pub mod table;
 
-pub use table::{ColSpec, Column, Table, TableSpec};
-
-/// Table json
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TableJson {
-    pub name: String,
-    pub json: serde_json::Value,
-}
-
-impl TableJson {
-    pub fn new(name: &str, json: serde_json::Value) -> Self {
-        Self {
-            name: String::from(name),
-            json,
-        }
-    }
-}
+pub use table::{ColSpec, Column, Table, TableJson, TableSpec};
 
 /// Database
 pub struct DB {
