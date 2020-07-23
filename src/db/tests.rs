@@ -21,10 +21,37 @@ fn get_test_primary_table() -> TableMeta {
     TableMeta::new("primary", cols, "")
 }
 
+// One entry for the primary table
+fn get_primary_entry_from_json(json: &str) -> RowJson {
+    serde_json::from_str::<RowJson>(json).unwrap()
+}
+
+// Some data for the primary table
+fn get_primary_sample_data() -> Vec<RowJson> {
+    let mut sample_data = Vec::new();
+    sample_data.push(get_primary_entry_from_json(
+        r#"{"email": "test@example.com"}"#,
+    ));
+    sample_data
+}
+
+// Test secondary table
+fn get_test_secondary_table() -> TableMeta {
+    let mut cols = ColSpec::new();
+    cols.push(ColMeta::new("id", "INTEGER", "PRIMARY KEY"));
+    cols.push(ColMeta::new("timepoint", "INTEGER", "NOT NULL"));
+    TableMeta::new(
+        "secondary",
+        cols,
+        "FOREIGN KEY(\"id\") REFERENCES \"primary\"(\"id\")",
+    )
+}
+
 // Test database specification
 fn get_testdb_spec() -> TableSpec {
     let mut test_tables = TableSpec::new();
     test_tables.push(get_test_primary_table());
+    test_tables.push(get_test_secondary_table());
     test_tables
 }
 
@@ -47,21 +74,18 @@ async fn get_testdb(clear: bool) -> DB {
     assert!(!db.is_empty().await.unwrap());
     // Tables should be empty
     assert!(db.get_rows_json("primary").await.unwrap().is_empty());
-    let admin1 = r#"
-        {
-            "email": "test1@example.com"
-        }"#;
-    let admin1_json: serde_json::Map<String, serde_json::Value> =
-        serde_json::from_str(admin1).unwrap();
-    db.client
-        .execute(
-            db.tables[0]
-                .construct_insert_query_json(&admin1_json)
-                .as_str(),
-            &[],
-        )
-        .await
-        .unwrap();
+    assert!(db.get_rows_json("secondary").await.unwrap().is_empty());
+    // Insert some data
+    let primary_data = get_primary_sample_data();
+    for row in primary_data {
+        db.client
+            .execute(
+                db.tables[0].construct_insert_query_json(&row).as_str(),
+                &[],
+            )
+            .await
+            .unwrap();
+    }
     assert_eq!(db.get_rows_json("primary").await.unwrap().len(), 1);
     db
 }
