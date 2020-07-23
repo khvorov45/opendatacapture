@@ -6,23 +6,6 @@ pub mod table;
 
 pub use table::{ColSpec, Column, Table, TableSpec};
 
-/// Table data
-#[derive(Debug)]
-pub struct TableData {
-    pub name: String,
-    pub data: Vec<tokio_postgres::Row>,
-}
-
-impl TableData {
-    /// New table data
-    pub fn new(name: &str, data: Vec<tokio_postgres::Row>) -> Self {
-        Self {
-            name: String::from(name),
-            data,
-        }
-    }
-}
-
 /// Table json
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TableJson {
@@ -215,22 +198,13 @@ impl DB {
         Ok(())
     }
     /// Get all rows from the table
-    pub async fn get_rows_data(
-        &self,
-        table_name: &str,
-    ) -> Result<Vec<tokio_postgres::Row>, Error> {
-        self.client
-            .query(format!("SELECT * FROM {};", table_name).as_str(), &[])
-            .await
-    }
-    /// Get all rows from the table
     pub async fn get_rows_json(
         &self,
         table_name: &str,
     ) -> Result<serde_json::Value, Error> {
         let all_rows_json = self
             .client
-            .query(
+            .query_one(
                 format!(
                     "SELECT ARRAY_TO_JSON(ARRAY_AGG(ROW_TO_JSON(\"{0}\"))) \
                     FROM \"{0}\";",
@@ -240,15 +214,10 @@ impl DB {
                 &[],
             )
             .await?;
-        Ok(all_rows_json[0].get::<usize, serde_json::Value>(0))
-    }
-    /// Get one table's data
-    pub async fn get_table_data(
-        &self,
-        table_name: &str,
-    ) -> Result<TableData, Error> {
-        let table_data = self.get_rows_data(table_name).await?;
-        Ok(TableData::new(table_name, table_data))
+        match all_rows_json.get::<usize, Option<serde_json::Value>>(0) {
+            None => Ok(serde_json::Value::Null),
+            Some(v) => Ok(v),
+        }
     }
     /// Get one table's data
     pub async fn get_table_json(
@@ -257,15 +226,6 @@ impl DB {
     ) -> Result<TableJson, Error> {
         let table_json = self.get_rows_json(table_name).await?;
         Ok(TableJson::new(table_name, table_json))
-    }
-    /// Get all data out
-    pub async fn get_all_data(&self) -> Result<Vec<TableData>, Error> {
-        let mut table_data = Vec::with_capacity(self.tables.len());
-        for table in &self.tables {
-            let data = self.get_table_data(table.name.as_str()).await?;
-            table_data.push(data);
-        }
-        Ok(table_data)
     }
     /// Get all data as json
     pub async fn get_all_json(

@@ -25,27 +25,50 @@ fn get_testdb_spec() -> TableSpec {
 
 // Test database
 async fn get_testdb(clear: bool) -> DB {
+    // Manually created database object
     let db = DB {
         backup_json_path: std::path::PathBuf::from("backup-json/test.json"),
         client: connect(&get_test_config()).await.unwrap(),
         tables: get_testdb_spec(),
     };
+    // Make sure there are no tables
     db.drop_all_tables().await.unwrap();
     assert!(db.is_empty().await.unwrap());
     if clear {
         return db;
     }
+    // Recreate the tables
     db.create_all_tables().await.unwrap();
     assert!(!db.is_empty().await.unwrap());
-    assert_eq!(db.get_rows_data("admin").await.unwrap().len(), 0);
+    // Tables should be empty
+    assert_eq!(
+        db.get_rows_json("admin").await.unwrap(),
+        serde_json::Value::Null
+    );
+    let admin1 = r#"
+        {
+            "email": "test1@example.com"
+        }"#;
+    let admin1_json: serde_json::Map<String, serde_json::Value> =
+        serde_json::from_str(admin1).unwrap();
     db.client
         .execute(
-            db.tables[0].construct_insert_query().as_str(),
-            &[&1, &"test1@example.com"],
+            db.tables[0]
+                .construct_insert_query_json(&admin1_json)
+                .as_str(),
+            &[],
         )
         .await
         .unwrap();
-    assert_eq!(db.get_rows_data("admin").await.unwrap().len(), 1);
+    assert_eq!(
+        db.get_rows_json("admin")
+            .await
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
     db
 }
 
@@ -67,7 +90,9 @@ async fn test_connection_to_empty() {
 
 // Tests connection to a non-empty database
 async fn test_connection_to_nonempty() {
+    log::info!("test connection with backup");
     test_connection_with_backup().await;
+    log::info!("test connection with no backup");
     test_connection_no_backup().await;
 }
 
@@ -76,7 +101,15 @@ async fn test_connection_with_backup() {
     let db = get_testdb(false).await;
     db.init(true).await.unwrap();
     // The one test row should be preserved
-    assert_eq!(db.get_rows_data("admin").await.unwrap().len(), 1)
+    assert_eq!(
+        db.get_rows_json("admin")
+            .await
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    )
 }
 
 // No backup
@@ -84,12 +117,17 @@ async fn test_connection_no_backup() {
     let db = get_testdb(false).await;
     db.init(false).await.unwrap();
     // The one test row should not be preserved
-    assert_eq!(db.get_rows_data("admin").await.unwrap().len(), 0)
+    assert_eq!(
+        db.get_rows_json("admin").await.unwrap(),
+        serde_json::Value::Null
+    );
 }
 
 #[tokio::test]
 async fn test_db() {
     pretty_env_logger::init();
+    log::info!("test connection to empty");
     test_connection_to_empty().await;
+    log::info!("test connection to non-empty");
     test_connection_to_nonempty().await;
 }

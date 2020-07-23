@@ -57,15 +57,6 @@ impl Table {
         }
         format!("{} ({}, {});", init_query, all_columns, self.constraints)
     }
-    /// Insert query
-    pub fn construct_insert_query(&self) -> String {
-        let values = 1..=self.cols.len();
-        let values = values
-            .map(|v| format!("${}", v))
-            .collect::<Vec<String>>()
-            .join(",");
-        format!("INSERT INTO \"{}\" VALUES ({})", self.name, values)
-    }
     /// Insert query from json
     pub fn construct_insert_query_json(
         &self,
