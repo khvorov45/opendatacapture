@@ -58,13 +58,13 @@ pub async fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
 
 fn get_admin_tablespec() -> db::TableSpec {
     let mut set = db::TableSpec::new();
-    set.push(db::Table::new("admin", get_admin_colspec(), ""));
+    set.push(db::TableMeta::new("admin", get_admin_colspec(), ""));
     set
 }
 
 fn get_admin_colspec() -> db::ColSpec {
     let mut set = db::ColSpec::new();
-    set.push(db::Column::new("id", "SERIAL", "PRIMARY KEY"));
-    set.push(db::Column::new("email", "TEXT", "NOT NULL"));
+    set.push(db::ColMeta::new("id", "SERIAL", "PRIMARY KEY"));
+    set.push(db::ColMeta::new("email", "TEXT", "NOT NULL"));
     set
 }

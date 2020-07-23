@@ -4,7 +4,7 @@ use tokio_postgres::{Client, Error};
 pub mod table;
 
 pub use table::{
-    ColSpec, Column, DBJson, RowJson, Table, TableJson, TableSpec,
+    ColMeta, ColSpec, DBJson, RowJson, TableJson, TableMeta, TableSpec,
 };
 
 /// Database
@@ -86,7 +86,7 @@ impl DB {
         let tables_json: Vec<TableJson> =
             read_json(self.backup_json_path.as_path())?;
         for table_json in tables_json {
-            let this_table: &Table;
+            let this_table: &TableMeta;
             match self.tables.iter().find(|t| t.name == table_json.name) {
                 None => {
                     log::info!(
@@ -173,14 +173,14 @@ impl DB {
         Ok(())
     }
     /// Creates the given tables
-    async fn create_tables(&self, tables: &[Table]) -> Result<(), Error> {
+    async fn create_tables(&self, tables: &[TableMeta]) -> Result<(), Error> {
         for table in tables {
             self.create_table(table).await?;
         }
         Ok(())
     }
     /// Creates the given table
-    async fn create_table(&self, table: &Table) -> Result<(), Error> {
+    async fn create_table(&self, table: &TableMeta) -> Result<(), Error> {
         self.client
             .execute(table.construct_create_query().as_str(), &[])
             .await?;

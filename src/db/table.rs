@@ -1,15 +1,17 @@
 /// Column specification
-pub type ColSpec = Vec<Column>;
+pub type ColSpec = Vec<ColMeta>;
 
-/// Column
-pub struct Column {
+/// Column metadata
+pub struct ColMeta {
+    /// Column name
     pub name: String,
+    /// Column type as understood by Postgres
     pub postgres_type: String,
+    /// Extra column attributes, e.g., `NOT NULL`
     pub attr: String,
 }
 
-impl Column {
-    /// New column
+impl ColMeta {
     pub fn new(name: &str, postgres_type: &str, attr: &str) -> Self {
         Self {
             name: String::from(name),
@@ -24,17 +26,19 @@ impl Column {
 }
 
 /// Table specification
-pub type TableSpec = Vec<Table>;
+pub type TableSpec = Vec<TableMeta>;
 
-/// Table
-pub struct Table {
+/// Table metadata
+pub struct TableMeta {
+    /// Table name
     pub name: String,
+    /// Table columns
     pub cols: ColSpec,
+    /// Table constraints, e.g., `FOREIGN KEY`
     pub constraints: String,
 }
 
-impl Table {
-    /// New table
+impl TableMeta {
     pub fn new(name: &str, cols: ColSpec, constraints: &str) -> Self {
         Self {
             name: String::from(name),
@@ -58,10 +62,7 @@ impl Table {
         format!("{} ({}, {});", init_query, all_columns, self.constraints)
     }
     /// Insert query from json
-    pub fn construct_insert_query_json(
-        &self,
-        row: &serde_json::Map<String, serde_json::Value>,
-    ) -> String {
+    pub fn construct_insert_query_json(&self, row: &RowJson) -> String {
         let mut keys = Vec::<String>::with_capacity(row.len());
         let mut values = Vec::<String>::with_capacity(row.len());
         for (key, value) in row {
@@ -97,7 +98,9 @@ pub type DBJson = Vec<TableJson>;
 /// Table json
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct TableJson {
+    /// Table name
     pub name: String,
+    /// Table rows
     pub rows: Vec<RowJson>,
 }
 

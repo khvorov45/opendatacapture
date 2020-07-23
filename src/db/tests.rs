@@ -17,9 +17,9 @@ fn get_test_config() -> tokio_postgres::Config {
 fn get_testdb_spec() -> TableSpec {
     let mut test_tables = TableSpec::new();
     let mut admin_cols = ColSpec::new();
-    admin_cols.push(Column::new("id", "SERIAL", "PRIMARY KEY"));
-    admin_cols.push(Column::new("email", "TEXT", "NOT NULL"));
-    test_tables.push(Table::new("admin", admin_cols, ""));
+    admin_cols.push(ColMeta::new("id", "SERIAL", "PRIMARY KEY"));
+    admin_cols.push(ColMeta::new("email", "TEXT", "NOT NULL"));
+    test_tables.push(TableMeta::new("admin", admin_cols, ""));
     test_tables
 }
 
