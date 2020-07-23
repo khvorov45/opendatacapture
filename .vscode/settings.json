@@ -1,5 +1,6 @@
 {
     "cSpell.words": [
+        "Initialises",
         "admindb",
         "admindbname",
         "dbconfig",
@@ -8,10 +9,13 @@
         "dbport",
         "initialise",
         "initialised",
+        "initialising",
+        "nobackup",
         "odcadmin",
         "odcapi",
         "odctest",
         "postgres",
-        "structopt"
+        "structopt",
+        "testdb"
     ]
 }

@@ -1,102 +1,117 @@
-use log::debug;
-use std::collections::HashMap;
+/// Column specification
+pub type ColSpec = Vec<ColMeta>;
 
-pub type ColSpec = HashMap<String, ColAttrib>;
-
-pub struct ColAttrib {
-    coltype: String,
-    other: String,
+/// Column metadata
+pub struct ColMeta {
+    /// Column name
+    pub name: String,
+    /// Column type as understood by Postgres
+    pub postgres_type: String,
+    /// Extra column attributes, e.g., `NOT NULL`
+    pub attr: String,
 }
 
-impl ColAttrib {
-    pub fn new(coltype: &str, other: &str) -> Self {
+impl ColMeta {
+    pub fn new(name: &str, postgres_type: &str, attr: &str) -> Self {
         Self {
-            coltype: String::from(coltype),
-            other: String::from(other),
+            name: String::from(name),
+            postgres_type: String::from(postgres_type),
+            attr: String::from(attr),
+        }
+    }
+    /// Entry for the create query
+    pub fn construct_create_query_entry(&self) -> String {
+        format!("\"{}\" {} {}", self.name, self.postgres_type, self.attr)
+    }
+}
+
+/// Table specification
+pub type TableSpec = Vec<TableMeta>;
+
+/// Table metadata
+pub struct TableMeta {
+    /// Table name
+    pub name: String,
+    /// Table columns
+    pub cols: ColSpec,
+    /// Table constraints, e.g., `FOREIGN KEY`
+    pub constraints: String,
+}
+
+impl TableMeta {
+    pub fn new(name: &str, cols: ColSpec, constraints: &str) -> Self {
+        Self {
+            name: String::from(name),
+            cols,
+            constraints: String::from(constraints),
+        }
+    }
+    /// Create query
+    pub fn construct_create_query(&self) -> String {
+        let all_columns: String = self
+            .cols
+            .iter()
+            .map(|c| c.construct_create_query_entry())
+            .collect::<Vec<String>>()
+            .join(",");
+        let init_query =
+            format!("CREATE TABLE IF NOT EXISTS \"{}\"", self.name);
+        if self.constraints.is_empty() {
+            return format!("{} ({});", init_query, all_columns);
+        }
+        format!("{} ({}, {});", init_query, all_columns, self.constraints)
+    }
+    /// Insert query from json
+    pub fn construct_insert_query_json(&self, row: &RowJson) -> String {
+        let mut keys = Vec::<String>::with_capacity(row.len());
+        let mut values = Vec::<String>::with_capacity(row.len());
+        for (key, value) in row {
+            keys.push(format!("\"{}\"", key));
+            values.push(format_value_json(value));
+        }
+        format!(
+            "INSERT INTO \"{}\" ({}) VALUES ({});",
+            self.name,
+            keys.join(","),
+            values.join(",")
+        )
+    }
+}
+
+/// Formats a json value for insert
+pub fn format_value_json(value: &serde_json::Value) -> String {
+    use serde_json::Value;
+    match value {
+        Value::String(v) => format!("\'{}\'", v),
+        Value::Number(n) => format!("\'{}\'", n),
+        _ => {
+            log::error!("unimplemented value type: {:?}", value);
+            String::from("")
         }
     }
 }
 
-/// Compares 2 column types. Case-insensitive.
-pub fn compare_coltypes(t1: &str, t2: &str) -> bool {
-    recode_coltype(t1) == recode_coltype(t2)
+/// Collection of tables
+/// Order matters for creation/data insertion
+pub type DBJson = Vec<TableJson>;
+
+/// Table json
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct TableJson {
+    /// Table name
+    pub name: String,
+    /// Table rows
+    pub rows: Vec<RowJson>,
 }
 
-/// Recodes coltypes to make them comparable
-fn recode_coltype(coltype: &str) -> String {
-    let coltype = coltype.to_lowercase();
-    match super::constants::TYPES.get(coltype.as_str()) {
-        Some(alt) => String::from(*alt),
-        None => coltype,
-    }
-}
-
-/// Returns the create query requiring no parameters
-pub fn construct_create_query(name: &str, cols: &ColSpec) -> String {
-    let coltypes = cols
-        // Surround colnames by quotation marks
-        .iter()
-        .map(|(colname, colattrib)| format! {"\"{}\" {} {}", colname, colattrib.coltype, colattrib.other})
-        .collect::<Vec<String>>()
-        // Join into a comma-separated string
-        .join(",");
-    format!("CREATE TABLE IF NOT EXISTS \"{}\" ({});", name, coltypes)
-}
-
-pub fn verify(
-    name: &str,
-    cols_obtained: &ColSpec,
-    cols_expected: &ColSpec,
-) -> bool {
-    // Check number of columns
-    if cols_expected.len() != cols_obtained.len() {
-        debug!(
-            "Table \"{}\" is expected to have {} columns but has {}",
-            name,
-            cols_expected.len(),
-            cols_obtained.len()
-        );
-        return false;
-    }
-    // Name or type may be wrong
-    for (colname_obtained, colattrib_obtained) in cols_obtained {
-        if !verify_column(
-            colname_obtained,
-            &colattrib_obtained.coltype,
-            cols_expected,
-        ) {
-            debug!(
-                "Table \"{}\" column \"{}\" failed verification",
-                name, colname_obtained
-            );
-            return false;
-        }
-    }
-    true
-}
-
-/// Checks if given column name and type are present in ColSpec
-fn verify_column(
-    colname: &str,
-    coltype: &str,
-    cols_expected: &ColSpec,
-) -> bool {
-    match cols_expected.get(colname) {
-        // This column name should be in the table
-        Some(colattrib_expected) => {
-            if !compare_coltypes(&colattrib_expected.coltype, coltype) {
-                debug!(
-                    "Column \"{}\" has type \"{}\" while expected \"{}\"",
-                    colname, coltype, colattrib_expected.coltype
-                );
-                return false;
-            }
-            true
-        }
-        // Obtained column name is not expected
-        None => {
-            debug!("Column \"{}\" is not expected", colname);
-            false
+impl TableJson {
+    pub fn new(name: &str, rows: Vec<RowJson>) -> Self {
+        Self {
+            name: String::from(name),
+            rows,
         }
     }
 }
+
+/// Row json
+pub type RowJson = serde_json::Map<String, serde_json::Value>;
