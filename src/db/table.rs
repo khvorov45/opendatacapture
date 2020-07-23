@@ -66,4 +66,35 @@ impl Table {
             .join(",");
         format!("INSERT INTO \"{}\" VALUES ({})", self.name, values)
     }
+    /// Insert query from json
+    pub fn construct_insert_query_json(
+        &self,
+        row: &serde_json::Map<String, serde_json::Value>,
+    ) -> String {
+        let mut keys = Vec::<String>::with_capacity(row.len());
+        let mut values = Vec::<String>::with_capacity(row.len());
+        for (key, value) in row {
+            keys.push(format!("\"{}\"", key));
+            values.push(format_value_json(value));
+        }
+        format!(
+            "INSERT INTO {} ({}) VALUES ({});",
+            self.name,
+            keys.join(","),
+            values.join(",")
+        )
+    }
+}
+
+/// Formats a json value for insert
+pub fn format_value_json(value: &serde_json::Value) -> String {
+    use serde_json::Value;
+    match value {
+        Value::String(v) => format!("\'{}\'", v),
+        Value::Number(n) => format!("\'{}\'", n),
+        _ => {
+            log::error!("unimplemented value type: {:?}", value);
+            String::from("")
+        }
+    }
 }

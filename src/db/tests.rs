@@ -26,6 +26,7 @@ fn get_testdb_spec() -> TableSpec {
 // Test database
 async fn get_testdb(clear: bool) -> DB {
     let db = DB {
+        backup_json_path: std::path::PathBuf::from("backup-json/test.json"),
         client: connect(&get_test_config()).await.unwrap(),
         tables: get_testdb_spec(),
     };
