@@ -35,6 +35,12 @@ pub struct Opt {
     /// has tables.
     #[structopt(long)]
     pub clean: bool,
+    /// Email for the first admin user
+    #[structopt(long, default_value = "admin@example.com")]
+    pub admin_email: String,
+    /// Password for the first admin user
+    #[structopt(long, default_value = "admin")]
+    pub admin_password: String,
 }
 
 /// Runs the API with the supplied options
