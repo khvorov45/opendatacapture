@@ -13,13 +13,18 @@ fn get_test_config() -> tokio_postgres::Config {
     dbconfig
 }
 
+// Test primary table
+fn get_test_primary_table() -> TableMeta {
+    let mut cols = ColSpec::new();
+    cols.push(ColMeta::new("id", "SERIAL", "PRIMARY KEY"));
+    cols.push(ColMeta::new("email", "TEXT", "NOT NULL"));
+    TableMeta::new("primary", cols, "")
+}
+
 // Test database specification
 fn get_testdb_spec() -> TableSpec {
     let mut test_tables = TableSpec::new();
-    let mut admin_cols = ColSpec::new();
-    admin_cols.push(ColMeta::new("id", "SERIAL", "PRIMARY KEY"));
-    admin_cols.push(ColMeta::new("email", "TEXT", "NOT NULL"));
-    test_tables.push(TableMeta::new("admin", admin_cols, ""));
+    test_tables.push(get_test_primary_table());
     test_tables
 }
 
@@ -41,7 +46,7 @@ async fn get_testdb(clear: bool) -> DB {
     db.create_all_tables().await.unwrap();
     assert!(!db.is_empty().await.unwrap());
     // Tables should be empty
-    assert!(db.get_rows_json("admin").await.unwrap().is_empty());
+    assert!(db.get_rows_json("primary").await.unwrap().is_empty());
     let admin1 = r#"
         {
             "email": "test1@example.com"
@@ -57,7 +62,7 @@ async fn get_testdb(clear: bool) -> DB {
         )
         .await
         .unwrap();
-    assert_eq!(db.get_rows_json("admin").await.unwrap().len(), 1);
+    assert_eq!(db.get_rows_json("primary").await.unwrap().len(), 1);
     db
 }
 
@@ -90,7 +95,7 @@ async fn test_connection_with_backup() {
     let db = get_testdb(false).await;
     db.init(true).await.unwrap();
     // The one test row should be preserved
-    assert_eq!(db.get_rows_json("admin").await.unwrap().len(), 1)
+    assert_eq!(db.get_rows_json("primary").await.unwrap().len(), 1)
 }
 
 // No backup
@@ -98,7 +103,7 @@ async fn test_connection_no_backup() {
     let db = get_testdb(false).await;
     db.init(false).await.unwrap();
     // The one test row should not be preserved
-    assert!(db.get_rows_json("admin").await.unwrap().is_empty());
+    assert!(db.get_rows_json("primary").await.unwrap().is_empty());
 }
 
 #[tokio::test]

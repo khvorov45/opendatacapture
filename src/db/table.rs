@@ -70,7 +70,7 @@ impl TableMeta {
             values.push(format_value_json(value));
         }
         format!(
-            "INSERT INTO {} ({}) VALUES ({});",
+            "INSERT INTO \"{}\" ({}) VALUES ({});",
             self.name,
             keys.join(","),
             values.join(",")
