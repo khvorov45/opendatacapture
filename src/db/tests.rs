@@ -27,12 +27,12 @@ fn get_primary_entry_from_json(json: &str) -> RowJson {
 }
 
 // Some data for the primary table
-fn get_primary_sample_data() -> Vec<RowJson> {
+fn get_primary_sample_data() -> TableJson {
     let mut sample_data = Vec::new();
     sample_data.push(get_primary_entry_from_json(
         r#"{"email": "test@example.com"}"#,
     ));
-    sample_data
+    TableJson::new("primary", sample_data)
 }
 
 // Test secondary table
@@ -77,16 +77,11 @@ async fn get_testdb(clear: bool) -> DB {
     assert!(db.get_rows_json("secondary").await.unwrap().is_empty());
     // Insert some data
     let primary_data = get_primary_sample_data();
-    for row in primary_data {
-        db.client
-            .execute(
-                db.tables[0].construct_insert_query_json(&row).as_str(),
-                &[],
-            )
-            .await
-            .unwrap();
-    }
-    assert_eq!(db.get_rows_json("primary").await.unwrap().len(), 1);
+    db.insert(&primary_data).await.unwrap();
+    assert_eq!(
+        db.get_rows_json("primary").await.unwrap().len(),
+        primary_data.rows.len()
+    );
     db
 }
 

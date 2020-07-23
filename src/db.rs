@@ -87,7 +87,7 @@ impl DB {
             read_json(self.backup_json_path.as_path())?;
         for table_json in tables_json {
             let this_table: &TableMeta;
-            match self.tables.iter().find(|t| t.name == table_json.name) {
+            match self.find_table(table_json.name.as_str()) {
                 None => {
                     log::info!(
                         "table \"{}\" found it backup but not in database",
@@ -136,6 +136,10 @@ impl DB {
         }
         debug!("found table names: {:?}", table_names);
         Ok(table_names)
+    }
+    /// Find a table by name
+    fn find_table(&self, name: &str) -> Option<&TableMeta> {
+        self.tables.iter().find(|t| t.name == name)
     }
     /// Drops all tables found in the database
     async fn drop_all_tables(&self) -> Result<(), Error> {
@@ -241,6 +245,31 @@ impl DB {
             db_json.push(json);
         }
         Ok(db_json)
+    }
+    /// Insert data into a table
+    pub async fn insert(&self, json: &TableJson) -> Result<(), Error> {
+        // Find the table
+        let this_table: &TableMeta;
+        match self.find_table(json.name.as_str()) {
+            None => {
+                log::error!(
+                    "want to insert into table \"{}\" but it does not exist",
+                    json.name
+                );
+                return Ok(());
+            }
+            Some(t) => this_table = t,
+        }
+        // Insert the data
+        for row in &json.rows {
+            self.client
+                .execute(
+                    this_table.construct_insert_query_json(row).as_str(),
+                    &[],
+                )
+                .await?;
+        }
+        Ok(())
     }
 }
 
