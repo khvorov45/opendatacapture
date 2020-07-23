@@ -61,21 +61,6 @@ impl TableMeta {
         }
         format!("{} ({}, {});", init_query, all_columns, self.constraints)
     }
-    /// Insert query from json
-    pub fn construct_insert_query_json(&self, row: &RowJson) -> String {
-        let mut keys = Vec::<String>::with_capacity(row.len());
-        let mut values = Vec::<String>::with_capacity(row.len());
-        for (key, value) in row {
-            keys.push(format!("\"{}\"", key));
-            values.push(format_value_json(value));
-        }
-        format!(
-            "INSERT INTO \"{}\" ({}) VALUES ({});",
-            self.name,
-            keys.join(","),
-            values.join(",")
-        )
-    }
 }
 
 /// Formats a json value for insert
@@ -110,6 +95,43 @@ impl TableJson {
             name: String::from(name),
             rows,
         }
+    }
+    /// Insert query from json
+    pub fn construct_insert_query(
+        &self,
+    ) -> Result<String, super::error::APIError> {
+        if self.rows.is_empty() {
+            return Err(super::error::APIError::new(
+                format!(
+                    "trying to insert no data into table \"{}\"",
+                    self.name
+                )
+                .as_str(),
+            ));
+        }
+        // Need to make sure keys and values go in the same order
+        let mut keys = Vec::with_capacity(self.rows[0].len());
+        // Each entry is a vector of values for that row
+        let mut row_entries =
+            vec![Vec::with_capacity(self.rows[0].len()); self.rows.len()];
+        for key in self.rows[0].keys() {
+            keys.push(format!("\"{}\"", key));
+            for (i, row) in self.rows.iter().enumerate() {
+                row_entries[i].push(format_value_json(&row[key]));
+            }
+        }
+        // Format each entry
+        let row_entries: Vec<String> = row_entries
+            .iter()
+            .map(|r| r.join(",")) // comma-separated list
+            .map(|r| format!("({})", r)) // surround by paretheses
+            .collect();
+        Ok(format!(
+            "INSERT INTO \"{}\" ({}) VALUES {};",
+            self.name,
+            keys.join(","),
+            row_entries.join(",")
+        ))
     }
 }
 

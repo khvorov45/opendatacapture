@@ -1,6 +1,8 @@
 use log::{debug, error};
 use tokio_postgres::{Client, Error};
 
+use super::error;
+
 pub mod table;
 
 pub use table::{
@@ -86,16 +88,12 @@ impl DB {
         let tables_json: Vec<TableJson> =
             read_json(self.backup_json_path.as_path())?;
         for table_json in tables_json {
-            let this_table: &TableMeta;
-            match self.find_table(table_json.name.as_str()) {
-                None => {
-                    log::info!(
-                        "table \"{}\" found it backup but not in database",
-                        table_json.name
-                    );
-                    continue;
-                }
-                Some(table) => this_table = table,
+            if self.find_table(table_json.name.as_str()).is_none() {
+                log::info!(
+                    "table \"{}\" found it backup but not in database",
+                    table_json.name
+                );
+                continue;
             }
             if table_json.rows.is_empty() {
                 log::info!("backup table \"{}\" is empty", table_json.name);
@@ -106,10 +104,7 @@ impl DB {
                 table_json.rows.len(),
                 table_json.name
             );
-            for table_row in table_json.rows {
-                let query = this_table.construct_insert_query_json(&table_row);
-                self.client.execute(query.as_str(), &[]).await?;
-            }
+            self.insert(&table_json).await?;
         }
         Ok(())
     }
@@ -247,28 +242,22 @@ impl DB {
         Ok(db_json)
     }
     /// Insert data into a table
-    pub async fn insert(&self, json: &TableJson) -> Result<(), Error> {
+    pub async fn insert(
+        &self,
+        json: &TableJson,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         // Find the table
-        let this_table: &TableMeta;
-        match self.find_table(json.name.as_str()) {
-            None => {
-                log::error!(
-                    "want to insert into table \"{}\" but it does not exist",
-                    json.name
-                );
-                return Ok(());
-            }
-            Some(t) => this_table = t,
+        if self.find_table(json.name.as_str()).is_none() {
+            log::error!(
+                "want to insert into table \"{}\" but it does not exist",
+                json.name
+            );
+            return Ok(());
         }
         // Insert the data
-        for row in &json.rows {
-            self.client
-                .execute(
-                    this_table.construct_insert_query_json(row).as_str(),
-                    &[],
-                )
-                .await?;
-        }
+        self.client
+            .execute(json.construct_insert_query()?.as_str(), &[])
+            .await?;
         Ok(())
     }
 }
