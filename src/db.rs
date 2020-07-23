@@ -98,9 +98,8 @@ impl DB {
     /// Restores data from json
     async fn restore_json(&self) -> Result<(), Box<dyn std::error::Error>> {
         debug!("restoring json backup from {:?}", self.backup_json_path);
-        let restored_json = read_json(self.backup_json_path.as_path())?;
         let tables_json: Vec<TableJson> =
-            serde_json::from_value(restored_json)?;
+            read_json(self.backup_json_path.as_path())?;
         for table_json in tables_json {
             let this_table: &Table;
             match self.tables.iter().find(|t| t.name == table_json.name) {
@@ -267,12 +266,12 @@ pub fn write_json(
 }
 
 /// Read json
-pub fn read_json(
+pub fn read_json<T: serde::de::DeserializeOwned>(
     filepath: &std::path::Path,
-) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+) -> Result<T, Box<dyn std::error::Error>> {
     let file = std::fs::File::open(filepath)?;
     let reader = std::io::BufReader::new(file);
-    let json = serde_json::from_reader(reader)?;
+    let json: T = serde_json::from_reader(reader)?;
     Ok(json)
 }
 
