@@ -25,7 +25,6 @@ impl DB {
     /// If `backup` is `false`, then will not backup/restore if tables are
     /// found - will just reset instead.
     pub async fn new(
-        name: &str,
         config: &tokio_postgres::Config,
         tables: TableSpec,
         backup: bool,
@@ -38,7 +37,7 @@ impl DB {
             tables,
             backup_json_path: std::path::PathBuf::from(&format!(
                 "backup-json/{}.json",
-                name
+                config.get_dbname().unwrap()
             )),
         };
         // Attempt to initialise
