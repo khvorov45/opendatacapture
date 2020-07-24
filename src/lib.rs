@@ -54,9 +54,35 @@ pub async fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
         .user(opt.apiusername.as_str())
         .password(opt.apiuserpassword);
     // Connect to the admin database as the default api user
-    let _admindb =
+    let admindb =
         db::DB::new("admin", &dbconfig, get_admin_tablespec(), !opt.clean)
             .await?;
+    // Insert an admin if empty
+    if admindb.get_rows_json("admin").await?.is_empty() {
+        log::info!(
+            "no admins found, inserting \"{}\" with password \"{}\"",
+            opt.admin_email,
+            opt.admin_password
+        );
+        let admin_password_hash = argon2::hash_encoded(
+            opt.admin_password.as_bytes(),
+            gen_rand_string().as_bytes(),
+            &argon2::Config::default(),
+        )?;
+        admindb
+            .insert(&db::table::TableJson::new(
+                "admin",
+                vec![serde_json::from_str(
+                    format!(
+                        "{{\"email\": \"{}\", \"password_hash\": \"{}\"}}",
+                        opt.admin_email, admin_password_hash
+                    )
+                    .as_str(),
+                )?],
+            ))
+            .await?;
+    }
+
     let routes = warp::any().map(|| "Hello, World!");
     warp::serve(routes).run(([127, 0, 0, 1], opt.apiport)).await;
     Ok(())
@@ -72,5 +98,14 @@ fn get_admin_colspec() -> db::ColSpec {
     let mut set = db::ColSpec::new();
     set.push(db::ColMeta::new("id", "SERIAL", "PRIMARY KEY"));
     set.push(db::ColMeta::new("email", "TEXT", "NOT NULL"));
+    set.push(db::ColMeta::new("password_hash", "TEXT", ""));
     set
+}
+
+fn gen_rand_string() -> String {
+    use rand::Rng;
+    rand::thread_rng()
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(30)
+        .collect()
 }
