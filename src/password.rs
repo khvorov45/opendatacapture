@@ -1,3 +1,4 @@
+/// Hash a string
 pub fn hash(password: &str) -> Result<String, argon2::Error> {
     argon2::hash_encoded(
         password.as_bytes(),
