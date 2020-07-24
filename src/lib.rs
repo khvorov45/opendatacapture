@@ -54,12 +54,3 @@ pub async fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
     warp::serve(routes).run(([127, 0, 0, 1], opt.apiport)).await;
     Ok(())
 }
-
-/// Generates a random string
-fn gen_rand_string() -> String {
-    use rand::Rng;
-    rand::thread_rng()
-        .sample_iter(&rand::distributions::Alphanumeric)
-        .take(30)
-        .collect()
-}
