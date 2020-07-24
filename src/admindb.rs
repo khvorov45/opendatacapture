@@ -67,3 +67,52 @@ async fn insert_if_empty(
         .await?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::{Opt, StructOpt};
+    use super::*;
+
+    // Create a database
+    async fn test_create(clean: bool) -> db::DB {
+        let mut args = vec!["appname", "--admindbname", "odcadmin_test"];
+        if clean {
+            args.push("--clean")
+        }
+        let opt = Opt::from_iter(args);
+        let test_admin_db = create_new(&opt).await.unwrap();
+        // Clean or not, there should be one row in the admin table
+        assert_eq!(
+            test_admin_db.get_rows_json("admin").await.unwrap().len(),
+            1
+        );
+        test_admin_db
+    }
+
+    // Extract first admin's hash
+    async fn extract_first_admin_hash(db: &db::DB) -> String {
+        let admin_rows = db.get_rows_json("admin").await.unwrap();
+        if let serde_json::Value::String(hash) = &admin_rows[0]["password_hash"]
+        {
+            String::from(hash)
+        } else {
+            panic!("unexpected lack of string")
+        }
+    }
+
+    #[tokio::test]
+    async fn test() {
+        let _ = pretty_env_logger::try_init();
+        // Start clean
+        let test_db = test_create(true).await;
+        let hash1 = extract_first_admin_hash(&test_db).await;
+        // Restart with backup
+        let test_db = test_create(false).await;
+        let hash2 = extract_first_admin_hash(&test_db).await;
+        assert_eq!(hash1, hash2);
+        // Start clean again
+        let test_db = test_create(true).await;
+        let hash3 = extract_first_admin_hash(&test_db).await;
+        assert_ne!(hash1, hash3);
+    }
+}
