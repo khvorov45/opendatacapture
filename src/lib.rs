@@ -5,6 +5,7 @@ use warp::Filter;
 mod admindb;
 pub mod db;
 pub mod error;
+mod password;
 
 /// opendatacapture
 #[derive(StructOpt, Debug)]

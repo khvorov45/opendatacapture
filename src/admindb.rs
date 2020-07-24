@@ -54,11 +54,7 @@ async fn insert_if_empty(
         admin_email,
         admin_password
     );
-    let admin_password_hash = argon2::hash_encoded(
-        admin_password.as_bytes(),
-        super::gen_rand_string().as_bytes(),
-        &argon2::Config::default(),
-    )?;
+    let admin_password_hash = super::password::hash(admin_password)?;
     let admin_json = format!(
         "{{\"email\": \"{}\", \"password_hash\": \"{}\"}}",
         admin_email, admin_password_hash
