@@ -155,11 +155,31 @@ async fn test_connection_no_backup() {
     assert!(db.get_rows_json("secondary").await.unwrap().is_empty());
 }
 
+async fn test_connection_to_changed() {
+    let mut table_spec = get_testdb_spec();
+    // Add an extra table
+    let mut extra_cols = Vec::new();
+    extra_cols.push(ColMeta::new("id", "SERIAL", "PRIMARY KEY"));
+    table_spec.push(TableMeta::new("extra", extra_cols, ""));
+    // Remove a table
+    table_spec.retain(|t| t.name != "secondary");
+    // Connect
+    let config = get_test_config();
+    let db = DB::new(&config, table_spec, true).await.unwrap();
+    // Primary table rows should be preserved
+    assert_eq!(
+        db.get_rows_json("primary").await.unwrap().len(),
+        get_primary_sample_data().rows.len()
+    );
+}
+
 #[tokio::test]
 async fn test_db() {
-    pretty_env_logger::init();
+    let _ = pretty_env_logger::try_init();
     log::info!("test connection to empty");
     test_connection_to_empty().await;
     log::info!("test connection to non-empty");
     test_connection_to_nonempty().await;
+    log::info!("test connection to database when its specs have changed");
+    test_connection_to_changed().await;
 }

@@ -14,8 +14,10 @@ pub async fn create_new(
         .password(opt.apiuserpassword.as_str());
     // Connect to the admin database as the default api user
     let admindb = db::DB::new(&dbconfig, get_tablespec(), !opt.clean).await?;
+    // Make sure the access table is full
+    fill_access(&admindb).await?;
     // Make sure there is at least one admin
-    insert_if_empty(
+    insert_admin_if_empty(
         &admindb,
         opt.admin_email.as_str(),
         opt.admin_password.as_str(),
@@ -27,26 +29,92 @@ pub async fn create_new(
 /// Tables for the admin database
 fn get_tablespec() -> db::TableSpec {
     let mut set = db::TableSpec::new();
-    set.push(db::TableMeta::new("admin", get_colspec(), ""));
+    set.push(db::TableMeta::new("access", get_access_colspec(), ""));
+    set.push(db::TableMeta::new(
+        "user",
+        get_user_colspec(),
+        "FOREIGN KEY(access) REFERENCES access(access_type) \
+        ON UPDATE CASCADE ON DELETE CASCADE",
+    ));
     set
 }
 
-/// Columns for the admin table
-fn get_colspec() -> db::ColSpec {
+/// Columns for the access table
+fn get_access_colspec() -> db::ColSpec {
+    let mut set = db::ColSpec::new();
+    set.push(db::ColMeta::new("access_type", "TEXT", "PRIMARY KEY"));
+    set
+}
+
+/// Columns for the user table
+fn get_user_colspec() -> db::ColSpec {
     let mut set = db::ColSpec::new();
     set.push(db::ColMeta::new("id", "SERIAL", "PRIMARY KEY"));
-    set.push(db::ColMeta::new("email", "TEXT", "NOT NULL"));
-    set.push(db::ColMeta::new("password_hash", "TEXT", ""));
+    set.push(db::ColMeta::new("email", "TEXT", "NOT NULL UNIQUE"));
+    set.push(db::ColMeta::new("access", "TEXT", "NOT NULL"));
+    set.push(db::ColMeta::new("password_hash", "TEXT", "NOT NULL"));
     set
+}
+
+/// Fill the access table
+async fn fill_access(
+    admindb: &db::DB,
+) -> Result<(), Box<dyn std::error::Error>> {
+    log::debug!("making sure the access table has the appropriate entries");
+    // Get the needed types
+    let needed_access_types = vec!["admin", "user"];
+    // Compare to the current types
+    let access_types: Vec<serde_json::Value> = needed_access_types
+        .iter()
+        .map(|t| serde_json::json!(t))
+        .collect();
+    let current_access_types: Vec<serde_json::Value> = admindb
+        .get_rows_json("access")
+        .await?
+        .iter()
+        .map(|r| r["access_type"].clone())
+        .collect();
+    // Return if they match
+    if vectors_match(&access_types, &current_access_types) {
+        return Ok(());
+    }
+    // Panic if the found isn't empty
+    if !current_access_types.is_empty() {
+        panic!(
+            "needed access groups {:?} do not match found access groups {:?}",
+            access_types, current_access_types
+        )
+    }
+    // Fill the empty
+    log::debug!("filling the empty access table");
+    let mut access_entries =
+        Vec::<db::RowJson>::with_capacity(access_types.len());
+    for access_type in access_types {
+        let mut access_entry = serde_json::Map::new();
+        access_entry.insert(String::from("access_type"), access_type);
+        access_entries.push(access_entry)
+    }
+    admindb
+        .insert(&db::TableJson::new("access", access_entries))
+        .await?;
+    Ok(())
+}
+
+/// Checks if vectors match
+fn vectors_match<T: PartialEq>(a: &[T], b: &[T]) -> bool {
+    let matching = a.iter().zip(b.iter()).filter(|&(a, b)| a == b).count();
+    matching == a.len() && matching == b.len()
 }
 
 /// Insert an admin if the admin table is empty
-async fn insert_if_empty(
+async fn insert_admin_if_empty(
     admindb: &db::DB,
     admin_email: &str,
     admin_password: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    if !admindb.get_rows_json("admin").await?.is_empty() {
+    log::debug!("making sure there is at least one admin");
+    let current_users = admindb.get_rows_json("user").await?;
+    if current_users.iter().find(|u| u["access"] == "admin") != None {
         return Ok(());
     }
     log::info!(
@@ -56,12 +124,16 @@ async fn insert_if_empty(
     );
     let admin_password_hash = super::password::hash(admin_password)?;
     let admin_json = format!(
-        "{{\"email\": \"{}\", \"password_hash\": \"{}\"}}",
+        "{{\
+            \"email\": \"{}\",
+            \"access\": \"admin\",\
+            \"password_hash\": \"{}\"\
+        }}",
         admin_email, admin_password_hash
     );
     admindb
         .insert(&db::table::TableJson::new(
-            "admin",
+            "user",
             vec![serde_json::from_str(admin_json.as_str())?],
         ))
         .await?;
@@ -81,18 +153,15 @@ mod tests {
         }
         let opt = Opt::from_iter(args);
         let test_admin_db = create_new(&opt).await.unwrap();
-        // Clean or not, there should be one row in the admin table
-        assert_eq!(
-            test_admin_db.get_rows_json("admin").await.unwrap().len(),
-            1
-        );
+        // Clean or not, there should be one row in the user table
+        assert_eq!(test_admin_db.get_rows_json("user").await.unwrap().len(), 1);
         test_admin_db
     }
 
     // Extract first admin's hash
-    async fn extract_first_admin_hash(db: &db::DB) -> String {
-        let admin_rows = db.get_rows_json("admin").await.unwrap();
-        if let serde_json::Value::String(hash) = &admin_rows[0]["password_hash"]
+    async fn extract_first_user_hash(db: &db::DB) -> String {
+        let user_rows = db.get_rows_json("user").await.unwrap();
+        if let serde_json::Value::String(hash) = &user_rows[0]["password_hash"]
         {
             String::from(hash)
         } else {
@@ -105,14 +174,14 @@ mod tests {
         let _ = pretty_env_logger::try_init();
         // Start clean
         let test_db = test_create(true).await;
-        let hash1 = extract_first_admin_hash(&test_db).await;
+        let hash1 = extract_first_user_hash(&test_db).await;
         // Restart with backup
         let test_db = test_create(false).await;
-        let hash2 = extract_first_admin_hash(&test_db).await;
+        let hash2 = extract_first_user_hash(&test_db).await;
         assert_eq!(hash1, hash2);
         // Start clean again
         let test_db = test_create(true).await;
-        let hash3 = extract_first_admin_hash(&test_db).await;
+        let hash3 = extract_first_user_hash(&test_db).await;
         assert_ne!(hash1, hash3);
     }
 }

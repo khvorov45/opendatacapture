@@ -103,7 +103,13 @@ impl DB {
                 table_json.rows.len(),
                 table_json.name
             );
-            self.insert(&table_json).await?;
+            if let Err(e) = self.insert(&table_json).await {
+                log::error!(
+                    "failed to restore table \"{}\": {}",
+                    table_json.name,
+                    e
+                )
+            }
         }
         Ok(())
     }
@@ -112,7 +118,7 @@ impl DB {
         let all_tables = self.get_all_table_names().await?;
         Ok(all_tables.is_empty())
     }
-    /// Returns all current table names regardless of database correctness
+    /// Returns all current table names regardless of specification
     async fn get_all_table_names(&self) -> Result<Vec<String>, Error> {
         // Vector of rows
         let all_tables = self
@@ -191,18 +197,29 @@ impl DB {
         &self,
         table_name: &str,
     ) -> Result<Vec<RowJson>, Error> {
-        let all_rows_json = self
+        let query_result = self
             .client
             .query(
                 format!(
-                    "SELECT ROW_TO_JSON(\"{0}\") \
-                    FROM \"{0}\";",
+                    "SELECT ROW_TO_JSON(\"{0}\") FROM \"{0}\";",
                     table_name
                 )
                 .as_str(),
                 &[],
             )
-            .await?;
+            .await;
+        let all_rows_json;
+        match query_result {
+            Err(e) => {
+                log::error!(
+                    "could not get rows of table \"{}\": {}",
+                    table_name,
+                    e
+                );
+                return Ok(Vec::<RowJson>::new());
+            }
+            Ok(rows) => all_rows_json = rows,
+        }
         let mut values: Vec<RowJson> = Vec::with_capacity(all_rows_json.len());
         if all_rows_json.is_empty() {
             return Ok(values);
@@ -230,12 +247,14 @@ impl DB {
         Ok(TableJson::new(table_name, table_json))
     }
     /// Get all data as json
+    /// Gets all currently present tables regardless of specification
     pub async fn get_db_json(
         &self,
     ) -> Result<DBJson, Box<dyn std::error::Error>> {
-        let mut db_json = Vec::with_capacity(self.tables.len());
-        for table in &self.tables {
-            let json = self.get_table_json(table.name.as_str()).await?;
+        let all_table_names = self.get_all_table_names().await?;
+        let mut db_json = Vec::with_capacity(all_table_names.len());
+        for table_name in &all_table_names {
+            let json = self.get_table_json(table_name.as_str()).await?;
             db_json.push(json);
         }
         Ok(db_json)
