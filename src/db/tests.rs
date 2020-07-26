@@ -46,10 +46,8 @@ fn get_test_secondary_table() -> TableMeta {
     TableMeta::new(
         "secondary",
         cols,
-        r#"
-        PRIMARY KEY("id", "timepoint"),
-        FOREIGN KEY("id") REFERENCES "primary"("id")
-        "#,
+        "PRIMARY KEY(\"id\", \"timepoint\"),\
+        FOREIGN KEY(\"id\") REFERENCES \"primary\"(\"id\")",
     )
 }
 
@@ -75,7 +73,7 @@ fn get_testdb_spec() -> TableSpec {
 async fn get_testdb(clear: bool) -> DB {
     // Manually created database object
     let db = DB {
-        backup_json_path: std::path::PathBuf::from("backup-json/test.json"),
+        backup_json_path: std::path::PathBuf::from("backup-json/odctest.json"),
         client: connect(&get_test_config()).await.unwrap(),
         tables: get_testdb_spec(),
     };
