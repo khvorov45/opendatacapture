@@ -112,6 +112,7 @@ async fn test_rows_present(db: &DB) {
 // Test database
 #[tokio::test]
 async fn test_db() {
+    let _ = pretty_env_logger::try_init();
     let test_config = get_test_config();
     // Manually created database object - use to control what database we
     // are connecting to
@@ -167,4 +168,10 @@ async fn test_db() {
         db.get_rows_json("primary").await.unwrap().len(),
         get_primary_sample_data().rows.len()
     );
+    // Secondary table should be absent
+    assert!(!db
+        .get_all_table_names()
+        .await
+        .unwrap()
+        .contains(&String::from("secondary")))
 }
