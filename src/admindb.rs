@@ -13,16 +13,21 @@ pub async fn create_new(
         .user(opt.apiusername.as_str())
         .password(opt.apiuserpassword.as_str());
     // Connect to the admin database as the default api user
-    let admindb = db::DB::new(&dbconfig, get_tablespec(), !opt.clean).await?;
-    // Make sure the access table is full
-    fill_access(&admindb).await?;
-    // Make sure there is at least one admin
-    insert_admin_if_empty(
-        &admindb,
-        opt.admin_email.as_str(),
-        opt.admin_password.as_str(),
-    )
-    .await?;
+    let admindb = db::DB::new(&dbconfig, get_tablespec()).await?;
+    // Reset if required
+    if opt.clean && !admindb.was_empty() {
+        admindb.reset(false).await?;
+    }
+    // Fill access types and the one admin if required
+    if opt.clean || admindb.was_empty() {
+        fill_access(&admindb).await?;
+        insert_admin(
+            &admindb,
+            opt.admin_email.as_str(),
+            opt.admin_password.as_str(),
+        )
+        .await?;
+    }
     Ok(admindb)
 }
 
@@ -56,37 +61,17 @@ fn get_user_colspec() -> db::ColSpec {
     set
 }
 
-/// Fill the access table
+/// Fill the access table. Assume that it's empty.
 async fn fill_access(
     admindb: &db::DB,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    log::debug!("making sure the access table has the appropriate entries");
-    // Get the needed types
-    let needed_access_types = vec!["admin", "user"];
-    // Compare to the current types
-    let access_types: Vec<serde_json::Value> = needed_access_types
+    log::info!("filling presumably empty access table");
+    // Needed entries as json values
+    let access_types: Vec<serde_json::Value> = vec!["admin", "user"]
         .iter()
         .map(|t| serde_json::json!(t))
         .collect();
-    let current_access_types: Vec<serde_json::Value> = admindb
-        .get_rows_json("access")
-        .await?
-        .iter()
-        .map(|r| r["access_type"].clone())
-        .collect();
-    // Return if they match
-    if vectors_match(&access_types, &current_access_types) {
-        return Ok(());
-    }
-    // Panic if the found isn't empty
-    if !current_access_types.is_empty() {
-        panic!(
-            "needed access groups {:?} do not match found access groups {:?}",
-            access_types, current_access_types
-        )
-    }
-    // Fill the empty
-    log::debug!("filling the empty access table");
+    // Entries as a vector of rows
     let mut access_entries =
         Vec::<db::RowJson>::with_capacity(access_types.len());
     for access_type in access_types {
@@ -100,25 +85,14 @@ async fn fill_access(
     Ok(())
 }
 
-/// Checks if vectors match
-fn vectors_match<T: PartialEq>(a: &[T], b: &[T]) -> bool {
-    let matching = a.iter().zip(b.iter()).filter(|&(a, b)| a == b).count();
-    matching == a.len() && matching == b.len()
-}
-
-/// Insert an admin if the admin table is empty
-async fn insert_admin_if_empty(
+/// Insert an admin. Assume the admin table is empty.
+async fn insert_admin(
     admindb: &db::DB,
     admin_email: &str,
     admin_password: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    log::debug!("making sure there is at least one admin");
-    let current_users = admindb.get_rows_json("user").await?;
-    if current_users.iter().find(|u| u["access"] == "admin") != None {
-        return Ok(());
-    }
     log::info!(
-        "no admins found, inserting \"{}\" with password \"{}\"",
+        "inserting admin \"{}\" with password \"{}\"",
         admin_email,
         admin_password
     );

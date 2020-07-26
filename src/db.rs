@@ -1,4 +1,3 @@
-use log::{debug, error};
 use tokio_postgres::{Client, Error};
 
 use super::error;
@@ -11,61 +10,77 @@ pub use table::{
 
 /// Database
 pub struct DB {
+    name: String,
     client: Client,
     tables: TableSpec,
     backup_json_path: std::path::PathBuf,
+    /// Whether the database was empty upon connection
+    was_empty: bool,
 }
 
 impl DB {
     /// Create a new database given a reference to config
     /// and a table specification.
-    /// If any tables are present in the database, will attempt to backup
-    /// the data, clear the database, initialise it and fill it with the
-    /// data that's been backed up.
-    /// If `backup` is `false`, then will not backup/restore if tables are
-    /// found - will just reset instead.
+    /// If any tables are present in the database, will assume that they are
+    /// correct.
+    /// If empty, will create tables.
     pub async fn new(
         config: &tokio_postgres::Config,
         tables: TableSpec,
-        backup: bool,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         // Connect
         let client = connect(config).await?;
+        let name = config.get_dbname().unwrap();
         // The database object
-        let db = Self {
+        let mut db = Self {
+            name: String::from(name),
             client,
             tables,
             backup_json_path: std::path::PathBuf::from(&format!(
                 "backup-json/{}.json",
                 config.get_dbname().unwrap()
             )),
+            was_empty: false, // Assume non-empty
         };
         // Attempt to initialise
-        db.init(backup).await?;
+        db.init().await?;
         Ok(db)
     }
+    /// Whether the database was empty upon connection
+    pub fn was_empty(&self) -> bool {
+        self.was_empty
+    }
     /// Initialises the database.
-    /// No tables - creates them and does nothing else.
-    /// Attempts to backup-clear-init-restore if tables are found
-    /// (unless `backup` is `false` in which case just clear-init).
-    async fn init(
+    /// No tables - creates them.
+    /// Some tables - does nothing (assumes that they are correct).
+    async fn init(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        // Empty database - table creation required
+        if self.is_empty().await? {
+            log::info!("initialising empty database \"{}\"", self.name);
+            self.create_all_tables().await?;
+            self.was_empty = true; // Correct assumption
+        } else {
+            log::info!(
+                "found tables in database \"{}\", assuming they are correct",
+                self.name
+            )
+        }
+        Ok(())
+    }
+    /// Drops all tables and recreates them. If `backup` is `true`, will
+    /// attempt to do a json backup and restore.
+    pub async fn reset(
         &self,
         backup: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        // Empty database - only table creation required
-        if self.is_empty().await? {
-            debug!("initialising empty database");
-            self.create_all_tables().await?;
-            return Ok(());
-        }
-        // Not empty - need to do backup-clear-init-restore
+        // Not backing up - drop
         if !backup {
-            debug!("initialising non-empty database with no backup");
+            log::info!("resetting \"{}\" database with no backup", self.name);
             self.drop_all_tables().await?;
             self.create_all_tables().await?;
             return Ok(());
         }
-        debug!("initialising non-empty database with backup");
+        log::info!("resetting \"{}\" database with backup", self.name);
         self.backup_json().await?;
         self.drop_all_tables().await?;
         self.create_all_tables().await?;
@@ -76,14 +91,14 @@ impl DB {
     }
     /// Backup in json format
     async fn backup_json(&self) -> Result<(), Box<dyn std::error::Error>> {
-        debug!("writing json backup to {:?}", self.backup_json_path);
+        log::debug!("writing json backup to {:?}", self.backup_json_path);
         let db_json = self.get_db_json().await?;
         write_json(&db_json, self.backup_json_path.as_path())?;
         Ok(())
     }
     /// Restores data from json
     async fn restore_json(&self) -> Result<(), Box<dyn std::error::Error>> {
-        debug!("restoring json backup from {:?}", self.backup_json_path);
+        log::debug!("restoring json backup from {:?}", self.backup_json_path);
         let tables_json: Vec<TableJson> =
             read_json(self.backup_json_path.as_path())?;
         for table_json in tables_json {
@@ -134,7 +149,7 @@ impl DB {
         for row in all_tables {
             table_names.push(row.get::<usize, String>(0));
         }
-        debug!("found table names: {:?}", table_names);
+        log::debug!("found table names: {:?}", table_names);
         Ok(table_names)
     }
     /// Find a table by name
@@ -289,7 +304,7 @@ async fn connect(
     // Spawn off the connection
     tokio::spawn(async move {
         if let Err(e) = connection.await {
-            error!("connection error: {}", e);
+            log::error!("connection error: {}", e);
         }
     });
     Ok(client)
