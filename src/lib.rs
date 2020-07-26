@@ -18,11 +18,8 @@ pub struct Opt {
     #[structopt(long, default_value = "5432")]
     pub dbport: u16,
     /// Admin database name.
-    ///
     /// Will be used as an administrative database
-    /// for keeping track of users. Will be have its tables removed and
-    /// re-created upon connection. Data will be backed up and restored
-    /// unless the `--clean` option is passed.
+    /// for keeping track of users.
     #[structopt(long, default_value = "odcadmin")]
     pub admindbname: String,
     /// API user name. Will be used to perform all database actions.
