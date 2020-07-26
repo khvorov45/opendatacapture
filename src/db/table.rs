@@ -1,6 +1,10 @@
 /// Column specification
 pub type ColSpec = Vec<ColMeta>;
 
+pub use error::Error;
+
+pub type Result<T> = std::result::Result<T, Error>;
+
 /// Column metadata
 pub struct ColMeta {
     /// Column name
@@ -97,17 +101,9 @@ impl TableJson {
         }
     }
     /// Insert query from json
-    pub fn construct_insert_query(
-        &self,
-    ) -> Result<String, super::error::APIError> {
+    pub fn construct_insert_query(&self) -> Result<String> {
         if self.rows.is_empty() {
-            return Err(super::error::APIError::new(
-                format!(
-                    "trying to insert no data into table \"{}\"",
-                    self.name
-                )
-                .as_str(),
-            ));
+            return Err(Error::InsertEmptyData);
         }
         // Need to make sure keys and values go in the same order
         let mut keys = Vec::with_capacity(self.rows[0].len());
@@ -137,3 +133,13 @@ impl TableJson {
 
 /// Row json
 pub type RowJson = serde_json::Map<String, serde_json::Value>;
+
+pub mod error {
+    /// Table errors
+    #[derive(thiserror::Error, Debug)]
+    pub enum Error {
+        /// Occurs when insert query cannot be constructed due to empty data
+        #[error("Data to be inserted is empty")]
+        InsertEmptyData,
+    }
+}

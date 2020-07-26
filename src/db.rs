@@ -1,9 +1,10 @@
-use tokio_postgres::{Client, Error};
+use tokio_postgres::Client;
 
-use super::error;
-
+pub mod error;
 pub mod table;
 
+use super::json;
+pub use error::Error;
 pub use table::{
     ColMeta, ColSpec, DBJson, RowJson, TableJson, TableMeta, TableSpec,
 };
@@ -27,7 +28,7 @@ impl DB {
     pub async fn new(
         config: &tokio_postgres::Config,
         tables: TableSpec,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    ) -> Result<Self, Error> {
         // Connect
         let client = connect(config).await?;
         let name = config.get_dbname().unwrap();
@@ -53,7 +54,7 @@ impl DB {
     /// Initialises the database.
     /// No tables - creates them.
     /// Some tables - does nothing (assumes that they are correct).
-    async fn init(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    async fn init(&mut self) -> Result<(), Error> {
         // Empty database - table creation required
         if self.is_empty().await? {
             log::info!("initialising empty database \"{}\"", self.name);
@@ -69,10 +70,7 @@ impl DB {
     }
     /// Drops all tables and recreates them. If `backup` is `true`, will
     /// attempt to do a json backup and restore.
-    pub async fn reset(
-        &self,
-        backup: bool,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn reset(&self, backup: bool) -> Result<(), Error> {
         // Not backing up - drop
         if !backup {
             log::info!("resetting \"{}\" database with no backup", self.name);
@@ -90,17 +88,17 @@ impl DB {
         Ok(())
     }
     /// Backup in json format
-    async fn backup_json(&self) -> Result<(), Box<dyn std::error::Error>> {
+    async fn backup_json(&self) -> Result<(), Error> {
         log::debug!("writing json backup to {:?}", self.backup_json_path);
         let db_json = self.get_db_json().await?;
-        write_json(&db_json, self.backup_json_path.as_path())?;
+        json::write(&db_json, self.backup_json_path.as_path())?;
         Ok(())
     }
     /// Restores data from json
-    async fn restore_json(&self) -> Result<(), Box<dyn std::error::Error>> {
+    async fn restore_json(&self) -> Result<(), Error> {
         log::debug!("restoring json backup from {:?}", self.backup_json_path);
         let tables_json: Vec<TableJson> =
-            read_json(self.backup_json_path.as_path())?;
+            json::read(self.backup_json_path.as_path())?;
         for table_json in tables_json {
             if self.find_table(table_json.name.as_str()).is_none() {
                 log::info!(
@@ -263,9 +261,7 @@ impl DB {
     }
     /// Get all data as json
     /// Gets all currently present tables regardless of specification
-    pub async fn get_db_json(
-        &self,
-    ) -> Result<DBJson, Box<dyn std::error::Error>> {
+    pub async fn get_db_json(&self) -> Result<DBJson, Error> {
         let all_table_names = self.get_all_table_names().await?;
         let mut db_json = Vec::with_capacity(all_table_names.len());
         for table_name in &all_table_names {
@@ -308,26 +304,6 @@ async fn connect(
         }
     });
     Ok(client)
-}
-
-/// Write json
-pub fn write_json<T: serde::Serialize>(
-    json: T,
-    filepath: &std::path::Path,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let file = std::fs::File::create(filepath)?;
-    serde_json::to_writer(&file, &serde_json::to_value(json)?)?;
-    Ok(())
-}
-
-/// Read json
-pub fn read_json<T: serde::de::DeserializeOwned>(
-    filepath: &std::path::Path,
-) -> Result<T, Box<dyn std::error::Error>> {
-    let file = std::fs::File::open(filepath)?;
-    let reader = std::io::BufReader::new(file);
-    let json: T = serde_json::from_reader(reader)?;
-    Ok(json)
 }
 
 #[cfg(test)]

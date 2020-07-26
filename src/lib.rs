@@ -7,6 +7,7 @@ mod admindb;
 mod api;
 pub mod db;
 pub mod error;
+pub mod json;
 mod password;
 
 /// opendatacapture
