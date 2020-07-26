@@ -3,6 +3,7 @@ use structopt::StructOpt;
 use warp::Filter;
 
 mod admindb;
+mod api;
 pub mod db;
 pub mod error;
 mod password;
