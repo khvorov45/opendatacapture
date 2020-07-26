@@ -1,3 +1,3 @@
-use super::db;
+use super::{db, error};
 
 pub mod handlers;

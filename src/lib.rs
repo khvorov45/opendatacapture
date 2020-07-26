@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::sync::Arc;
 use structopt::StructOpt;
 use warp::Filter;
 
@@ -46,9 +47,21 @@ pub struct Opt {
 /// Runs the API with the supplied options
 pub async fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
     // Administrative database
-    let _admin_database = admindb::create_new(&opt).await?;
+    let admin_database = Arc::new(admindb::create_new(&opt).await?);
     // API routes
-    let routes = warp::any().map(|| "Hello, World!");
-    warp::serve(routes).run(([127, 0, 0, 1], opt.apiport)).await;
+    let authenticate = warp::post()
+        .and(warp::path("authenticate"))
+        .and(warp::path("email-password"))
+        .and(warp::body::json())
+        .map(move |cred: api::handlers::EmailPassword| {
+            let res = api::handlers::authenticate_email_password(
+                Arc::clone(&admin_database),
+                cred,
+            );
+            warp::reply::json(&res)
+        });
+    warp::serve(authenticate)
+        .run(([127, 0, 0, 1], opt.apiport))
+        .await;
     Ok(())
 }
