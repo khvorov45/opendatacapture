@@ -171,10 +171,10 @@ pub mod error {
     #[derive(thiserror::Error, Debug)]
     pub enum Error {
         /// Occurs when insert query cannot be constructed due to empty data
-        #[error("Data to be inserted is empty")]
+        #[error("data to be inserted is empty")]
         InsertEmptyData,
-        /// Occurs when addressing a non-existent column
-        #[error("Want to address {0:?} but those columns do not exist")]
+        /// Occurs when addressing non-existent columns
+        #[error("want to address columns {0:?} but they do not exist")]
         ColsNotPresent(Vec<String>),
         /// Represents all cases of `json::Error`
         #[error(transparent)]

@@ -284,11 +284,9 @@ impl DB {
                 Ok(())
             }
             None => {
-                log::error!(
-                    "want to insert into table \"{}\" but it does not exist",
-                    json.name
-                );
-                Ok(())
+                let e = Error::TableNotPresent(json.name.clone());
+                log::error!("{}", e);
+                Err(e)
             }
         }
     }

@@ -10,4 +10,7 @@ pub enum Error {
     /// Represents all cases of `db::table::Error`
     #[error(transparent)]
     Table(#[from] super::table::Error),
+    /// Occurs when insert query cannot be constructed due to empty data
+    #[error("want to address table {0} but it does not exist")]
+    TableNotPresent(String),
 }
