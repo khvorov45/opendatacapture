@@ -15,6 +15,7 @@ pub type DBJson = Vec<TableJson>;
 pub type RowJson = serde_json::Map<String, serde_json::Value>;
 
 /// Column metadata
+#[derive(Debug, Clone, PartialEq)]
 pub struct ColMeta {
     /// Column name
     pub name: String,
@@ -70,6 +71,36 @@ impl TableMeta {
             return format!("{} ({});", init_query, all_columns);
         }
         format!("{} ({}, {});", init_query, all_columns, self.constraints)
+    }
+    /// Select query
+    pub fn construct_select_query(&self, cols: &[String]) -> Result<String> {
+        // No specific columns - wildcard
+        if cols.is_empty() {
+            return Ok(format!("SELECT * FROM \"{}\";", self.name));
+        }
+        // Check that all requested are present
+        let all_cols = self
+            .cols
+            .iter()
+            .map(|c| c.name.clone())
+            .collect::<Vec<String>>();
+        let cols_not_present = cols
+            .iter()
+            .filter(|c| !all_cols.contains(c))
+            .cloned()
+            .collect::<Vec<String>>();
+        if !cols_not_present.is_empty() {
+            let e = Error::SelectNotPresent(cols_not_present);
+            log::error!("{}", e);
+            return Err(e);
+        }
+        // Join into a comma-separated string
+        let cols_string = cols
+            .iter()
+            .map(|c| format!("\"{}\"", c))
+            .collect::<Vec<String>>()
+            .join(",");
+        Ok(format!("SELECT {} FROM \"{}\";", cols_string, self.name))
     }
 }
 
@@ -127,8 +158,73 @@ pub mod error {
         /// Occurs when insert query cannot be constructed due to empty data
         #[error("Data to be inserted is empty")]
         InsertEmptyData,
+        /// Occurs when insert query cannot be constructed due to empty data
+        #[error("Want to select {0:?} but those columns are not present")]
+        SelectNotPresent(Vec<String>),
         /// Represents all cases of `json::Error`
         #[error(transparent)]
         Json(#[from] super::json::Error),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn create_col() {
+        let col = ColMeta::new("name", "TEXT", "");
+        assert_eq!(col.construct_create_query_entry(), "\"name\" TEXT ");
+        let col = ColMeta::new("name", "TEXT", "PRIMARY KEY");
+        assert_eq!(
+            col.construct_create_query_entry(),
+            "\"name\" TEXT PRIMARY KEY"
+        )
+    }
+    #[test]
+    fn create_table() {
+        let mut cols = Vec::new();
+        cols.push(ColMeta::new("name", "TEXT", ""));
+        let table = TableMeta::new("table", cols.clone(), "");
+        assert_eq!(
+            table.construct_create_query(),
+            "CREATE TABLE IF NOT EXISTS \"table\" (\"name\" TEXT );"
+        );
+        cols.push(ColMeta::new("id", "INTEGER", "PRIMARY KEY"));
+        let table = TableMeta::new("table", cols, "");
+        assert_eq!(
+            table.construct_create_query(),
+            "CREATE TABLE IF NOT EXISTS \"table\" (\"name\" TEXT ,\
+            \"id\" INTEGER PRIMARY KEY);"
+        );
+    }
+    #[test]
+    fn select_table() {
+        let mut cols = Vec::new();
+        cols.push(ColMeta::new("name", "TEXT", ""));
+        cols.push(ColMeta::new("id", "INTEGER", "PRIMARY KEY"));
+        let table = TableMeta::new("table", cols, "");
+        assert_eq!(
+            table.construct_select_query(&[]).unwrap(),
+            "SELECT * FROM \"table\";"
+        );
+        assert_eq!(
+            table
+                .construct_select_query(&[
+                    String::from("name"),
+                    String::from("id")
+                ])
+                .unwrap(),
+            "SELECT \"name\",\"id\" FROM \"table\";"
+        );
+        let err = table
+            .construct_select_query(&[
+                String::from("extra"),
+                String::from("id"),
+            ])
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            Error::SelectNotPresent(cont) if cont == vec![String::from("extra")]
+        ));
     }
 }
