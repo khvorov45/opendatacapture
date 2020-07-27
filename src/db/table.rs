@@ -1,9 +1,18 @@
-/// Column specification
-pub type ColSpec = Vec<ColMeta>;
+use super::json;
 
 pub use error::Error;
 
+/// Result
 pub type Result<T> = std::result::Result<T, Error>;
+/// Column specification
+pub type ColSpec = Vec<ColMeta>;
+/// Table specification
+pub type TableSpec = Vec<TableMeta>;
+/// Collection of tables in json format
+/// Order matters for table creation/data insertion
+pub type DBJson = Vec<TableJson>;
+/// Row json
+pub type RowJson = serde_json::Map<String, serde_json::Value>;
 
 /// Column metadata
 pub struct ColMeta {
@@ -28,9 +37,6 @@ impl ColMeta {
         format!("\"{}\" {} {}", self.name, self.postgres_type, self.attr)
     }
 }
-
-/// Table specification
-pub type TableSpec = Vec<TableMeta>;
 
 /// Table metadata
 pub struct TableMeta {
@@ -67,23 +73,6 @@ impl TableMeta {
     }
 }
 
-/// Formats a json value for insert
-pub fn format_value_json(value: &serde_json::Value) -> String {
-    use serde_json::Value;
-    match value {
-        Value::String(v) => format!("\'{}\'", v),
-        Value::Number(n) => format!("\'{}\'", n),
-        _ => {
-            log::error!("unimplemented value type: {:?}", value);
-            String::from("")
-        }
-    }
-}
-
-/// Collection of tables
-/// Order matters for creation/data insertion
-pub type DBJson = Vec<TableJson>;
-
 /// Table json
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct TableJson {
@@ -113,7 +102,7 @@ impl TableJson {
         for key in self.rows[0].keys() {
             keys.push(format!("\"{}\"", key));
             for (i, row) in self.rows.iter().enumerate() {
-                row_entries[i].push(format_value_json(&row[key]));
+                row_entries[i].push(json::insert_format(&row[key])?);
             }
         }
         // Format each entry
@@ -131,9 +120,6 @@ impl TableJson {
     }
 }
 
-/// Row json
-pub type RowJson = serde_json::Map<String, serde_json::Value>;
-
 pub mod error {
     /// Table errors
     #[derive(thiserror::Error, Debug)]
@@ -141,5 +127,8 @@ pub mod error {
         /// Occurs when insert query cannot be constructed due to empty data
         #[error("Data to be inserted is empty")]
         InsertEmptyData,
+        /// Represents all cases of `json::Error`
+        #[error(transparent)]
+        Json(#[from] super::json::Error),
     }
 }

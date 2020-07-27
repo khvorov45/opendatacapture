@@ -21,6 +21,19 @@ pub fn read<T: serde::de::DeserializeOwned>(
     Ok(json)
 }
 
+pub fn insert_format(value: &serde_json::Value) -> Result<String> {
+    use serde_json::Value;
+    match value {
+        Value::String(v) => Ok(format!("\'{}\'", v)),
+        Value::Number(n) => Ok(format!("\'{}\'", n)),
+        other => {
+            let e = Error::InsertFormatUnimplemented(other.clone());
+            log::error!("{}", e);
+            Err(e)
+        }
+    }
+}
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub mod error {
@@ -33,5 +46,8 @@ pub mod error {
         /// Represents all cases of `serde_json::Error`
         #[error(transparent)]
         SerdeJson(#[from] serde_json::Error),
+        /// Unimplemented value for insert format
+        #[error("unimplemented value for insert format: {0}")]
+        InsertFormatUnimplemented(serde_json::Value),
     }
 }
