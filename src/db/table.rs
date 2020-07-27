@@ -69,15 +69,15 @@ impl TableMeta {
         let init_query =
             format!("CREATE TABLE IF NOT EXISTS \"{}\"", self.name);
         if self.constraints.is_empty() {
-            return format!("{} ({});", init_query, all_columns);
+            return format!("{} ({})", init_query, all_columns);
         }
-        format!("{} ({}, {});", init_query, all_columns, self.constraints)
+        format!("{} ({}, {})", init_query, all_columns, self.constraints)
     }
     /// Select query
     pub fn construct_select_query(&self, cols: &[&str]) -> Result<String> {
         // No specific columns - wildcard
         if cols.is_empty() {
-            return Ok(format!("SELECT * FROM \"{}\";", self.name));
+            return Ok(format!("SELECT * FROM \"{}\"", self.name));
         }
         // Check that all requested are present
         self.verify_cols_present(cols)?;
@@ -87,7 +87,21 @@ impl TableMeta {
             .map(|c| format!("\"{}\"", c))
             .collect::<Vec<String>>()
             .join(",");
-        Ok(format!("SELECT {} FROM \"{}\";", cols_string, self.name))
+        Ok(format!("SELECT {} FROM \"{}\"", cols_string, self.name))
+    }
+    /// Select query with a json map per row
+    pub fn construct_select_json_query(&self, cols: &[&str]) -> Result<String> {
+        if cols.is_empty() {
+            return Ok(format!(
+                "SELECT ROW_TO_JSON(\"{0}\") FROM \"{0}\"",
+                self.name
+            ));
+        }
+        let inner_query = self.construct_select_query(cols)?;
+        Ok(format!(
+            "SELECT ROW_TO_JSON(\"{0}\") FROM ({1}) AS \"{0}\"",
+            self.name, inner_query
+        ))
     }
     // Insert query
     pub fn construct_insert_query(&self, rows: &[RowJson]) -> Result<String> {
@@ -115,7 +129,7 @@ impl TableMeta {
             .map(|r| format!("({})", r)) // surround by paretheses
             .collect();
         Ok(format!(
-            "INSERT INTO \"{}\" ({}) VALUES {};",
+            "INSERT INTO \"{}\" ({}) VALUES {}",
             self.name,
             keys.join(","),
             row_entries.join(",")
@@ -203,14 +217,14 @@ mod tests {
         let table = TableMeta::new("table", cols.clone(), "");
         assert_eq!(
             table.construct_create_query(),
-            "CREATE TABLE IF NOT EXISTS \"table\" (\"name\" TEXT );"
+            "CREATE TABLE IF NOT EXISTS \"table\" (\"name\" TEXT )"
         );
         cols.push(ColMeta::new("id", "INTEGER", "PRIMARY KEY"));
         let table = TableMeta::new("table", cols, "");
         assert_eq!(
             table.construct_create_query(),
             "CREATE TABLE IF NOT EXISTS \"table\" (\"name\" TEXT ,\
-            \"id\" INTEGER PRIMARY KEY);"
+            \"id\" INTEGER PRIMARY KEY)"
         );
     }
     #[test]
@@ -221,11 +235,20 @@ mod tests {
         let table = TableMeta::new("table", cols, "");
         assert_eq!(
             table.construct_select_query(&[]).unwrap(),
-            "SELECT * FROM \"table\";"
+            "SELECT * FROM \"table\""
+        );
+        assert_eq!(
+            table.construct_select_json_query(&[]).unwrap(),
+            "SELECT ROW_TO_JSON(\"table\") FROM \"table\""
         );
         assert_eq!(
             table.construct_select_query(&["name", "id"]).unwrap(),
-            "SELECT \"name\",\"id\" FROM \"table\";"
+            "SELECT \"name\",\"id\" FROM \"table\""
+        );
+        assert_eq!(
+            table.construct_select_json_query(&["name", "id"]).unwrap(),
+            "SELECT ROW_TO_JSON(\"table\") FROM \
+            (SELECT \"name\",\"id\" FROM \"table\") AS \"table\""
         );
         let err = table.construct_select_query(&["extra", "id"]).unwrap_err();
         assert!(matches!(
@@ -248,7 +271,7 @@ mod tests {
         rows.push(row1.clone());
         assert_eq!(
             table.construct_insert_query(&rows).unwrap(),
-            "INSERT INTO \"table\" (\"name\") VALUES ('alice');"
+            "INSERT INTO \"table\" (\"name\") VALUES ('alice')"
         );
         let mut row2 = RowJson::new();
         row2.insert(
@@ -258,7 +281,7 @@ mod tests {
         rows.push(row2.clone());
         assert_eq!(
             table.construct_insert_query(&rows).unwrap(),
-            "INSERT INTO \"table\" (\"name\") VALUES ('alice'),('bob');"
+            "INSERT INTO \"table\" (\"name\") VALUES ('alice'),('bob')"
         );
         row1.insert(
             "id".to_string(),
@@ -276,7 +299,7 @@ mod tests {
         assert_eq!(
             table.construct_insert_query(&rows).unwrap(),
             "INSERT INTO \"table\" (\"id\",\"name\") VALUES \
-            ('1','alice'),('2','bob');"
+            ('1','alice'),('2','bob')"
         );
     }
 }
