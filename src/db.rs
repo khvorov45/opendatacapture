@@ -1,13 +1,16 @@
 use tokio_postgres::Client;
 
+use super::json;
+
 pub mod error;
 pub mod table;
 
-use super::json;
 pub use error::Error;
 pub use table::{
     ColMeta, ColSpec, DBJson, RowJson, TableJson, TableMeta, TableSpec,
 };
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// Database
 pub struct DB {
@@ -28,7 +31,7 @@ impl DB {
     pub async fn new(
         config: &tokio_postgres::Config,
         tables: TableSpec,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self> {
         // Connect
         let client = connect(config).await?;
         let name = config.get_dbname().unwrap();
@@ -54,7 +57,7 @@ impl DB {
     /// Initialises the database.
     /// No tables - creates them.
     /// Some tables - does nothing (assumes that they are correct).
-    async fn init(&mut self) -> Result<(), Error> {
+    async fn init(&mut self) -> Result<()> {
         // Empty database - table creation required
         if self.is_empty().await? {
             log::info!("initialising empty database \"{}\"", self.name);
@@ -70,7 +73,7 @@ impl DB {
     }
     /// Drops all tables and recreates them. If `backup` is `true`, will
     /// attempt to do a json backup and restore.
-    pub async fn reset(&self, backup: bool) -> Result<(), Error> {
+    pub async fn reset(&self, backup: bool) -> Result<()> {
         // Not backing up - drop
         if !backup {
             log::info!("resetting \"{}\" database with no backup", self.name);
@@ -88,14 +91,14 @@ impl DB {
         Ok(())
     }
     /// Backup in json format
-    async fn backup_json(&self) -> Result<(), Error> {
+    async fn backup_json(&self) -> Result<()> {
         log::debug!("writing json backup to {:?}", self.backup_json_path);
         let db_json = self.get_db_json().await?;
         json::write(&db_json, self.backup_json_path.as_path())?;
         Ok(())
     }
     /// Restores data from json
-    async fn restore_json(&self) -> Result<(), Error> {
+    async fn restore_json(&self) -> Result<()> {
         log::debug!("restoring json backup from {:?}", self.backup_json_path);
         let tables_json: Vec<TableJson> =
             json::read(self.backup_json_path.as_path())?;
@@ -127,12 +130,12 @@ impl DB {
         Ok(())
     }
     /// See if the database is empty (no tables)
-    async fn is_empty(&self) -> Result<bool, Error> {
+    async fn is_empty(&self) -> Result<bool> {
         let all_tables = self.get_all_table_names().await?;
         Ok(all_tables.is_empty())
     }
     /// Returns all current table names regardless of specification
-    async fn get_all_table_names(&self) -> Result<Vec<String>, Error> {
+    async fn get_all_table_names(&self) -> Result<Vec<String>> {
         // Vector of rows
         let all_tables = self
             .client
@@ -155,7 +158,7 @@ impl DB {
         self.tables.iter().find(|t| t.name == name)
     }
     /// Drops all tables found in the database
-    async fn drop_all_tables(&self) -> Result<(), Error> {
+    async fn drop_all_tables(&self) -> Result<()> {
         let all_tables: Vec<String> = self
             // Vector of strings
             .get_all_table_names()
@@ -167,7 +170,7 @@ impl DB {
         Ok(())
     }
     /// Drops the given tables
-    async fn drop_tables(&self, names: Vec<String>) -> Result<(), Error> {
+    async fn drop_tables(&self, names: Vec<String>) -> Result<()> {
         let all_tables: String = names
             // Surround by quotation marks
             .iter()
@@ -185,19 +188,19 @@ impl DB {
         Ok(())
     }
     /// Creates all stored tables
-    async fn create_all_tables(&self) -> Result<(), Error> {
+    async fn create_all_tables(&self) -> Result<()> {
         self.create_tables(&self.tables).await?;
         Ok(())
     }
     /// Creates the given tables
-    async fn create_tables(&self, tables: &[TableMeta]) -> Result<(), Error> {
+    async fn create_tables(&self, tables: &[TableMeta]) -> Result<()> {
         for table in tables {
             self.create_table(table).await?;
         }
         Ok(())
     }
     /// Creates the given table
-    async fn create_table(&self, table: &TableMeta) -> Result<(), Error> {
+    async fn create_table(&self, table: &TableMeta) -> Result<()> {
         self.client
             .execute(table.construct_create_query().as_str(), &[])
             .await?;
@@ -209,7 +212,7 @@ impl DB {
     pub async fn get_rows_json(
         &self,
         table_name: &str,
-    ) -> Result<Vec<RowJson>, Error> {
+    ) -> Result<Vec<RowJson>> {
         let query_result = self
             .client
             .query(
@@ -252,16 +255,13 @@ impl DB {
         Ok(values)
     }
     /// Get one table's data
-    pub async fn get_table_json(
-        &self,
-        table_name: &str,
-    ) -> Result<TableJson, Error> {
+    pub async fn get_table_json(&self, table_name: &str) -> Result<TableJson> {
         let table_json = self.get_rows_json(table_name).await?;
         Ok(TableJson::new(table_name, table_json))
     }
     /// Get all data as json
     /// Gets all currently present tables regardless of specification
-    pub async fn get_db_json(&self) -> Result<DBJson, Error> {
+    pub async fn get_db_json(&self) -> Result<DBJson> {
         let all_table_names = self.get_all_table_names().await?;
         let mut db_json = Vec::with_capacity(all_table_names.len());
         for table_name in &all_table_names {
@@ -271,10 +271,7 @@ impl DB {
         Ok(db_json)
     }
     /// Insert data into a table
-    pub async fn insert(
-        &self,
-        json: &TableJson,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn insert(&self, json: &TableJson) -> Result<()> {
         // Find the table
         match self.find_table(json.name.as_str()) {
             Some(t) => {
@@ -300,7 +297,7 @@ impl DB {
 /// Creates a new connection
 async fn connect(
     config: &tokio_postgres::Config,
-) -> Result<tokio_postgres::Client, tokio_postgres::Error> {
+) -> Result<tokio_postgres::Client> {
     // Connect
     let (client, connection) = config.connect(tokio_postgres::NoTls).await?;
     // Spawn off the connection
