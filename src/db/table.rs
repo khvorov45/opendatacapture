@@ -40,6 +40,7 @@ impl ColMeta {
 }
 
 /// Table metadata
+#[derive(Debug, Clone, PartialEq)]
 pub struct TableMeta {
     /// Table name
     pub name: String,

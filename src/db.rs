@@ -103,7 +103,7 @@ impl DB {
         let tables_json: Vec<TableJson> =
             json::read(self.backup_json_path.as_path())?;
         for table_json in tables_json {
-            if self.find_table(table_json.name.as_str()).is_none() {
+            if self.find_table(table_json.name.as_str()).is_err() {
                 log::info!(
                     "table \"{}\" found it backup but not in database",
                     table_json.name
@@ -154,8 +154,11 @@ impl DB {
         Ok(table_names)
     }
     /// Find a table by name
-    fn find_table(&self, name: &str) -> Option<&TableMeta> {
-        self.tables.iter().find(|t| t.name == name)
+    fn find_table(&self, name: &str) -> Result<&TableMeta> {
+        match self.tables.iter().find(|t| t.name == name) {
+            Some(t) => Ok(t),
+            None => Err(Error::TableNotPresent(name.to_string())),
+        }
     }
     /// Drops all tables found in the database
     async fn drop_all_tables(&self) -> Result<()> {
@@ -272,23 +275,15 @@ impl DB {
     }
     /// Insert data into a table
     pub async fn insert(&self, json: &TableJson) -> Result<()> {
-        // Find the table
-        match self.find_table(json.name.as_str()) {
-            Some(t) => {
-                self.client
-                    .execute(
-                        t.construct_insert_query(&json.rows)?.as_str(),
-                        &[],
-                    )
-                    .await?;
-                Ok(())
-            }
-            None => {
-                let e = Error::TableNotPresent(json.name.clone());
-                log::error!("{}", e);
-                Err(e)
-            }
-        }
+        self.client
+            .execute(
+                self.find_table(json.name.as_str())?
+                    .construct_insert_query(&json.rows)?
+                    .as_str(),
+                &[],
+            )
+            .await?;
+        Ok(())
     }
 }
 
