@@ -276,18 +276,24 @@ impl DB {
         json: &TableJson,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Find the table
-        if self.find_table(json.name.as_str()).is_none() {
-            log::error!(
-                "want to insert into table \"{}\" but it does not exist",
-                json.name
-            );
-            return Ok(());
+        match self.find_table(json.name.as_str()) {
+            Some(t) => {
+                self.client
+                    .execute(
+                        t.construct_insert_query(&json.rows)?.as_str(),
+                        &[],
+                    )
+                    .await?;
+                Ok(())
+            }
+            None => {
+                log::error!(
+                    "want to insert into table \"{}\" but it does not exist",
+                    json.name
+                );
+                Ok(())
+            }
         }
-        // Insert the data
-        self.client
-            .execute(json.construct_insert_query()?.as_str(), &[])
-            .await?;
-        Ok(())
     }
 }
 

@@ -73,27 +73,13 @@ impl TableMeta {
         format!("{} ({}, {});", init_query, all_columns, self.constraints)
     }
     /// Select query
-    pub fn construct_select_query(&self, cols: &[String]) -> Result<String> {
+    pub fn construct_select_query(&self, cols: &[&str]) -> Result<String> {
         // No specific columns - wildcard
         if cols.is_empty() {
             return Ok(format!("SELECT * FROM \"{}\";", self.name));
         }
         // Check that all requested are present
-        let all_cols = self
-            .cols
-            .iter()
-            .map(|c| c.name.clone())
-            .collect::<Vec<String>>();
-        let cols_not_present = cols
-            .iter()
-            .filter(|c| !all_cols.contains(c))
-            .cloned()
-            .collect::<Vec<String>>();
-        if !cols_not_present.is_empty() {
-            let e = Error::SelectNotPresent(cols_not_present);
-            log::error!("{}", e);
-            return Err(e);
-        }
+        self.verify_cols_present(cols)?;
         // Join into a comma-separated string
         let cols_string = cols
             .iter()
@@ -101,6 +87,64 @@ impl TableMeta {
             .collect::<Vec<String>>()
             .join(",");
         Ok(format!("SELECT {} FROM \"{}\";", cols_string, self.name))
+    }
+    // Insert query
+    pub fn construct_insert_query(&self, rows: &[RowJson]) -> Result<String> {
+        if rows.is_empty() {
+            return Err(Error::InsertEmptyData);
+        }
+        // Make sure all the columns are present
+        let cols = rows[0].keys().map(|k| k.as_str()).collect::<Vec<&str>>();
+        self.verify_cols_present(&cols)?;
+        // Need to make sure keys and values go in the same order
+        let mut keys = Vec::with_capacity(cols.len());
+        // Each entry is a vector of values for that row
+        let mut row_entries =
+            vec![Vec::with_capacity(rows[0].len()); rows.len()];
+        for key in cols {
+            keys.push(format!("\"{}\"", key));
+            for (i, row) in rows.iter().enumerate() {
+                row_entries[i].push(json::insert_format(&row[key])?);
+            }
+        }
+        // Format each entry
+        let row_entries: Vec<String> = row_entries
+            .iter()
+            .map(|r| r.join(",")) // comma-separated list
+            .map(|r| format!("({})", r)) // surround by paretheses
+            .collect();
+        Ok(format!(
+            "INSERT INTO \"{}\" ({}) VALUES {};",
+            self.name,
+            keys.join(","),
+            row_entries.join(",")
+        ))
+    }
+    // Checks that a column is present
+    fn contains_col(&self, colname: &str) -> bool {
+        for col in &self.cols {
+            if col.name == colname {
+                return true;
+            }
+        }
+        false
+    }
+    // Find all columns that are not present
+    fn find_cols_not_present(&self, cols: &[&str]) -> Vec<String> {
+        cols.iter()
+            .filter(|c| !self.contains_col(c))
+            .map(|c| String::from(*c))
+            .collect()
+    }
+    // Verifies that all the given columns are present
+    fn verify_cols_present(&self, cols: &[&str]) -> Result<()> {
+        let cols_not_present = self.find_cols_not_present(cols);
+        if !cols_not_present.is_empty() {
+            let e = Error::ColsNotPresent(cols_not_present);
+            log::error!("{}", e);
+            return Err(e);
+        }
+        Ok(())
     }
 }
 
@@ -120,35 +164,6 @@ impl TableJson {
             rows,
         }
     }
-    /// Insert query from json
-    pub fn construct_insert_query(&self) -> Result<String> {
-        if self.rows.is_empty() {
-            return Err(Error::InsertEmptyData);
-        }
-        // Need to make sure keys and values go in the same order
-        let mut keys = Vec::with_capacity(self.rows[0].len());
-        // Each entry is a vector of values for that row
-        let mut row_entries =
-            vec![Vec::with_capacity(self.rows[0].len()); self.rows.len()];
-        for key in self.rows[0].keys() {
-            keys.push(format!("\"{}\"", key));
-            for (i, row) in self.rows.iter().enumerate() {
-                row_entries[i].push(json::insert_format(&row[key])?);
-            }
-        }
-        // Format each entry
-        let row_entries: Vec<String> = row_entries
-            .iter()
-            .map(|r| r.join(",")) // comma-separated list
-            .map(|r| format!("({})", r)) // surround by paretheses
-            .collect();
-        Ok(format!(
-            "INSERT INTO \"{}\" ({}) VALUES {};",
-            self.name,
-            keys.join(","),
-            row_entries.join(",")
-        ))
-    }
 }
 
 pub mod error {
@@ -158,9 +173,9 @@ pub mod error {
         /// Occurs when insert query cannot be constructed due to empty data
         #[error("Data to be inserted is empty")]
         InsertEmptyData,
-        /// Occurs when insert query cannot be constructed due to empty data
-        #[error("Want to select {0:?} but those columns are not present")]
-        SelectNotPresent(Vec<String>),
+        /// Occurs when addressing a non-existent column
+        #[error("Want to address {0:?} but those columns do not exist")]
+        ColsNotPresent(Vec<String>),
         /// Represents all cases of `json::Error`
         #[error(transparent)]
         Json(#[from] super::json::Error),
@@ -208,23 +223,59 @@ mod tests {
             "SELECT * FROM \"table\";"
         );
         assert_eq!(
-            table
-                .construct_select_query(&[
-                    String::from("name"),
-                    String::from("id")
-                ])
-                .unwrap(),
+            table.construct_select_query(&["name", "id"]).unwrap(),
             "SELECT \"name\",\"id\" FROM \"table\";"
         );
-        let err = table
-            .construct_select_query(&[
-                String::from("extra"),
-                String::from("id"),
-            ])
-            .unwrap_err();
+        let err = table.construct_select_query(&["extra", "id"]).unwrap_err();
         assert!(matches!(
             err,
-            Error::SelectNotPresent(cont) if cont == vec![String::from("extra")]
+            Error::ColsNotPresent(cont) if cont == vec![String::from("extra")]
         ));
+    }
+    #[test]
+    fn insert_table() {
+        let mut cols = Vec::new();
+        cols.push(ColMeta::new("name", "TEXT", ""));
+        cols.push(ColMeta::new("id", "INTEGER", "PRIMARY KEY"));
+        let table = TableMeta::new("table", cols, "");
+        let mut rows = Vec::new();
+        let mut row1 = RowJson::new();
+        row1.insert(
+            "name".to_string(),
+            serde_json::Value::String("alice".to_string()),
+        );
+        rows.push(row1.clone());
+        assert_eq!(
+            table.construct_insert_query(&rows).unwrap(),
+            "INSERT INTO \"table\" (\"name\") VALUES ('alice');"
+        );
+        let mut row2 = RowJson::new();
+        row2.insert(
+            "name".to_string(),
+            serde_json::Value::String("bob".to_string()),
+        );
+        rows.push(row2.clone());
+        assert_eq!(
+            table.construct_insert_query(&rows).unwrap(),
+            "INSERT INTO \"table\" (\"name\") VALUES ('alice'),('bob');"
+        );
+        row1.insert(
+            "id".to_string(),
+            serde_json::Value::Number(
+                serde_json::Number::from_f64(1.0).unwrap(),
+            ),
+        );
+        row2.insert(
+            "id".to_string(),
+            serde_json::Value::Number(
+                serde_json::Number::from_f64(2.0).unwrap(),
+            ),
+        );
+        let rows = vec![row1, row2];
+        assert_eq!(
+            table.construct_insert_query(&rows).unwrap(),
+            "INSERT INTO \"table\" (\"id\",\"name\") VALUES \
+            ('1','alice'),('2','bob');"
+        );
     }
 }
