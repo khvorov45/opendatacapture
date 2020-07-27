@@ -212,10 +212,7 @@ impl DB {
     /// Get all rows from the table.
     /// Collapse them into a map since we don't know the types in advance.
     /// This way every table has only one column of the same type.
-    pub async fn get_rows_json(
-        &self,
-        table_name: &str,
-    ) -> Result<Vec<RowJson>> {
+    async fn get_rows_json(&self, table_name: &str) -> Result<Vec<RowJson>> {
         log::debug!("get json rows of table \"{}\"", table_name);
         let all_rows_json = self
             .client
@@ -226,26 +223,15 @@ impl DB {
                 &[],
             )
             .await?;
-        let mut values: Vec<RowJson> = Vec::with_capacity(all_rows_json.len());
-        if all_rows_json.is_empty() {
-            return Ok(values);
-        }
-        for row in all_rows_json {
-            let row_value: serde_json::Value = row.get(0);
-            match row_value.as_object() {
-                None => return Err(Error::RowParse(row_value)),
-                Some(m) => values.push(m.clone()),
-            }
-        }
-        Ok(values)
+        rows_to_json(all_rows_json)
     }
     /// Get one table's data
-    pub async fn get_table_json(&self, table_name: &str) -> Result<TableJson> {
+    async fn get_table_json(&self, table_name: &str) -> Result<TableJson> {
         let table_json = self.get_rows_json(table_name).await?;
         Ok(TableJson::new(table_name, table_json))
     }
     /// Get all data as json as per the specification
-    pub async fn get_db_json(&self) -> Result<DBJson> {
+    async fn get_db_json(&self) -> Result<DBJson> {
         let mut db_json = Vec::with_capacity(self.tables.len());
         for table in &self.tables {
             let json = self.get_table_json(table.name.as_str()).await?;
@@ -265,6 +251,24 @@ impl DB {
             .await?;
         Ok(())
     }
+    /// Select rows from a table
+    pub async fn select(
+        &self,
+        name: &str,
+        cols: &[&str],
+    ) -> Result<Vec<RowJson>> {
+        log::debug!("select from table \"{}\"", name);
+        let all_rows_json = self
+            .client
+            .query(
+                self.find_table(name)?
+                    .construct_select_json_query(cols)?
+                    .as_str(),
+                &[],
+            )
+            .await?;
+        rows_to_json(all_rows_json)
+    }
 }
 
 /// Creates a new connection
@@ -280,6 +284,22 @@ async fn connect(
         }
     });
     Ok(client)
+}
+
+/// Converts tokio_postgres rows to json rows
+fn rows_to_json(rows: Vec<tokio_postgres::Row>) -> Result<Vec<RowJson>> {
+    let mut values: Vec<RowJson> = Vec::with_capacity(rows.len());
+    if rows.is_empty() {
+        return Ok(values);
+    }
+    for row in rows {
+        let row_value: serde_json::Value = row.get(0);
+        match row_value.as_object() {
+            None => return Err(Error::RowParse(row_value)),
+            Some(m) => values.push(m.clone()),
+        }
+    }
+    Ok(values)
 }
 
 #[cfg(test)]

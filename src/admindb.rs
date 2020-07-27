@@ -128,13 +128,13 @@ mod tests {
         let opt = Opt::from_iter(args);
         let test_admin_db = create_new(&opt).await.unwrap();
         // Clean or not, there should be one row in the user table
-        assert_eq!(test_admin_db.get_rows_json("user").await.unwrap().len(), 1);
+        assert_eq!(test_admin_db.select("user", &[]).await.unwrap().len(), 1);
         test_admin_db
     }
 
     // Extract first admin's hash
     async fn extract_first_user_hash(db: &db::DB) -> String {
-        let user_rows = db.get_rows_json("user").await.unwrap();
+        let user_rows = db.select("user", &[]).await.unwrap();
         if let serde_json::Value::String(hash) = &user_rows[0]["password_hash"]
         {
             String::from(hash)
