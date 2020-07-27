@@ -1,9 +1,10 @@
 use super::db;
+pub use error::Error;
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// Returns a new admin database
-pub async fn create_new(
-    opt: &super::Opt,
-) -> Result<db::DB, Box<dyn std::error::Error>> {
+pub async fn create_new(opt: &super::Opt) -> Result<db::DB> {
     // Config
     let mut dbconfig = tokio_postgres::config::Config::new();
     dbconfig
@@ -62,9 +63,7 @@ fn get_user_colspec() -> db::ColSpec {
 }
 
 /// Fill the access table. Assume that it's empty.
-async fn fill_access(
-    admindb: &db::DB,
-) -> Result<(), Box<dyn std::error::Error>> {
+async fn fill_access(admindb: &db::DB) -> Result<()> {
     log::info!("filling presumably empty access table");
     // Needed entries as json values
     let access_types: Vec<serde_json::Value> = vec!["admin", "user"]
@@ -90,7 +89,7 @@ async fn insert_admin(
     admindb: &db::DB,
     admin_email: &str,
     admin_password: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<()> {
     log::info!(
         "inserting admin \"{}\" with password \"{}\"",
         admin_email,
@@ -112,6 +111,22 @@ async fn insert_admin(
         ))
         .await?;
     Ok(())
+}
+
+pub mod error {
+    /// Handler errors
+    #[derive(thiserror::Error, Debug)]
+    pub enum Error {
+        /// Argon errors
+        #[error(transparent)]
+        Argon(#[from] argon2::Error),
+        /// Database errors
+        #[error(transparent)]
+        DB(#[from] super::db::Error),
+        /// serde_json errors
+        #[error(transparent)]
+        SerdeJson(#[from] serde_json::Error),
+    }
 }
 
 #[cfg(test)]

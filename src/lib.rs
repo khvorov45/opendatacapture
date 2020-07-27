@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::sync::Arc;
 use structopt::StructOpt;
 use warp::Filter;
@@ -9,6 +8,10 @@ pub mod db;
 pub mod error;
 pub mod json;
 mod password;
+
+pub use error::Error;
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// opendatacapture
 #[derive(StructOpt, Debug)]
@@ -46,7 +49,7 @@ pub struct Opt {
 }
 
 /// Runs the API with the supplied options
-pub async fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
+pub async fn run(opt: Opt) -> Result<()> {
     // Administrative database
     let admin_database = Arc::new(admindb::create_new(&opt).await?);
     // API routes
@@ -59,7 +62,7 @@ pub async fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
                 Arc::clone(&admin_database),
                 cred,
             );
-            warp::reply::json(&res)
+            warp::reply::json(&res.unwrap())
         });
     warp::serve(authenticate)
         .run(([127, 0, 0, 1], opt.apiport))
