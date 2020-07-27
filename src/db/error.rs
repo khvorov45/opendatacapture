@@ -13,4 +13,7 @@ pub enum Error {
     /// Occurs when insert query cannot be constructed due to empty data
     #[error("want to address table {0} but it does not exist")]
     TableNotPresent(String),
+    /// Occurs when a row cannot be parsed as map
+    #[error("failed to parse as map: {0}")]
+    RowParse(serde_json::Value),
 }

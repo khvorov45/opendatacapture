@@ -158,16 +158,27 @@ async fn test_db() {
     // Test connection to database while having a different expectation of it.
     // This can happen only if the database was modified by something other than
     // this backend.
+    log::info!("test connection to changed");
     let new_db = DB::new(&test_config, get_testdb_spec_alt()).await.unwrap();
-    // Nothing should be different until reset
-    test_rows_present(&new_db).await;
-    // Reset
-    new_db.reset(true).await.unwrap();
-    // Primary table should be preserved
-    assert_eq!(
-        db.get_rows_json("primary").await.unwrap().len(),
-        get_primary_sample_data().rows.len()
-    );
+    // The database is the same but we now think that secondary doesn't exist
+    assert!(matches!(
+        new_db.get_rows_json("secondary").await.unwrap_err(),
+        Error::TableNotPresent(name) if name == "secondary"
+    ));
+    // Reset with backup should fail because the extra table isn't present
+    let reset_with_backup = new_db.reset(true).await.unwrap_err();
+    assert!(matches!(reset_with_backup, Error::TokioPostgres(_)));
+    if let Error::TokioPostgres(err) = reset_with_backup {
+        let cause = err.into_source().unwrap();
+        assert_eq!(
+            cause.to_string(),
+            "ERROR: relation \"extra\" does not exist"
+        );
+    }
+    // Reset with no backup should work
+    new_db.reset(false).await.unwrap();
+    // Primary table should be empty
+    assert!(db.get_rows_json("primary").await.unwrap().is_empty());
     // Secondary table should be absent
     assert!(!db
         .get_all_table_names()

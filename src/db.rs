@@ -216,44 +216,26 @@ impl DB {
         &self,
         table_name: &str,
     ) -> Result<Vec<RowJson>> {
-        let query_result = self
+        log::debug!("get json rows of table \"{}\"", table_name);
+        let all_rows_json = self
             .client
             .query(
-                format!(
-                    "SELECT ROW_TO_JSON(\"{0}\") FROM \"{0}\";",
-                    table_name
-                )
-                .as_str(),
+                self.find_table(table_name)?
+                    .construct_select_json_query(&[])?
+                    .as_str(),
                 &[],
             )
-            .await;
-        let all_rows_json;
-        match query_result {
-            Err(e) => {
-                log::error!(
-                    "could not get rows of table \"{}\": {}",
-                    table_name,
-                    e
-                );
-                return Ok(Vec::<RowJson>::new());
-            }
-            Ok(rows) => all_rows_json = rows,
-        }
+            .await?;
         let mut values: Vec<RowJson> = Vec::with_capacity(all_rows_json.len());
         if all_rows_json.is_empty() {
             return Ok(values);
         }
         for row in all_rows_json {
             let row_value: serde_json::Value = row.get(0);
-            let row_map;
             match row_value.as_object() {
-                None => {
-                    log::error!("cannot parse as map: {}", row_value);
-                    row_map = serde_json::Map::new();
-                }
-                Some(m) => row_map = m.clone(),
+                None => return Err(Error::RowParse(row_value)),
+                Some(m) => values.push(m.clone()),
             }
-            values.push(row_map);
         }
         Ok(values)
     }
@@ -262,13 +244,11 @@ impl DB {
         let table_json = self.get_rows_json(table_name).await?;
         Ok(TableJson::new(table_name, table_json))
     }
-    /// Get all data as json
-    /// Gets all currently present tables regardless of specification
+    /// Get all data as json as per the specification
     pub async fn get_db_json(&self) -> Result<DBJson> {
-        let all_table_names = self.get_all_table_names().await?;
-        let mut db_json = Vec::with_capacity(all_table_names.len());
-        for table_name in &all_table_names {
-            let json = self.get_table_json(table_name.as_str()).await?;
+        let mut db_json = Vec::with_capacity(self.tables.len());
+        for table in &self.tables {
+            let json = self.get_table_json(table.name.as_str()).await?;
             db_json.push(json);
         }
         Ok(db_json)
