@@ -51,19 +51,28 @@ pub struct Opt {
 /// Runs the API with the supplied options
 pub async fn run(opt: Opt) -> Result<()> {
     // Administrative database
-    let admin_database = Arc::new(admindb::create_new(&opt).await?);
+    let admin_database = admindb::AdminDB::new(&opt).await?;
+    let admin_database = Arc::new(admin_database);
     // API routes
     let authenticate = warp::post()
         .and(warp::path("authenticate"))
         .and(warp::path("email-password"))
         .and(warp::body::json())
-        .map(move |cred: api::handlers::EmailPassword| {
-            let res = api::handlers::authenticate_email_password(
-                Arc::clone(&admin_database),
-                cred,
-            );
-            warp::reply::json(&res.unwrap())
-        });
+        .and_then(move |cred: api::handlers::EmailPassword| {
+            let admin_database = admin_database.clone();
+            async move {
+                let auth = api::handlers::authenticate_email_password(
+                    admin_database,
+                    cred,
+                )
+                .await;
+                match auth {
+                    Ok(res) => Ok(res),
+                    Err(_) => Err(warp::reject()),
+                }
+            }
+        })
+        .map(|b: bool| warp::reply::json(&b));
     warp::serve(authenticate)
         .run(([127, 0, 0, 1], opt.apiport))
         .await;

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use super::db;
+use super::{admindb, AdminDB};
 pub use error::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -13,8 +13,8 @@ pub struct EmailPassword {
 }
 
 /// Authenticates email and password combination
-pub fn authenticate_email_password(
-    _admindb: Arc<db::DB>,
+pub async fn authenticate_email_password(
+    _admindb: Arc<AdminDB>,
     _cred: EmailPassword,
 ) -> Result<bool> {
     Ok(false)
@@ -26,6 +26,6 @@ pub mod error {
     pub enum Error {
         /// Database errors
         #[error(transparent)]
-        DB(#[from] super::db::Error),
+        DB(#[from] super::admindb::Error),
     }
 }
