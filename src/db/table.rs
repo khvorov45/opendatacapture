@@ -74,10 +74,17 @@ impl TableMeta {
         format!("{} ({}, {})", init_query, all_columns, self.constraints)
     }
     /// Select query
-    pub fn construct_select_query(&self, cols: &[&str]) -> Result<String> {
+    pub fn construct_select_query(
+        &self,
+        cols: &[&str],
+        custom_post: &str,
+    ) -> Result<String> {
         // No specific columns - wildcard
         if cols.is_empty() {
-            return Ok(format!("SELECT * FROM \"{}\"", self.name));
+            return Ok(format!(
+                "SELECT * FROM \"{}\" {}",
+                self.name, custom_post
+            ));
         }
         // Check that all requested are present
         self.verify_cols_present(cols)?;
@@ -87,17 +94,24 @@ impl TableMeta {
             .map(|c| format!("\"{}\"", c))
             .collect::<Vec<String>>()
             .join(",");
-        Ok(format!("SELECT {} FROM \"{}\"", cols_string, self.name))
+        Ok(format!(
+            "SELECT {} FROM \"{}\" {}",
+            cols_string, self.name, custom_post
+        ))
     }
     /// Select query with a json map per row
-    pub fn construct_select_json_query(&self, cols: &[&str]) -> Result<String> {
-        if cols.is_empty() {
+    pub fn construct_select_json_query(
+        &self,
+        cols: &[&str],
+        custom_post: &str,
+    ) -> Result<String> {
+        if cols.is_empty() && custom_post.is_empty() {
             return Ok(format!(
                 "SELECT ROW_TO_JSON(\"{0}\") FROM \"{0}\"",
                 self.name
             ));
         }
-        let inner_query = self.construct_select_query(cols)?;
+        let inner_query = self.construct_select_query(cols, custom_post)?;
         Ok(format!(
             "SELECT ROW_TO_JSON(\"{0}\") FROM ({1}) AS \"{0}\"",
             self.name, inner_query
@@ -234,23 +248,38 @@ mod tests {
         cols.push(ColMeta::new("id", "INTEGER", "PRIMARY KEY"));
         let table = TableMeta::new("table", cols, "");
         assert_eq!(
-            table.construct_select_query(&[]).unwrap(),
-            "SELECT * FROM \"table\""
+            table.construct_select_query(&[], "").unwrap(),
+            "SELECT * FROM \"table\" "
         );
         assert_eq!(
-            table.construct_select_json_query(&[]).unwrap(),
+            table.construct_select_json_query(&[], "").unwrap(),
             "SELECT ROW_TO_JSON(\"table\") FROM \"table\""
         );
         assert_eq!(
-            table.construct_select_query(&["name", "id"]).unwrap(),
-            "SELECT \"name\",\"id\" FROM \"table\""
+            table.construct_select_query(&["name", "id"], "").unwrap(),
+            "SELECT \"name\",\"id\" FROM \"table\" "
         );
         assert_eq!(
-            table.construct_select_json_query(&["name", "id"]).unwrap(),
+            table
+                .construct_select_json_query(&["name", "id"], "")
+                .unwrap(),
             "SELECT ROW_TO_JSON(\"table\") FROM \
-            (SELECT \"name\",\"id\" FROM \"table\") AS \"table\""
+            (SELECT \"name\",\"id\" FROM \"table\" ) AS \"table\""
         );
-        let err = table.construct_select_query(&["extra", "id"]).unwrap_err();
+        assert_eq!(
+            table
+                .construct_select_json_query(
+                    &["name", "id"],
+                    "WHERE \"name\" = $1"
+                )
+                .unwrap(),
+            "SELECT ROW_TO_JSON(\"table\") FROM \
+            (SELECT \"name\",\"id\" FROM \"table\" WHERE \"name\" = $1) \
+            AS \"table\""
+        );
+        let err = table
+            .construct_select_query(&["extra", "id"], "")
+            .unwrap_err();
         assert!(matches!(
             err,
             Error::ColsNotPresent(cont) if cont == vec![String::from("extra")]

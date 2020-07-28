@@ -150,7 +150,12 @@ mod tests {
         let test_admin_db = AdminDB::new(&opt).await.unwrap();
         // Clean or not, there should be one row in the user table
         assert_eq!(
-            test_admin_db.db.select("user", &[]).await.unwrap().len(),
+            test_admin_db
+                .db
+                .select("user", &[], "", &[])
+                .await
+                .unwrap()
+                .len(),
             1
         );
         test_admin_db
@@ -158,7 +163,7 @@ mod tests {
 
     // Extract first admin's hash
     async fn extract_first_user_hash(db: &AdminDB) -> String {
-        let user_rows = db.db.select("user", &[]).await.unwrap();
+        let user_rows = db.db.select("user", &[], "", &[]).await.unwrap();
         if let serde_json::Value::String(hash) = &user_rows[0]["password_hash"]
         {
             String::from(hash)

@@ -218,7 +218,7 @@ impl DB {
             .client
             .query(
                 self.find_table(table_name)?
-                    .construct_select_json_query(&[])?
+                    .construct_select_json_query(&[], "")?
                     .as_str(),
                 &[],
             )
@@ -256,15 +256,17 @@ impl DB {
         &self,
         name: &str,
         cols: &[&str],
+        custom_post: &str,
+        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
     ) -> Result<Vec<RowJson>> {
         log::debug!("select from table \"{}\"", name);
         let all_rows_json = self
             .client
             .query(
                 self.find_table(name)?
-                    .construct_select_json_query(cols)?
+                    .construct_select_json_query(cols, custom_post)?
                     .as_str(),
-                &[],
+                params,
             )
             .await?;
         rows_to_json(all_rows_json)

@@ -155,6 +155,15 @@ async fn test_db() {
 
     insert_test_data(&db).await;
 
+    // Select query
+    log::info!("test select query");
+    let query_res = db
+        .select("primary", &["email"], "WHERE \"id\" = $1", &[&1])
+        .await
+        .unwrap();
+    assert_eq!(query_res.len(), 1);
+    assert_eq!(query_res[0]["email"], "test1@example.com");
+
     // Test connection to database while having a different expectation of it.
     // This can happen only if the database was modified by something other than
     // this backend.
