@@ -1,11 +1,16 @@
-use std::error::Error;
+use std::sync::Arc;
 use structopt::StructOpt;
 use warp::Filter;
 
 mod admindb;
 pub mod db;
 pub mod error;
+pub mod json;
 mod password;
+
+pub use error::Error;
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// opendatacapture
 #[derive(StructOpt, Debug)]
@@ -17,11 +22,8 @@ pub struct Opt {
     #[structopt(long, default_value = "5432")]
     pub dbport: u16,
     /// Admin database name.
-    ///
     /// Will be used as an administrative database
-    /// for keeping track of users. Will be have its tables removed and
-    /// re-created upon connection. Data will be backed up and restored
-    /// unless the `--clean` option is passed.
+    /// for keeping track of users.
     #[structopt(long, default_value = "odcadmin")]
     pub admindbname: String,
     /// API user name. Will be used to perform all database actions.
@@ -46,11 +48,29 @@ pub struct Opt {
 }
 
 /// Runs the API with the supplied options
-pub async fn run(opt: Opt) -> Result<(), Box<dyn Error>> {
+pub async fn run(opt: Opt) -> Result<()> {
     // Administrative database
-    let _admin_database = admindb::create_new(&opt).await?;
+    let admin_database = admindb::AdminDB::new(&opt).await?;
+    let admin_database = Arc::new(admin_database);
     // API routes
-    let routes = warp::any().map(|| "Hello, World!");
-    warp::serve(routes).run(([127, 0, 0, 1], opt.apiport)).await;
+    let authenticate = warp::post()
+        .and(warp::path("authenticate"))
+        .and(warp::path("email-password"))
+        .and(warp::body::json())
+        .and_then(move |cred: admindb::EmailPassword| {
+            let admin_database = admin_database.clone();
+            async move {
+                let auth =
+                    admin_database.authenticate_email_password(cred).await;
+                match auth {
+                    Ok(res) => Ok(res),
+                    Err(_) => Err(warp::reject()),
+                }
+            }
+        })
+        .map(|b: bool| warp::reply::json(&b));
+    warp::serve(authenticate)
+        .run(([127, 0, 0, 1], opt.apiport))
+        .await;
     Ok(())
 }

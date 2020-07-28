@@ -46,10 +46,8 @@ fn get_test_secondary_table() -> TableMeta {
     TableMeta::new(
         "secondary",
         cols,
-        r#"
-        PRIMARY KEY("id", "timepoint"),
-        FOREIGN KEY("id") REFERENCES "primary"("id")
-        "#,
+        "PRIMARY KEY(\"id\", \"timepoint\"),\
+        FOREIGN KEY(\"id\") REFERENCES \"primary\"(\"id\")",
     )
 }
 
@@ -71,71 +69,36 @@ fn get_testdb_spec() -> TableSpec {
     test_tables
 }
 
-// Test database
-async fn get_testdb(clear: bool) -> DB {
-    // Manually created database object
-    let db = DB {
-        backup_json_path: std::path::PathBuf::from("backup-json/test.json"),
-        client: connect(&get_test_config()).await.unwrap(),
-        tables: get_testdb_spec(),
-    };
-    // Make sure there are no tables
-    db.drop_all_tables().await.unwrap();
-    assert!(db.is_empty().await.unwrap());
-    if clear {
-        return db;
-    }
-    // Recreate the tables
-    db.create_all_tables().await.unwrap();
-    assert!(!db.is_empty().await.unwrap());
-    // Tables should be empty
-    assert!(db.get_rows_json("primary").await.unwrap().is_empty());
-    assert!(db.get_rows_json("secondary").await.unwrap().is_empty());
-    // Insert some data
+// A different table specification
+fn get_testdb_spec_alt() -> TableSpec {
+    let mut table_spec = get_testdb_spec();
+    // Add an extra table
+    let mut extra_cols = Vec::new();
+    extra_cols.push(ColMeta::new("id", "SERIAL", "PRIMARY KEY"));
+    table_spec.push(TableMeta::new("extra", extra_cols, ""));
+    // Remove a table
+    table_spec.retain(|t| t.name != "secondary");
+    table_spec
+}
+
+// Inserts data into the database
+async fn insert_test_data(db: &DB) {
+    test_rows_absent(db).await;
     let primary_data = get_primary_sample_data();
     db.insert(&primary_data).await.unwrap();
-    assert_eq!(
-        db.get_rows_json("primary").await.unwrap().len(),
-        primary_data.rows.len()
-    );
     let secondary_data = get_secondary_sample_data();
     db.insert(&secondary_data).await.unwrap();
-    assert_eq!(
-        db.get_rows_json("secondary").await.unwrap().len(),
-        secondary_data.rows.len()
-    );
-    db
+    test_rows_present(db).await;
 }
 
-// Tests connection to an empty database
-async fn test_connection_to_empty() {
-    // Connect to empty test database
-    let db = get_testdb(true).await;
-    // Initialise
-    db.create_all_tables().await.unwrap();
-    // Not empty
-    assert!(!db.is_empty().await.unwrap());
-    // Empty again
-    db.drop_all_tables().await.unwrap();
-    assert!(db.is_empty().await.unwrap());
-    // Init as it would be normally
-    db.init(true).await.unwrap();
-    assert!(!db.is_empty().await.unwrap());
+// Whether the sample data is present
+async fn test_rows_absent(db: &DB) {
+    assert!(db.get_rows_json("primary").await.unwrap().is_empty());
+    assert!(db.get_rows_json("secondary").await.unwrap().is_empty());
 }
 
-// Tests connection to a non-empty database
-async fn test_connection_to_nonempty() {
-    log::info!("test connection with no backup");
-    test_connection_no_backup().await;
-    log::info!("test connection with backup");
-    test_connection_with_backup().await;
-}
-
-// Backup
-async fn test_connection_with_backup() {
-    let db = get_testdb(false).await;
-    db.init(true).await.unwrap();
-    // The test rows should be preserved
+// Whether the sample data is absent
+async fn test_rows_present(db: &DB) {
     assert_eq!(
         db.get_rows_json("primary").await.unwrap().len(),
         get_primary_sample_data().rows.len()
@@ -146,20 +109,89 @@ async fn test_connection_with_backup() {
     );
 }
 
-// No backup
-async fn test_connection_no_backup() {
-    let db = get_testdb(false).await;
-    db.init(false).await.unwrap();
-    // The test rows should not be preserved
-    assert!(db.get_rows_json("primary").await.unwrap().is_empty());
-    assert!(db.get_rows_json("secondary").await.unwrap().is_empty());
-}
-
+// Test database
 #[tokio::test]
 async fn test_db() {
-    pretty_env_logger::init();
-    log::info!("test connection to empty");
-    test_connection_to_empty().await;
-    log::info!("test connection to non-empty");
-    test_connection_to_nonempty().await;
+    let _ = pretty_env_logger::try_init();
+    let test_config = get_test_config();
+    // Manually created database object - use to control what database we
+    // are connecting to
+    let db = DB {
+        name: String::from("odctest"),
+        backup_json_path: std::path::PathBuf::from("backup-json/odctest.json"),
+        client: connect(&test_config).await.unwrap(),
+        tables: get_testdb_spec(),
+        was_empty: false,
+    };
+
+    // Make sure there are no tables
+    db.drop_all_tables().await.unwrap();
+    assert!(db.is_empty().await.unwrap());
+
+    // Connect to empty
+    let new_db = DB::new(&test_config, get_testdb_spec()).await.unwrap();
+    assert!(new_db.was_empty);
+    test_rows_absent(&new_db).await;
+
+    // Recreate the tables
+    db.create_all_tables().await.unwrap();
+    assert!(!db.is_empty().await.unwrap());
+
+    // Insert some data
+    insert_test_data(&db).await;
+
+    // Connect to the now non-empty database
+    let new_db = DB::new(&test_config, get_testdb_spec()).await.unwrap();
+    assert!(!new_db.was_empty);
+    test_rows_present(&new_db).await;
+
+    // Reset with backup
+    db.reset(true).await.unwrap();
+    test_rows_present(&db).await;
+
+    // Reset with no backup
+    db.reset(false).await.unwrap();
+    test_rows_absent(&db).await;
+
+    insert_test_data(&db).await;
+
+    // Select query
+    log::info!("test select query");
+    let query_res = db
+        .select("primary", &["email"], "WHERE \"id\" = $1", &[&1])
+        .await
+        .unwrap();
+    assert_eq!(query_res.len(), 1);
+    assert_eq!(query_res[0]["email"], "test1@example.com");
+
+    // Test connection to database while having a different expectation of it.
+    // This can happen only if the database was modified by something other than
+    // this backend.
+    log::info!("test connection to changed");
+    let new_db = DB::new(&test_config, get_testdb_spec_alt()).await.unwrap();
+    // The database is the same but we now think that secondary doesn't exist
+    assert!(matches!(
+        new_db.get_rows_json("secondary").await.unwrap_err(),
+        Error::TableNotPresent(name) if name == "secondary"
+    ));
+    // Reset with backup should fail because the extra table isn't present
+    let reset_with_backup = new_db.reset(true).await.unwrap_err();
+    assert!(matches!(reset_with_backup, Error::TokioPostgres(_)));
+    if let Error::TokioPostgres(err) = reset_with_backup {
+        let cause = err.into_source().unwrap();
+        assert_eq!(
+            cause.to_string(),
+            "ERROR: relation \"extra\" does not exist"
+        );
+    }
+    // Reset with no backup should work
+    new_db.reset(false).await.unwrap();
+    // Primary table should be empty
+    assert!(db.get_rows_json("primary").await.unwrap().is_empty());
+    // Secondary table should be absent
+    assert!(!db
+        .get_all_table_names()
+        .await
+        .unwrap()
+        .contains(&String::from("secondary")))
 }
