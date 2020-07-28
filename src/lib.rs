@@ -3,7 +3,6 @@ use structopt::StructOpt;
 use warp::Filter;
 
 mod admindb;
-mod api;
 pub mod db;
 pub mod error;
 pub mod json;
@@ -58,14 +57,11 @@ pub async fn run(opt: Opt) -> Result<()> {
         .and(warp::path("authenticate"))
         .and(warp::path("email-password"))
         .and(warp::body::json())
-        .and_then(move |cred: api::handlers::EmailPassword| {
+        .and_then(move |cred: admindb::EmailPassword| {
             let admin_database = admin_database.clone();
             async move {
-                let auth = api::handlers::authenticate_email_password(
-                    admin_database,
-                    cred,
-                )
-                .await;
+                let auth =
+                    admin_database.authenticate_email_password(cred).await;
                 match auth {
                     Ok(res) => Ok(res),
                     Err(_) => Err(warp::reject()),

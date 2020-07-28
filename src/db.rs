@@ -15,7 +15,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Database
 pub struct DB {
     name: String,
-    client: Client,
+    pub client: Client,
     tables: TableSpec,
     backup_json_path: std::path::PathBuf,
     /// Whether the database was empty upon connection

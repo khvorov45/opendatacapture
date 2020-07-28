@@ -87,6 +87,28 @@ impl AdminDB {
             .await?;
         Ok(())
     }
+    // Authenticates an email/password combination
+    pub async fn authenticate_email_password(
+        &self,
+        cred: EmailPassword,
+    ) -> Result<bool> {
+        let hash = self.get_password_hash(cred.email.as_str()).await?;
+        let res =
+            argon2::verify_encoded(hash.as_str(), cred.password.as_bytes())?;
+        Ok(res)
+    }
+    async fn get_password_hash(&self, email: &str) -> Result<String> {
+        let hash: String = self
+            .db
+            .client
+            .query_one(
+                "SELECT \"password_hash\" FROM \"user\" WHERE \"email\" = $1",
+                &[&email],
+            )
+            .await?
+            .get(0);
+        Ok(hash)
+    }
 }
 
 /// Tables for the admin database
@@ -119,6 +141,12 @@ fn get_user_colspec() -> db::ColSpec {
     set
 }
 
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct EmailPassword {
+    email: String,
+    password: String,
+}
+
 pub mod error {
     /// Handler errors
     #[derive(thiserror::Error, Debug)]
@@ -132,6 +160,9 @@ pub mod error {
         /// serde_json errors
         #[error(transparent)]
         SerdeJson(#[from] serde_json::Error),
+        /// Represents all cases of `tokio_postgres::Error`
+        #[error(transparent)]
+        TokioPostgres(#[from] tokio_postgres::Error),
     }
 }
 
