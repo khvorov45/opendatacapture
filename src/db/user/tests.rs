@@ -1,3 +1,4 @@
+use super::table::{ColMeta, ColSpec};
 use super::*;
 
 // Assume that there is a database called odctest,
@@ -82,7 +83,7 @@ fn get_testdb_spec_alt() -> TableSpec {
 }
 
 // Inserts data into the database
-async fn insert_test_data(db: &DB) {
+async fn insert_test_data(db: &UserDB) {
     test_rows_absent(db).await;
     let primary_data = get_primary_sample_data();
     db.insert(&primary_data).await.unwrap();
@@ -92,13 +93,13 @@ async fn insert_test_data(db: &DB) {
 }
 
 // Whether the sample data is present
-async fn test_rows_absent(db: &DB) {
+async fn test_rows_absent(db: &UserDB) {
     assert!(db.get_rows_json("primary").await.unwrap().is_empty());
     assert!(db.get_rows_json("secondary").await.unwrap().is_empty());
 }
 
 // Whether the sample data is absent
-async fn test_rows_present(db: &DB) {
+async fn test_rows_present(db: &UserDB) {
     assert_eq!(
         db.get_rows_json("primary").await.unwrap().len(),
         get_primary_sample_data().rows.len()
@@ -111,12 +112,12 @@ async fn test_rows_present(db: &DB) {
 
 // Test database
 #[tokio::test]
-async fn test_db() {
+async fn user_db() {
     let _ = pretty_env_logger::try_init();
     let test_config = get_test_config();
     // Manually created database object - use to control what database we
     // are connecting to
-    let db = DB {
+    let db = UserDB {
         name: String::from("odctest"),
         backup_json_path: std::path::PathBuf::from("backup-json/odctest.json"),
         client: connect(&test_config).await.unwrap(),
@@ -129,7 +130,7 @@ async fn test_db() {
     assert!(db.is_empty().await.unwrap());
 
     // Connect to empty
-    let new_db = DB::new(&test_config, get_testdb_spec()).await.unwrap();
+    let new_db = UserDB::new(&test_config, get_testdb_spec()).await.unwrap();
     assert!(new_db.was_empty);
     test_rows_absent(&new_db).await;
 
@@ -141,7 +142,7 @@ async fn test_db() {
     insert_test_data(&db).await;
 
     // Connect to the now non-empty database
-    let new_db = DB::new(&test_config, get_testdb_spec()).await.unwrap();
+    let new_db = UserDB::new(&test_config, get_testdb_spec()).await.unwrap();
     assert!(!new_db.was_empty);
     test_rows_present(&new_db).await;
 
@@ -168,7 +169,9 @@ async fn test_db() {
     // This can happen only if the database was modified by something other than
     // this backend.
     log::info!("test connection to changed");
-    let new_db = DB::new(&test_config, get_testdb_spec_alt()).await.unwrap();
+    let new_db = UserDB::new(&test_config, get_testdb_spec_alt())
+        .await
+        .unwrap();
     // The database is the same but we now think that secondary doesn't exist
     assert!(matches!(
         new_db.get_rows_json("secondary").await.unwrap_err(),

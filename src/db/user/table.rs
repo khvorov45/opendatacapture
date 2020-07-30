@@ -1,9 +1,5 @@
-use super::json;
+use super::{json, Error, Result};
 
-pub use error::Error;
-
-/// Result
-pub type Result<T> = std::result::Result<T, Error>;
 /// Column specification
 pub type ColSpec = Vec<ColMeta>;
 /// Table specification
@@ -192,22 +188,6 @@ impl TableJson {
             name: String::from(name),
             rows,
         }
-    }
-}
-
-pub mod error {
-    /// Table errors
-    #[derive(thiserror::Error, Debug)]
-    pub enum Error {
-        /// Occurs when insert query cannot be constructed due to empty data
-        #[error("data to be inserted is empty")]
-        InsertEmptyData,
-        /// Occurs when addressing non-existent columns
-        #[error("want to address columns {0:?} but they do not exist")]
-        ColsNotPresent(Vec<String>),
-        /// Represents all cases of `json::Error`
-        #[error(transparent)]
-        Json(#[from] super::json::Error),
     }
 }
 

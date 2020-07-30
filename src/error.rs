@@ -3,5 +3,5 @@
 pub enum Error {
     /// Admin database errors
     #[error(transparent)]
-    AdminDB(#[from] super::admindb::Error),
+    DB(#[from] super::db::Error),
 }

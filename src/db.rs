@@ -1,277 +1,11 @@
-use tokio_postgres::Client;
+use super::{json, password, Opt};
 
-use super::json;
-
-pub mod error;
-pub mod table;
+pub mod admin;
+pub mod user;
 
 pub use error::Error;
-pub use table::{
-    ColMeta, ColSpec, DBJson, RowJson, TableJson, TableMeta, TableSpec,
-};
 
 pub type Result<T> = std::result::Result<T, Error>;
-
-/// Database
-pub struct DB {
-    name: String,
-    pub client: Client,
-    tables: TableSpec,
-    backup_json_path: std::path::PathBuf,
-    /// Whether the database was empty upon connection
-    was_empty: bool,
-}
-
-impl DB {
-    /// Create a new database given a reference to config
-    /// and a table specification.
-    /// If any tables are present in the database, will assume that they are
-    /// correct.
-    /// If empty, will create tables.
-    pub async fn new(
-        config: &tokio_postgres::Config,
-        tables: TableSpec,
-    ) -> Result<Self> {
-        // Connect
-        let client = connect(config).await?;
-        let name = config.get_dbname().unwrap();
-        // The database object
-        let mut db = Self {
-            name: String::from(name),
-            client,
-            tables,
-            backup_json_path: std::path::PathBuf::from(&format!(
-                "backup-json/{}.json",
-                config.get_dbname().unwrap()
-            )),
-            was_empty: false, // Assume non-empty
-        };
-        // Attempt to initialise
-        db.init().await?;
-        Ok(db)
-    }
-    /// Whether the database was empty upon connection
-    pub fn was_empty(&self) -> bool {
-        self.was_empty
-    }
-    /// Initialises the database.
-    /// No tables - creates them.
-    /// Some tables - does nothing (assumes that they are correct).
-    async fn init(&mut self) -> Result<()> {
-        // Empty database - table creation required
-        if self.is_empty().await? {
-            log::info!("initialising empty database \"{}\"", self.name);
-            self.create_all_tables().await?;
-            self.was_empty = true; // Correct assumption
-        } else {
-            log::info!(
-                "found tables in database \"{}\", assuming they are correct",
-                self.name
-            )
-        }
-        Ok(())
-    }
-    /// Drops all tables and recreates them. If `backup` is `true`, will
-    /// attempt to do a json backup and restore.
-    pub async fn reset(&self, backup: bool) -> Result<()> {
-        // Not backing up - drop
-        if !backup {
-            log::info!("resetting \"{}\" database with no backup", self.name);
-            self.drop_all_tables().await?;
-            self.create_all_tables().await?;
-            return Ok(());
-        }
-        log::info!("resetting \"{}\" database with backup", self.name);
-        self.backup_json().await?;
-        self.drop_all_tables().await?;
-        self.create_all_tables().await?;
-        if let Err(e) = self.restore_json().await {
-            log::error!("failed to restore json: {}", e)
-        }
-        Ok(())
-    }
-    /// Backup in json format
-    async fn backup_json(&self) -> Result<()> {
-        log::debug!("writing json backup to {:?}", self.backup_json_path);
-        let db_json = self.get_db_json().await?;
-        json::write(&db_json, self.backup_json_path.as_path())?;
-        Ok(())
-    }
-    /// Restores data from json
-    async fn restore_json(&self) -> Result<()> {
-        log::debug!("restoring json backup from {:?}", self.backup_json_path);
-        let tables_json: Vec<TableJson> =
-            json::read(self.backup_json_path.as_path())?;
-        for table_json in tables_json {
-            if self.find_table(table_json.name.as_str()).is_err() {
-                log::info!(
-                    "table \"{}\" found it backup but not in database",
-                    table_json.name
-                );
-                continue;
-            }
-            if table_json.rows.is_empty() {
-                log::info!("backup table \"{}\" is empty", table_json.name);
-                continue;
-            }
-            log::info!(
-                "restoring {} rows from \"{}\" table",
-                table_json.rows.len(),
-                table_json.name
-            );
-            if let Err(e) = self.insert(&table_json).await {
-                log::error!(
-                    "failed to restore table \"{}\": {}",
-                    table_json.name,
-                    e
-                )
-            }
-        }
-        Ok(())
-    }
-    /// See if the database is empty (no tables)
-    async fn is_empty(&self) -> Result<bool> {
-        let all_tables = self.get_all_table_names().await?;
-        Ok(all_tables.is_empty())
-    }
-    /// Returns all current table names regardless of specification
-    async fn get_all_table_names(&self) -> Result<Vec<String>> {
-        // Vector of rows
-        let all_tables = self
-            .client
-            .query(
-                "SELECT tablename FROM pg_catalog.pg_tables \
-                    WHERE schemaname = 'public';",
-                &[],
-            )
-            .await?;
-        // Transform into vector of strings
-        let mut table_names: Vec<String> = Vec::with_capacity(all_tables.len());
-        for row in all_tables {
-            table_names.push(row.get::<usize, String>(0));
-        }
-        log::debug!("found table names: {:?}", table_names);
-        Ok(table_names)
-    }
-    /// Find a table by name
-    fn find_table(&self, name: &str) -> Result<&TableMeta> {
-        match self.tables.iter().find(|t| t.name == name) {
-            Some(t) => Ok(t),
-            None => Err(Error::TableNotPresent(name.to_string())),
-        }
-    }
-    /// Drops all tables found in the database
-    async fn drop_all_tables(&self) -> Result<()> {
-        let all_tables: Vec<String> = self
-            // Vector of strings
-            .get_all_table_names()
-            .await?;
-        if all_tables.is_empty() {
-            return Ok(());
-        }
-        self.drop_tables(all_tables).await?;
-        Ok(())
-    }
-    /// Drops the given tables
-    async fn drop_tables(&self, names: Vec<String>) -> Result<()> {
-        let all_tables: String = names
-            // Surround by quotation marks
-            .iter()
-            .map(|name| format!("\"{}\"", name))
-            .collect::<Vec<String>>()
-            // Join into a comma-separated string
-            .join(",");
-        self.client
-            .execute(
-                format!("DROP TABLE IF EXISTS {} CASCADE;", all_tables)
-                    .as_str(),
-                &[],
-            )
-            .await?;
-        Ok(())
-    }
-    /// Creates all stored tables
-    async fn create_all_tables(&self) -> Result<()> {
-        self.create_tables(&self.tables).await?;
-        Ok(())
-    }
-    /// Creates the given tables
-    async fn create_tables(&self, tables: &[TableMeta]) -> Result<()> {
-        for table in tables {
-            self.create_table(table).await?;
-        }
-        Ok(())
-    }
-    /// Creates the given table
-    async fn create_table(&self, table: &TableMeta) -> Result<()> {
-        self.client
-            .execute(table.construct_create_query().as_str(), &[])
-            .await?;
-        Ok(())
-    }
-    /// Get all rows from the table.
-    /// Collapse them into a map since we don't know the types in advance.
-    /// This way every table has only one column of the same type.
-    async fn get_rows_json(&self, table_name: &str) -> Result<Vec<RowJson>> {
-        log::debug!("get json rows of table \"{}\"", table_name);
-        let all_rows_json = self
-            .client
-            .query(
-                self.find_table(table_name)?
-                    .construct_select_json_query(&[], "")?
-                    .as_str(),
-                &[],
-            )
-            .await?;
-        rows_to_json(all_rows_json)
-    }
-    /// Get one table's data
-    async fn get_table_json(&self, table_name: &str) -> Result<TableJson> {
-        let table_json = self.get_rows_json(table_name).await?;
-        Ok(TableJson::new(table_name, table_json))
-    }
-    /// Get all data as json as per the specification
-    async fn get_db_json(&self) -> Result<DBJson> {
-        let mut db_json = Vec::with_capacity(self.tables.len());
-        for table in &self.tables {
-            let json = self.get_table_json(table.name.as_str()).await?;
-            db_json.push(json);
-        }
-        Ok(db_json)
-    }
-    /// Insert data into a table
-    pub async fn insert(&self, json: &TableJson) -> Result<()> {
-        self.client
-            .execute(
-                self.find_table(json.name.as_str())?
-                    .construct_insert_query(&json.rows)?
-                    .as_str(),
-                &[],
-            )
-            .await?;
-        Ok(())
-    }
-    /// Select rows from a table
-    pub async fn select(
-        &self,
-        name: &str,
-        cols: &[&str],
-        custom_post: &str,
-        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
-    ) -> Result<Vec<RowJson>> {
-        log::debug!("select from table \"{}\"", name);
-        let all_rows_json = self
-            .client
-            .query(
-                self.find_table(name)?
-                    .construct_select_json_query(cols, custom_post)?
-                    .as_str(),
-                params,
-            )
-            .await?;
-        rows_to_json(all_rows_json)
-    }
-}
 
 /// Creates a new connection
 async fn connect(
@@ -288,21 +22,116 @@ async fn connect(
     Ok(client)
 }
 
-/// Converts tokio_postgres rows to json rows
-fn rows_to_json(rows: Vec<tokio_postgres::Row>) -> Result<Vec<RowJson>> {
-    let mut values: Vec<RowJson> = Vec::with_capacity(rows.len());
-    if rows.is_empty() {
-        return Ok(values);
+/// Common database methods
+#[async_trait::async_trait]
+pub trait DB {
+    /// Database name
+    fn get_name(&self) -> String;
+
+    /// Client object
+    fn get_client(&self) -> &tokio_postgres::Client;
+
+    /// Create all tables
+    async fn create_all_tables(&self) -> Result<()>;
+
+    /// Drop all tables and re-create them
+    async fn reset_no_backup(&self) -> Result<()> {
+        log::info!("resetting \"{}\" database with no backup", self.get_name());
+        self.drop_all_tables().await?;
+        self.create_all_tables().await?;
+        Ok(())
     }
-    for row in rows {
-        let row_value: serde_json::Value = row.get(0);
-        match row_value.as_object() {
-            None => return Err(Error::RowParse(row_value)),
-            Some(m) => values.push(m.clone()),
+
+    /// Drop all tables found in the database
+    async fn drop_all_tables(&self) -> Result<()> {
+        let all_tables: Vec<String> = self
+            // Vector of strings
+            .get_all_table_names()
+            .await?;
+        self.drop_tables(all_tables).await?;
+        Ok(())
+    }
+
+    /// Drops the given tables
+    async fn drop_tables(&self, names: Vec<String>) -> Result<()> {
+        if names.is_empty() {
+            return Ok(());
         }
+        let all_tables: String = names
+            // Surround by quotation marks
+            .iter()
+            .map(|name| format!("\"{}\"", name))
+            .collect::<Vec<String>>()
+            // Join into a comma-separated string
+            .join(",");
+        self.get_client()
+            .execute(
+                format!("DROP TABLE IF EXISTS {} CASCADE;", all_tables)
+                    .as_str(),
+                &[],
+            )
+            .await?;
+        Ok(())
     }
-    Ok(values)
+
+    /// Returns all found table names
+    async fn get_all_table_names(&self) -> Result<Vec<String>> {
+        // Vector of rows
+        let all_tables = self
+            .get_client()
+            .query(
+                "SELECT tablename FROM pg_catalog.pg_tables \
+                    WHERE schemaname = 'public';",
+                &[],
+            )
+            .await?;
+        // Transform into vector of strings
+        let mut table_names: Vec<String> = Vec::with_capacity(all_tables.len());
+        for row in all_tables {
+            table_names.push(row.get::<usize, String>(0));
+        }
+        log::debug!(
+            "found table names: {:?} in database {}",
+            table_names,
+            self.get_name()
+        );
+        Ok(table_names)
+    }
+
+    /// See if the database is empty (no tables)
+    async fn is_empty(&self) -> Result<bool> {
+        let all_tables = self.get_all_table_names().await?;
+        Ok(all_tables.is_empty())
+    }
+}
+
+pub mod error {
+    /// Database errors
+    #[derive(Debug, thiserror::Error)]
+    pub enum Error {
+        /// Represents all cases of `tokio_postgres::Error`
+        #[error(transparent)]
+        TokioPostgres(#[from] tokio_postgres::Error),
+        /// Represents all cases of `argon2::Error`
+        #[error(transparent)]
+        Argon2(#[from] argon2::Error),
+        /// Represents all cases of `json::Error`
+        #[error(transparent)]
+        Json(#[from] super::json::Error),
+        /// Occurs when insert query cannot be constructed due to empty data
+        #[error("want to address table {0} but it does not exist")]
+        TableNotPresent(String),
+        /// Occurs when a row cannot be parsed as map
+        #[error("failed to parse as map: {0}")]
+        RowParse(serde_json::Value),
+        /// Occurs when insert query cannot be constructed due to empty data
+        #[error("data to be inserted is empty")]
+        InsertEmptyData,
+        /// Occurs when addressing non-existent columns
+        #[error("want to address columns {0:?} but they do not exist")]
+        ColsNotPresent(Vec<String>),
+    }
 }
 
 #[cfg(test)]
-mod tests;
+mod tests {}
