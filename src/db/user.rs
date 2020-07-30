@@ -13,8 +13,6 @@ pub struct UserDB {
     pub client: tokio_postgres::Client,
     tables: TableSpec,
     backup_json_path: std::path::PathBuf,
-    /// Whether the database was empty upon connection
-    was_empty: bool,
 }
 
 #[async_trait::async_trait]
@@ -46,7 +44,7 @@ impl UserDB {
         let client = connect(config).await?;
         let name = config.get_dbname().unwrap();
         // The database object
-        let mut db = Self {
+        let db = Self {
             name: String::from(name),
             client,
             tables,
@@ -54,25 +52,19 @@ impl UserDB {
                 "backup-json/{}.json",
                 config.get_dbname().unwrap()
             )),
-            was_empty: false, // Assume non-empty
         };
         // Attempt to initialise
         db.init().await?;
         Ok(db)
     }
-    /// Whether the database was empty upon connection
-    pub fn was_empty(&self) -> bool {
-        self.was_empty
-    }
     /// Initialises the database.
     /// No tables - creates them.
     /// Some tables - does nothing (assumes that they are correct).
-    async fn init(&mut self) -> Result<()> {
+    async fn init(&self) -> Result<()> {
         // Empty database - table creation required
         if self.is_empty().await? {
             log::info!("initialising empty database \"{}\"", self.name);
             self.create_all_tables().await?;
-            self.was_empty = true; // Correct assumption
         } else {
             log::info!(
                 "found tables in database \"{}\", assuming they are correct",

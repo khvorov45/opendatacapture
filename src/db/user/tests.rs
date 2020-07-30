@@ -122,7 +122,6 @@ async fn user_db() {
         backup_json_path: std::path::PathBuf::from("backup-json/odctest.json"),
         client: connect(&test_config).await.unwrap(),
         tables: get_testdb_spec(),
-        was_empty: false,
     };
 
     // Make sure there are no tables
@@ -131,7 +130,6 @@ async fn user_db() {
 
     // Connect to empty
     let new_db = UserDB::new(&test_config, get_testdb_spec()).await.unwrap();
-    assert!(new_db.was_empty);
     test_rows_absent(&new_db).await;
 
     // Recreate the tables
@@ -143,7 +141,6 @@ async fn user_db() {
 
     // Connect to the now non-empty database
     let new_db = UserDB::new(&test_config, get_testdb_spec()).await.unwrap();
-    assert!(!new_db.was_empty);
     test_rows_present(&new_db).await;
 
     // Reset with backup
