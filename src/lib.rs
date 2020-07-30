@@ -2,7 +2,6 @@ use std::sync::Arc;
 use structopt::StructOpt;
 use warp::Filter;
 
-mod admindb;
 pub mod db;
 pub mod error;
 pub mod json;
@@ -50,14 +49,14 @@ pub struct Opt {
 /// Runs the API with the supplied options
 pub async fn run(opt: Opt) -> Result<()> {
     // Administrative database
-    let admin_database = admindb::AdminDB::new(&opt).await?;
+    let admin_database = db::admin::AdminDB::new(&opt).await?;
     let admin_database = Arc::new(admin_database);
     // API routes
     let authenticate = warp::post()
         .and(warp::path("authenticate"))
         .and(warp::path("email-password"))
         .and(warp::body::json())
-        .and_then(move |cred: admindb::EmailPassword| {
+        .and_then(move |cred: db::admin::EmailPassword| {
             let admin_database = admin_database.clone();
             async move {
                 let auth =
