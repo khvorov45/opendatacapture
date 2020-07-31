@@ -132,6 +132,3 @@ pub mod error {
         ColsNotPresent(Vec<String>),
     }
 }
-
-#[cfg(test)]
-mod tests {}
