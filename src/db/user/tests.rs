@@ -143,8 +143,8 @@ async fn user_db() {
     let new_db = UserDB::new(&test_config, get_testdb_spec()).await.unwrap();
     test_rows_present(&new_db).await;
 
-    // Reset with no backup
-    db.reset_no_backup().await.unwrap();
+    // Reset
+    db.reset().await.unwrap();
     test_rows_absent(&db).await;
 
     insert_test_data(&db).await;
@@ -171,7 +171,7 @@ async fn user_db() {
         Error::TableNotPresent(name) if name == "secondary"
     ));
     // Reset with no backup should work
-    new_db.reset_no_backup().await.unwrap();
+    new_db.reset().await.unwrap();
     // Primary table should be empty
     assert!(db.get_rows_json("primary").await.unwrap().is_empty());
     // Secondary table should be absent

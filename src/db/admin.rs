@@ -57,7 +57,7 @@ impl AdminDB {
         if connected_to_empty {
             admindb.create_all_tables().await?;
         } else if opt.clean {
-            admindb.reset_no_backup().await?;
+            admindb.reset().await?;
         }
         // Fill access types and the one admin if required
         if opt.clean || connected_to_empty {
