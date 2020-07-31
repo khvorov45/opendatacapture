@@ -143,12 +143,8 @@ async fn user_db() {
     let new_db = UserDB::new(&test_config, get_testdb_spec()).await.unwrap();
     test_rows_present(&new_db).await;
 
-    // Reset with backup
-    db.reset(true).await.unwrap();
-    test_rows_present(&db).await;
-
     // Reset with no backup
-    db.reset(false).await.unwrap();
+    db.reset_no_backup().await.unwrap();
     test_rows_absent(&db).await;
 
     insert_test_data(&db).await;
@@ -174,18 +170,8 @@ async fn user_db() {
         new_db.get_rows_json("secondary").await.unwrap_err(),
         Error::TableNotPresent(name) if name == "secondary"
     ));
-    // Reset with backup should fail because the extra table isn't present
-    let reset_with_backup = new_db.reset(true).await.unwrap_err();
-    assert!(matches!(reset_with_backup, Error::TokioPostgres(_)));
-    if let Error::TokioPostgres(err) = reset_with_backup {
-        let cause = err.into_source().unwrap();
-        assert_eq!(
-            cause.to_string(),
-            "ERROR: relation \"extra\" does not exist"
-        );
-    }
     // Reset with no backup should work
-    new_db.reset(false).await.unwrap();
+    new_db.reset_no_backup().await.unwrap();
     // Primary table should be empty
     assert!(db.get_rows_json("primary").await.unwrap().is_empty());
     // Secondary table should be absent

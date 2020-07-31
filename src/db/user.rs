@@ -73,25 +73,6 @@ impl UserDB {
         }
         Ok(())
     }
-    /// Drops all tables and recreates them. If `backup` is `true`, will
-    /// attempt to do a json backup and restore.
-    pub async fn reset(&self, backup: bool) -> Result<()> {
-        // Not backing up - drop
-        if !backup {
-            log::info!("resetting \"{}\" database with no backup", self.name);
-            self.drop_all_tables().await?;
-            self.create_all_tables().await?;
-            return Ok(());
-        }
-        log::info!("resetting \"{}\" database with backup", self.name);
-        self.backup_json().await?;
-        self.drop_all_tables().await?;
-        self.create_all_tables().await?;
-        if let Err(e) = self.restore_json().await {
-            log::error!("failed to restore json: {}", e)
-        }
-        Ok(())
-    }
     /// Creates the given tables
     async fn create_tables(&self, tables: &[TableMeta]) -> Result<()> {
         for table in tables {
@@ -107,25 +88,19 @@ impl UserDB {
         Ok(())
     }
     /// Backup in json format
-    async fn backup_json(&self) -> Result<()> {
+    pub async fn backup_json(&self) -> Result<()> {
         log::debug!("writing json backup to {:?}", self.backup_json_path);
         let db_json = self.get_db_json().await?;
         json::write(&db_json, self.backup_json_path.as_path())?;
         Ok(())
     }
     /// Restores data from json
-    async fn restore_json(&self) -> Result<()> {
+    pub async fn restore_json(&self) -> Result<()> {
         log::debug!("restoring json backup from {:?}", self.backup_json_path);
         let tables_json: Vec<TableJson> =
             json::read(self.backup_json_path.as_path())?;
         for table_json in tables_json {
-            if self.find_table(table_json.name.as_str()).is_err() {
-                log::info!(
-                    "table \"{}\" found it backup but not in database",
-                    table_json.name
-                );
-                continue;
-            }
+            self.find_table(table_json.name.as_str())?;
             if table_json.rows.is_empty() {
                 log::info!("backup table \"{}\" is empty", table_json.name);
                 continue;
@@ -135,13 +110,7 @@ impl UserDB {
                 table_json.rows.len(),
                 table_json.name
             );
-            if let Err(e) = self.insert(&table_json).await {
-                log::error!(
-                    "failed to restore table \"{}\": {}",
-                    table_json.name,
-                    e
-                )
-            }
+            self.insert(&table_json).await?
         }
         Ok(())
     }
