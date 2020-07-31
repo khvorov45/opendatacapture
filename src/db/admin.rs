@@ -178,12 +178,24 @@ mod tests {
             .get(0)
     }
 
+    // Verify the default password
+    async fn verify_password(db: &AdminDB) {
+        assert!(db
+            .authenticate_email_password(EmailPassword {
+                email: "admin@example.com".to_string(),
+                password: "admin".to_string()
+            })
+            .await
+            .unwrap());
+    }
+
     #[tokio::test]
     async fn test() {
         let _ = pretty_env_logger::try_init();
         // Start clean
         let test_db = test_create(true).await;
         let hash1 = extract_first_user_hash(&test_db).await;
+        verify_password(&test_db).await;
         // Restart
         let test_db = test_create(false).await;
         let hash2 = extract_first_user_hash(&test_db).await;
@@ -192,5 +204,6 @@ mod tests {
         let test_db = test_create(true).await;
         let hash3 = extract_first_user_hash(&test_db).await;
         assert_ne!(hash1, hash3);
+        verify_password(&test_db).await;
     }
 }
