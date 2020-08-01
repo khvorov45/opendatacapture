@@ -17,6 +17,10 @@
 - The database this api connects to is used the as admin database to keep
   track of users. If it's empty, it will be initialised
   (by creating the appropriate table structure).
-  If it's not empty, the data will be backed up, all tables removed, then
-  re-created and the the data will be restored. Pass `--clean` option to not
-  back up any data.
+  If it's not empty, the api will assume the database is correctly structured
+  and do nothing. Pass `--clean` option to reset it (remove all tables and
+  re-create them).
+
+- With an empty database (or if `--clean` is passed), one new admin user will
+  be automatically created with email `admin@example.com` and password `admin`.
+  Pass `--admin-email` and `--admin-password` to override these defaults.
