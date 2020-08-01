@@ -1,24 +1,25 @@
-import React from "react"
-import logo from "./logo.svg"
+import React, { useState } from "react"
+import { createMuiTheme, ThemeProvider } from "@material-ui/core/styles"
 import "./App.css"
+import Switch from "@material-ui/core/Switch"
 
 function App() {
+  const [darkState, setDarkState] = useState(true)
+  const palletType = darkState ? "dark" : "light"
+  const darkTheme = createMuiTheme({
+    palette: {
+      type: palletType,
+    },
+  })
+  const handleThemeChange = () => {
+    setDarkState(!darkState)
+    document.documentElement.setAttribute("theme", darkState ? "dark" : "light")
+  }
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <ThemeProvider theme={darkTheme}>
+        <Switch checked={darkState} onChange={handleThemeChange} />
+      </ThemeProvider>
     </div>
   )
 }

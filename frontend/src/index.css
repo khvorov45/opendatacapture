@@ -1,4 +1,19 @@
+:root {
+  --font-color: #ffffff;
+  --bg-color: #000000;
+  --bg-color-alt: rgb(35, 35, 35);
+  --border: #777777;
+}
+
+[theme="light"] {
+  --font-color: #000000;
+  --bg-color: #ffffff;
+}
+
 body {
+  color: var(--font-color);
+  background-color: var(--bg-color);
+  /* Auto-generated */
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
     "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
@@ -8,6 +23,31 @@ body {
 }
 
 code {
+  /* Auto-generated */
   font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: var(--bg-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--font-color);
+}
+
+html,
+html * {
+  scrollbar-color: var(--border) var(--bg-color);
+  scrollbar-width: thin;
 }

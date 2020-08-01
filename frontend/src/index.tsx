@@ -4,6 +4,15 @@ import "./index.css"
 import App from "./App"
 import * as serviceWorker from "./serviceWorker"
 
+// Work out the theme before rendering
+let localtheme = localStorage.getItem("theme")
+if (!localtheme) {
+  localStorage.setItem("theme", "dark")
+  document.documentElement.setAttribute("theme", "dark")
+} else {
+  document.documentElement.setAttribute("theme", localtheme)
+}
+
 ReactDOM.render(
   <React.StrictMode>
     <App />
