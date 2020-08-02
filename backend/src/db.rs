@@ -146,5 +146,8 @@ pub mod error {
         /// Pool error
         #[error("error getting connection from DB pool")]
         DBPool(#[from] mobc::Error<tokio_postgres::Error>),
+        /// User not found
+        #[error("no such user: {0}")]
+        NoSuchUser(String),
     }
 }

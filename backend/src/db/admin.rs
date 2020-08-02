@@ -1,4 +1,4 @@
-use super::{create_pool, password, DBPool, Result, DB};
+use super::{create_pool, password, DBPool, Error, Result, DB};
 
 /// Administrative database
 pub struct AdminDB {
@@ -125,16 +125,18 @@ impl AdminDB {
     }
     /// Returns the password hash for the given email
     async fn get_password_hash(&self, email: &str) -> Result<String> {
-        let hash: String = self
+        let res = self
             .get_con()
             .await?
-            .query_one(
+            .query_opt(
                 "SELECT \"password_hash\" FROM \"user\" WHERE \"email\" = $1",
                 &[&email],
             )
-            .await?
-            .get(0);
-        Ok(hash)
+            .await?;
+        match res {
+            Some(row) => Ok(row.get(0)),
+            None => Err(Error::NoSuchUser(email.to_string())),
+        }
     }
 }
 
