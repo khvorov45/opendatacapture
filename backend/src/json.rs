@@ -1,5 +1,5 @@
 /// Utilities for json handling
-pub use error::Error;
+use crate::{Error, Result};
 
 /// Write json
 pub fn write<T: serde::Serialize>(
@@ -31,23 +31,5 @@ pub fn insert_format(value: &serde_json::Value) -> Result<String> {
             log::error!("{}", e);
             Err(e)
         }
-    }
-}
-
-pub type Result<T> = std::result::Result<T, Error>;
-
-pub mod error {
-    /// JSON manipulation errors
-    #[derive(Debug, thiserror::Error)]
-    pub enum Error {
-        /// Represents all cases of `std::io::Error`
-        #[error(transparent)]
-        IO(#[from] std::io::Error),
-        /// Represents all cases of `serde_json::Error`
-        #[error(transparent)]
-        SerdeJson(#[from] serde_json::Error),
-        /// Unimplemented value for insert format
-        #[error("unimplemented value for insert format: {0}")]
-        InsertFormatUnimplemented(serde_json::Value),
     }
 }

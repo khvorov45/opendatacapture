@@ -61,4 +61,4 @@ pub async fn run(opt: Opt) -> Result<()> {
     Ok(())
 }
 
-impl warp::reject::Reject for db::Error {}
+impl warp::reject::Reject for Error {}

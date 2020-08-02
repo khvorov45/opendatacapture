@@ -1,4 +1,5 @@
-use super::{create_pool, json, DBPool, Error, Result, DB};
+use crate::db::{create_pool, DBPool, DB};
+use crate::{json, Error, Result};
 
 pub mod table;
 

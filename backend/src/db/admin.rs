@@ -1,4 +1,5 @@
-use super::{create_pool, password, DBPool, Error, Opt, Result, DB};
+use crate::db::{create_pool, DBPool, DB};
+use crate::{password, Error, Opt, Result};
 
 /// Administrative database
 pub struct AdminDB {

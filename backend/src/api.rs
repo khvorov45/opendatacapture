@@ -1,4 +1,4 @@
-use super::db;
+use crate::db;
 use warp::Filter;
 
 pub fn authenticate_email_password(
@@ -15,7 +15,7 @@ pub fn authenticate_email_password(
                     admin_database.authenticate_email_password(cred).await;
                 match auth {
                     Ok(res) => Ok(warp::reply::json(&res)),
-                    Err(db::Error::NoSuchUser(_)) => Err(warp::reject()),
+                    Err(crate::Error::NoSuchUser(_)) => Err(warp::reject()),
                     Err(e) => Err(warp::reject::custom(e)),
                 }
             }

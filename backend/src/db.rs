@@ -1,14 +1,11 @@
-use super::{json, password, Opt};
+use crate::Result;
 
 pub mod admin;
 pub mod user;
 
-pub use error::Error;
-
-pub type Result<T> = std::result::Result<T, Error>;
 pub type DBPool =
     mobc::Pool<mobc_postgres::PgConnectionManager<tokio_postgres::NoTls>>;
-type DBCon =
+pub type DBCon =
     mobc::Connection<mobc_postgres::PgConnectionManager<tokio_postgres::NoTls>>;
 
 const DB_POOL_MAX_OPEN: u64 = 32;
@@ -115,39 +112,5 @@ pub trait DB {
     async fn is_empty(&self) -> Result<bool> {
         let all_tables = self.get_all_table_names().await?;
         Ok(all_tables.is_empty())
-    }
-}
-
-pub mod error {
-    /// Database errors
-    #[derive(Debug, thiserror::Error)]
-    pub enum Error {
-        /// Represents all cases of `tokio_postgres::Error`
-        #[error(transparent)]
-        TokioPostgres(#[from] tokio_postgres::Error),
-        /// Represents all cases of `argon2::Error`
-        #[error(transparent)]
-        Argon2(#[from] argon2::Error),
-        /// Represents all cases of `json::Error`
-        #[error(transparent)]
-        Json(#[from] super::json::Error),
-        /// Occurs when insert query cannot be constructed due to empty data
-        #[error("want to address table {0} but it does not exist")]
-        TableNotPresent(String),
-        /// Occurs when a row cannot be parsed as map
-        #[error("failed to parse as map: {0}")]
-        RowParse(serde_json::Value),
-        /// Occurs when insert query cannot be constructed due to empty data
-        #[error("data to be inserted is empty")]
-        InsertEmptyData,
-        /// Occurs when addressing non-existent columns
-        #[error("want to address columns {0:?} but they do not exist")]
-        ColsNotPresent(Vec<String>),
-        /// Pool error
-        #[error("error getting connection from DB pool")]
-        DBPool(#[from] mobc::Error<tokio_postgres::Error>),
-        /// User not found
-        #[error("no such user: {0}")]
-        NoSuchUser(String),
     }
 }

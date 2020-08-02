@@ -1,4 +1,4 @@
-use super::{json, Error, Result};
+use crate::{json, Error, Result};
 
 /// Column specification
 pub type ColSpec = Vec<ColMeta>;
