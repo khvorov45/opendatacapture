@@ -196,6 +196,7 @@ mod tests {
     use super::*;
     #[test]
     fn create_col() {
+        let _ = pretty_env_logger::try_init();
         let col = ColMeta::new("name", "TEXT", "");
         assert_eq!(col.construct_create_query_entry(), "\"name\" TEXT ");
         let col = ColMeta::new("name", "TEXT", "PRIMARY KEY");
@@ -206,6 +207,7 @@ mod tests {
     }
     #[test]
     fn create_table() {
+        let _ = pretty_env_logger::try_init();
         let mut cols = Vec::new();
         cols.push(ColMeta::new("name", "TEXT", ""));
         let table = TableMeta::new("table", cols.clone(), "");
@@ -223,6 +225,7 @@ mod tests {
     }
     #[test]
     fn select_table() {
+        let _ = pretty_env_logger::try_init();
         let mut cols = Vec::new();
         cols.push(ColMeta::new("name", "TEXT", ""));
         cols.push(ColMeta::new("id", "INTEGER", "PRIMARY KEY"));
@@ -267,6 +270,7 @@ mod tests {
     }
     #[test]
     fn insert_table() {
+        let _ = pretty_env_logger::try_init();
         let mut cols = Vec::new();
         cols.push(ColMeta::new("name", "TEXT", ""));
         cols.push(ColMeta::new("id", "INTEGER", "PRIMARY KEY"));
