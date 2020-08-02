@@ -1,4 +1,4 @@
-use super::{json, password, Opt};
+use super::{json, password};
 
 pub mod admin;
 pub mod user;
@@ -6,20 +6,25 @@ pub mod user;
 pub use error::Error;
 
 pub type Result<T> = std::result::Result<T, Error>;
+pub type DBPool =
+    mobc::Pool<mobc_postgres::PgConnectionManager<tokio_postgres::NoTls>>;
+type DBCon =
+    mobc::Connection<mobc_postgres::PgConnectionManager<tokio_postgres::NoTls>>;
 
-/// Creates a new connection
-async fn connect(
-    config: &tokio_postgres::Config,
-) -> Result<tokio_postgres::Client> {
-    // Connect
-    let (client, connection) = config.connect(tokio_postgres::NoTls).await?;
-    // Spawn off the connection
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            log::error!("connection error: {}", e);
-        }
-    });
-    Ok(client)
+const DB_POOL_MAX_OPEN: u64 = 32;
+const DB_POOL_MAX_IDLE: u64 = 8;
+const DB_POOL_TIMEOUT_SECONDS: u64 = 15;
+
+pub fn create_pool(config: tokio_postgres::Config) -> Result<DBPool> {
+    let manager =
+        mobc_postgres::PgConnectionManager::new(config, tokio_postgres::NoTls);
+    Ok(mobc::Pool::builder()
+        .max_open(DB_POOL_MAX_OPEN)
+        .max_idle(DB_POOL_MAX_IDLE)
+        .get_timeout(Some(std::time::Duration::from_secs(
+            DB_POOL_TIMEOUT_SECONDS,
+        )))
+        .build(manager))
 }
 
 /// Common database methods
@@ -29,10 +34,16 @@ pub trait DB {
     fn get_name(&self) -> String;
 
     /// Client object
-    fn get_client(&self) -> &tokio_postgres::Client;
+    fn get_pool(&self) -> &DBPool;
 
     /// Create all tables
     async fn create_all_tables(&self) -> Result<()>;
+
+    /// Get a connection
+    async fn get_con(&self) -> Result<DBCon> {
+        let con = self.get_pool().get().await?;
+        Ok(con)
+    }
 
     /// Drop all tables and re-create them
     async fn reset(&self) -> Result<()> {
@@ -64,7 +75,8 @@ pub trait DB {
             .collect::<Vec<String>>()
             // Join into a comma-separated string
             .join(",");
-        self.get_client()
+        self.get_con()
+            .await?
             .execute(
                 format!("DROP TABLE IF EXISTS {} CASCADE;", all_tables)
                     .as_str(),
@@ -78,7 +90,8 @@ pub trait DB {
     async fn get_all_table_names(&self) -> Result<Vec<String>> {
         // Vector of rows
         let all_tables = self
-            .get_client()
+            .get_con()
+            .await?
             .query(
                 "SELECT tablename FROM pg_catalog.pg_tables \
                     WHERE schemaname = 'public';",
@@ -130,5 +143,8 @@ pub mod error {
         /// Occurs when addressing non-existent columns
         #[error("want to address columns {0:?} but they do not exist")]
         ColsNotPresent(Vec<String>),
+        /// Pool error
+        #[error("error getting connection from DB pool")]
+        DBPool(#[from] mobc::Error<tokio_postgres::Error>),
     }
 }

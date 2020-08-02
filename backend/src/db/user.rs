@@ -1,4 +1,4 @@
-use super::{connect, json, Error, Result, DB};
+use super::{create_pool, json, DBPool, Error, Result, DB};
 
 pub mod table;
 
@@ -10,7 +10,7 @@ use table::{DBJson, RowJson, TableJson, TableMeta, TableSpec};
 /// Database
 pub struct UserDB {
     name: String,
-    pub client: tokio_postgres::Client,
+    pool: DBPool,
     tables: TableSpec,
     backup_json_path: std::path::PathBuf,
 }
@@ -20,8 +20,8 @@ impl DB for UserDB {
     fn get_name(&self) -> String {
         self.name.clone()
     }
-    fn get_client(&self) -> &tokio_postgres::Client {
-        &self.client
+    fn get_pool(&self) -> &DBPool {
+        &self.pool
     }
     /// Creates all stored tables
     async fn create_all_tables(&self) -> Result<()> {
@@ -37,20 +37,20 @@ impl UserDB {
     /// correct.
     /// If empty, will create tables.
     pub async fn new(
-        config: &tokio_postgres::Config,
+        config: tokio_postgres::Config,
         tables: TableSpec,
     ) -> Result<Self> {
         // Connect
-        let client = connect(config).await?;
-        let name = config.get_dbname().unwrap();
+        let name = config.get_dbname().unwrap().to_string();
+        let pool = create_pool(config)?;
         // The database object
         let db = Self {
-            name: String::from(name),
-            client,
+            name: name.clone(),
+            pool,
             tables,
             backup_json_path: std::path::PathBuf::from(&format!(
                 "backup-json/{}.json",
-                config.get_dbname().unwrap()
+                name
             )),
         };
         // Attempt to initialise
@@ -82,7 +82,8 @@ impl UserDB {
     }
     /// Creates the given table
     async fn create_table(&self, table: &TableMeta) -> Result<()> {
-        self.client
+        self.get_con()
+            .await?
             .execute(table.construct_create_query().as_str(), &[])
             .await?;
         Ok(())
@@ -134,7 +135,8 @@ impl UserDB {
     async fn get_rows_json(&self, table_name: &str) -> Result<Vec<RowJson>> {
         log::debug!("get json rows of table \"{}\"", table_name);
         let all_rows_json = self
-            .client
+            .get_con()
+            .await?
             .query(
                 self.find_table(table_name)?
                     .construct_select_json_query(&[], "")?
@@ -160,7 +162,8 @@ impl UserDB {
     }
     /// Insert data into a table
     pub async fn insert(&self, json: &TableJson) -> Result<()> {
-        self.client
+        self.get_con()
+            .await?
             .execute(
                 self.find_table(json.name.as_str())?
                     .construct_insert_query(&json.rows)?
@@ -180,7 +183,8 @@ impl UserDB {
     ) -> Result<Vec<RowJson>> {
         log::debug!("select from table \"{}\"", name);
         let all_rows_json = self
-            .client
+            .get_con()
+            .await?
             .query(
                 self.find_table(name)?
                     .construct_select_json_query(cols, custom_post)?

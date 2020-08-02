@@ -120,7 +120,7 @@ async fn user_db() {
     let db = UserDB {
         name: String::from("odctest"),
         backup_json_path: std::path::PathBuf::from("backup-json/odctest.json"),
-        client: connect(&test_config).await.unwrap(),
+        pool: create_pool(test_config.clone()).unwrap(),
         tables: get_testdb_spec(),
     };
 
@@ -129,7 +129,9 @@ async fn user_db() {
     assert!(db.is_empty().await.unwrap());
 
     // Connect to empty
-    let new_db = UserDB::new(&test_config, get_testdb_spec()).await.unwrap();
+    let new_db = UserDB::new(test_config.clone(), get_testdb_spec())
+        .await
+        .unwrap();
     test_rows_absent(&new_db).await;
 
     // Recreate the tables
@@ -140,7 +142,9 @@ async fn user_db() {
     insert_test_data(&db).await;
 
     // Connect to the now non-empty database
-    let new_db = UserDB::new(&test_config, get_testdb_spec()).await.unwrap();
+    let new_db = UserDB::new(test_config.clone(), get_testdb_spec())
+        .await
+        .unwrap();
     test_rows_present(&new_db).await;
 
     // Reset
@@ -162,7 +166,7 @@ async fn user_db() {
     // This can happen only if the database was modified by something other than
     // this backend.
     log::info!("test connection to changed");
-    let new_db = UserDB::new(&test_config, get_testdb_spec_alt())
+    let new_db = UserDB::new(test_config, get_testdb_spec_alt())
         .await
         .unwrap();
     // The database is the same but we now think that secondary doesn't exist

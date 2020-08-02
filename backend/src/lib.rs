@@ -46,10 +46,28 @@ pub struct Opt {
     pub admin_password: String,
 }
 
+/// Extract opt to build a database configuration
+fn admin_db_conf_from_opt(opt: &Opt) -> db::admin::Config {
+    let mut config = tokio_postgres::config::Config::new();
+    config
+        .host(opt.dbhost.as_str())
+        .port(opt.dbport)
+        .dbname(opt.admindbname.as_str())
+        .user(opt.apiusername.as_str())
+        .password(opt.apiuserpassword.as_str());
+    db::admin::Config {
+        config,
+        clean: opt.clean,
+        admin_email: opt.admin_email.to_string(),
+        admin_password: opt.admin_password.to_string(),
+    }
+}
+
 /// Runs the API with the supplied options
 pub async fn run(opt: Opt) -> Result<()> {
     // Administrative database
-    let admin_database = db::admin::AdminDB::new(&opt).await?;
+    let admin_database =
+        db::admin::AdminDB::new(admin_db_conf_from_opt(&opt)).await?;
     let admin_database = Arc::new(admin_database);
     // API routes
     let authenticate = warp::post()
