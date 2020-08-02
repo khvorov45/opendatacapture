@@ -143,14 +143,14 @@ impl AdminDB {
                     hash.as_str(),
                     cred.password.as_bytes(),
                 )? {
-                    Ok(auth::Outcome::Authorized(auth::gen_auth_token()))
+                    Ok(auth::Outcome::Ok(auth::gen_auth_token()))
                 } else {
-                    Ok(auth::Outcome::Unauthorized)
+                    Ok(auth::Outcome::Wrong)
                 }
             }
             Err(e) => {
                 if let Error::NoSuchUser(_) = e {
-                    Ok(auth::Outcome::UserNotFound)
+                    Ok(auth::Outcome::IdNotFound)
                 } else {
                     Err(e)
                 }
@@ -239,7 +239,7 @@ mod tests {
             })
             .await
             .unwrap(),
-            auth::Outcome::Authorized(_)
+            auth::Outcome::Ok(_)
         ));
     }
 

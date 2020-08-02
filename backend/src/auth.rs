@@ -27,8 +27,8 @@ fn gen_rand_string(len: usize) -> String {
 /// Authentication outcome
 #[derive(serde::Deserialize, serde::Serialize)]
 pub enum Outcome {
-    /// Contains authorization token
-    Authorized(String),
-    Unauthorized,
-    UserNotFound,
+    /// Contains the auth token
+    Ok(String),
+    Wrong,
+    IdNotFound,
 }
