@@ -81,7 +81,7 @@ pub async fn run(opt: Opt) -> Result<()> {
                     admin_database.authenticate_email_password(cred).await;
                 match auth {
                     Ok(res) => Ok(res),
-                    Err(_) => Err(warp::reject()),
+                    Err(e) => Err(warp::reject::custom(e)),
                 }
             }
         })
@@ -91,3 +91,5 @@ pub async fn run(opt: Opt) -> Result<()> {
         .await;
     Ok(())
 }
+
+impl warp::reject::Reject for db::Error {}
