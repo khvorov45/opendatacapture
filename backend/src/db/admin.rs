@@ -136,11 +136,26 @@ impl AdminDB {
     pub async fn authenticate_email_password(
         &self,
         cred: EmailPassword,
-    ) -> Result<bool> {
-        let hash = self.get_password_hash(cred.email.as_str()).await?;
-        let res =
-            argon2::verify_encoded(hash.as_str(), cred.password.as_bytes())?;
-        Ok(res)
+    ) -> Result<auth::Outcome> {
+        match self.get_password_hash(cred.email.as_str()).await {
+            Ok(hash) => {
+                if argon2::verify_encoded(
+                    hash.as_str(),
+                    cred.password.as_bytes(),
+                )? {
+                    Ok(auth::Outcome::Authorized(auth::gen_auth_token()))
+                } else {
+                    Ok(auth::Outcome::Unauthorized)
+                }
+            }
+            Err(e) => {
+                if let Error::NoSuchUser(_) = e {
+                    Ok(auth::Outcome::UserNotFound)
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
     /// Returns the password hash for the given email
     async fn get_password_hash(&self, email: &str) -> Result<String> {
@@ -217,13 +232,15 @@ mod tests {
 
     // Verify the default password
     async fn verify_password(db: &AdminDB) {
-        assert!(db
-            .authenticate_email_password(EmailPassword {
+        assert!(matches!(
+            db.authenticate_email_password(EmailPassword {
                 email: "admin@example.com".to_string(),
                 password: "admin".to_string()
             })
             .await
-            .unwrap());
+            .unwrap(),
+            auth::Outcome::Authorized(_)
+        ));
     }
 
     #[tokio::test]

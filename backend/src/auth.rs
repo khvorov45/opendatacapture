@@ -23,3 +23,12 @@ fn gen_rand_string(len: usize) -> String {
         .take(len)
         .collect()
 }
+
+/// Authentication outcome
+#[derive(serde::Deserialize, serde::Serialize)]
+pub enum Outcome {
+    /// Contains authorization token
+    Authorized(String),
+    Unauthorized,
+    UserNotFound,
+}
