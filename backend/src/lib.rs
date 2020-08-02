@@ -2,10 +2,10 @@ use std::sync::Arc;
 use structopt::StructOpt;
 
 pub mod api;
+mod auth;
 pub mod db;
 pub mod error;
 pub mod json;
-mod password;
 
 pub use error::Error;
 

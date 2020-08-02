@@ -1,5 +1,5 @@
 use crate::db::{create_pool, DBPool, DB};
-use crate::{password, Error, Opt, Result};
+use crate::{auth, Error, Opt, Result};
 
 /// Administrative database
 pub struct AdminDB {
@@ -116,7 +116,7 @@ impl AdminDB {
             admin_email,
             admin_password
         );
-        let admin_password_hash = password::hash(admin_password)?;
+        let admin_password_hash = auth::hash(admin_password)?;
         self.get_con()
             .await?
             .execute(
