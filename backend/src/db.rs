@@ -1,4 +1,4 @@
-use super::{json, password};
+use super::{json, password, Opt};
 
 pub mod admin;
 pub mod user;

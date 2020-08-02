@@ -1,4 +1,4 @@
-use super::{create_pool, password, DBPool, Error, Result, DB};
+use super::{create_pool, password, DBPool, Error, Opt, Result, DB};
 
 /// Administrative database
 pub struct AdminDB {
@@ -11,6 +11,24 @@ pub struct Config {
     pub clean: bool,
     pub admin_email: String,
     pub admin_password: String,
+}
+
+impl Config {
+    pub fn from_opts(opt: &Opt) -> Self {
+        let mut config = tokio_postgres::config::Config::new();
+        config
+            .host(opt.dbhost.as_str())
+            .port(opt.dbport)
+            .dbname(opt.admindbname.as_str())
+            .user(opt.apiusername.as_str())
+            .password(opt.apiuserpassword.as_str());
+        Self {
+            config,
+            clean: opt.clean,
+            admin_email: opt.admin_email.to_string(),
+            admin_password: opt.admin_password.to_string(),
+        }
+    }
 }
 
 #[async_trait::async_trait]
