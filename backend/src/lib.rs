@@ -80,13 +80,12 @@ pub async fn run(opt: Opt) -> Result<()> {
                 let auth =
                     admin_database.authenticate_email_password(cred).await;
                 match auth {
-                    Ok(res) => Ok(res),
+                    Ok(res) => Ok(warp::reply::json(&res)),
                     Err(db::Error::NoSuchUser(_)) => Err(warp::reject()),
                     Err(e) => Err(warp::reject::custom(e)),
                 }
             }
-        })
-        .map(|b: bool| warp::reply::json(&b));
+        });
     warp::serve(authenticate)
         .run(([127, 0, 0, 1], opt.apiport))
         .await;
