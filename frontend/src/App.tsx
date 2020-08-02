@@ -4,7 +4,9 @@ import "./App.css"
 import Switch from "@material-ui/core/Switch"
 
 function App() {
-  const [darkState, setDarkState] = useState(true)
+  const [darkState, setDarkState] = useState(
+    localStorage.getItem("theme") === "dark"
+  )
   const palletType = darkState ? "dark" : "light"
   const darkTheme = createMuiTheme({
     palette: {
@@ -12,8 +14,11 @@ function App() {
     },
   })
   const handleThemeChange = () => {
-    setDarkState(!darkState)
-    document.documentElement.setAttribute("theme", darkState ? "dark" : "light")
+    let newDarkState = !darkState
+    let newDarkStateName = newDarkState ? "dark" : "light"
+    setDarkState(newDarkState)
+    document.documentElement.setAttribute("theme", newDarkStateName)
+    localStorage.setItem("theme", newDarkStateName)
   }
   return (
     <div className="App">
