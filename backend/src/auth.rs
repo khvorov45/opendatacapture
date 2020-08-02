@@ -1,4 +1,10 @@
 const SALT_LENGTH: usize = 30;
+const AUTH_TOKEN_LENGTH: usize = 30;
+
+/// Generate an auth token
+pub fn gen_auth_token() -> String {
+    gen_rand_string(AUTH_TOKEN_LENGTH)
+}
 
 /// Hash a string
 pub fn hash(password: &str) -> Result<String, argon2::Error> {
