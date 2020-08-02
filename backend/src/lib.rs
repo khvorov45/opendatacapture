@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use structopt::StructOpt;
-use warp::Filter;
 
+pub mod api;
 pub mod db;
 pub mod error;
 pub mod json;
@@ -70,23 +70,9 @@ pub async fn run(opt: Opt) -> Result<()> {
         db::admin::AdminDB::new(admin_db_conf_from_opt(&opt)).await?;
     let admin_database = Arc::new(admin_database);
     // API routes
-    let authenticate = warp::post()
-        .and(warp::path("authenticate"))
-        .and(warp::path("email-password"))
-        .and(warp::body::json())
-        .and_then(move |cred: db::admin::EmailPassword| {
-            let admin_database = admin_database.clone();
-            async move {
-                let auth =
-                    admin_database.authenticate_email_password(cred).await;
-                match auth {
-                    Ok(res) => Ok(warp::reply::json(&res)),
-                    Err(db::Error::NoSuchUser(_)) => Err(warp::reject()),
-                    Err(e) => Err(warp::reject::custom(e)),
-                }
-            }
-        });
-    warp::serve(authenticate)
+    let authenticate_email_password =
+        api::authenticate_email_password(admin_database);
+    warp::serve(authenticate_email_password)
         .run(([127, 0, 0, 1], opt.apiport))
         .await;
     Ok(())
