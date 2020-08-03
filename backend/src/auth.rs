@@ -1,6 +1,6 @@
 const SALT_LENGTH: usize = 30;
 const AUTH_TOKEN_LENGTH: usize = 30;
-const N_SUBSECS: u16 = 6;
+const N_SUBSECS: u16 = 6; // Postgres precision
 
 /// Generate an auth token
 fn gen_auth_token() -> String {
