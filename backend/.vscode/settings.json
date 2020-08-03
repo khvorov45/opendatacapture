@@ -3,6 +3,7 @@
     "Arseniy",
     "Initialises",
     "Khvorov",
+    "TIMESTAMPTZ",
     "admindb",
     "admindbname",
     "dbconfig",
@@ -12,13 +13,13 @@
     "initialise",
     "initialised",
     "initialising",
+    "mobc",
     "nobackup",
     "odcadmin",
     "odcapi",
     "odctest",
     "postgres",
     "structopt",
-    "testdb",
-    "mobc"
+    "testdb"
   ]
 }

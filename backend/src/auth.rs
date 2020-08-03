@@ -1,8 +1,9 @@
 const SALT_LENGTH: usize = 30;
 const AUTH_TOKEN_LENGTH: usize = 30;
+const N_SUBSECS: u16 = 6;
 
 /// Generate an auth token
-pub fn gen_auth_token() -> String {
+fn gen_auth_token() -> String {
     gen_rand_string(AUTH_TOKEN_LENGTH)
 }
 
@@ -25,10 +26,45 @@ fn gen_rand_string(len: usize) -> String {
 }
 
 /// Authentication outcome
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
 pub enum Outcome {
     /// Contains the auth token
-    Ok(String),
+    Ok(Token),
     Wrong,
     IdNotFound,
+}
+
+/// Auth token
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
+pub struct Token {
+    user: i32,
+    token: String,
+    created: chrono::DateTime<chrono::Utc>,
+}
+
+impl Token {
+    pub fn new(user: i32) -> Self {
+        use chrono::SubsecRound;
+        Self {
+            user,
+            token: gen_auth_token(),
+            created: chrono::Utc::now().round_subsecs(N_SUBSECS),
+        }
+    }
+    pub fn user(&self) -> &i32 {
+        &self.user
+    }
+    pub fn token(&self) -> &String {
+        &self.token
+    }
+    pub fn created(&self) -> &chrono::DateTime<chrono::Utc> {
+        &self.created
+    }
+    pub fn from_row(row: &tokio_postgres::Row) -> Self {
+        Self {
+            user: row.get("user"),
+            token: row.get("token"),
+            created: row.get("created"),
+        }
+    }
 }
