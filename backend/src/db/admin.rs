@@ -142,7 +142,7 @@ impl AdminDB {
     /// Authenticates an email/password combination
     pub async fn authenticate_email_password(
         &self,
-        cred: EmailPassword,
+        cred: auth::EmailPassword,
     ) -> Result<auth::PasswordOutcome> {
         match self.get_user_by_email(cred.email.as_str()).await {
             Ok(user) => {
@@ -281,12 +281,6 @@ impl AdminDB {
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
-pub struct EmailPassword {
-    email: String,
-    password: String,
-}
-
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
 pub struct User {
     id: i32,
     email: String,
@@ -407,7 +401,7 @@ mod tests {
     async fn verify_password(db: &AdminDB) -> auth::Token {
         log::info!("verifying that admin@example.com password is admin");
         let tok = db
-            .authenticate_email_password(EmailPassword {
+            .authenticate_email_password(auth::EmailPassword {
                 email: "admin@example.com".to_string(),
                 password: "admin".to_string(),
             })

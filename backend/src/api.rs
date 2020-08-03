@@ -14,7 +14,7 @@ pub fn authenticate_email_password(
         .and(warp::path("authenticate"))
         .and(warp::path("email-password"))
         .and(warp::body::json())
-        .and_then(move |cred: db::admin::EmailPassword| {
+        .and_then(move |cred: auth::EmailPassword| {
             let admin_database = db.clone();
             async move {
                 let auth =

@@ -92,6 +92,12 @@ pub struct IdToken {
     pub token: String,
 }
 
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
+pub struct EmailPassword {
+    pub email: String,
+    pub password: String,
+}
+
 /// Parses the authentication header
 pub fn parse_basic_header(header_content: &str) -> Result<IdToken> {
     let header: Vec<&str> = header_content.splitn(2, ' ').collect();
