@@ -21,3 +21,4 @@ async-trait = "0.1"
 mobc-postgres = "0.5"
 mobc = "0.5"
 chrono = { version = "0.4", features = ["serde"] }
+base64 = "0.12"

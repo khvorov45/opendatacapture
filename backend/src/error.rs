@@ -34,4 +34,16 @@ pub enum Error {
     /// Unimplemented value for insert format
     #[error("unimplemented value for insert format: {0}")]
     InsertFormatUnimplemented(serde_json::Value),
+    // Wrong authentication type
+    #[error("got auth type: {0}; while expected 'basic'")]
+    WrongAuthType(String),
+    // All cases of base64 decode error
+    #[error(transparent)]
+    Base64(#[from] base64::DecodeError),
+    // All cases of utf8 error
+    #[error(transparent)]
+    Utf8(#[from] std::str::Utf8Error),
+    // All cases of parse int error
+    #[error(transparent)]
+    ParseInt(#[from] std::num::ParseIntError),
 }

@@ -1,3 +1,5 @@
+use crate::{Error, Result};
+
 const SALT_LENGTH: usize = 30;
 const AUTH_TOKEN_LENGTH: usize = 30;
 const N_SUBSECS: u16 = 6; // Postgres precision
@@ -8,12 +10,13 @@ fn gen_auth_token() -> String {
 }
 
 /// Hash a string
-pub fn hash(password: &str) -> Result<String, argon2::Error> {
-    argon2::hash_encoded(
+pub fn hash(password: &str) -> Result<String> {
+    let hash = argon2::hash_encoded(
         password.as_bytes(),
         gen_rand_string(SALT_LENGTH).as_bytes(),
         &argon2::Config::default(),
-    )
+    )?;
+    Ok(hash)
 }
 
 /// Generates a random string
@@ -66,5 +69,49 @@ impl Token {
             token: row.get("token"),
             created: row.get("created"),
         }
+    }
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
+pub struct IdToken {
+    pub id: i32,
+    pub token: String,
+}
+
+/// Parses the authentication header
+pub fn parse_basic_header(header_content: &str) -> Result<IdToken> {
+    let header: Vec<&str> = header_content.splitn(2, ' ').collect();
+    if header[0] != "Basic" {
+        return Err(Error::WrongAuthType(header[0].to_string()));
+    }
+    let header_decoded = base64::decode(header[1])?;
+    let header_parsed: Vec<&str> = std::str::from_utf8(&header_decoded)?
+        .splitn(2, ':')
+        .collect();
+    Ok(IdToken {
+        id: header_parsed[0].parse()?,
+        token: header_parsed[1].to_string(),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn test_parse_basic_header_tok(tok: &str) {
+        let header_raw =
+            format!("Basic {}", base64::encode(format!("1:{}", tok)));
+        let header_parsed = parse_basic_header(header_raw.as_str()).unwrap();
+        assert_eq!(
+            header_parsed,
+            IdToken {
+                id: 1,
+                token: tok.to_string()
+            }
+        )
+    }
+    #[test]
+    fn test_parse_basic_header() {
+        test_parse_basic_header_tok("pass123");
+        test_parse_basic_header_tok("123: sad gg")
     }
 }
