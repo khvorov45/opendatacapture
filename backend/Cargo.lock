@@ -917,6 +917,8 @@ dependencies = [
  "serde",
  "serde_json",
  "structopt",
+ "strum",
+ "strum_macros",
  "thiserror",
  "tokio",
  "tokio-postgres",
@@ -1548,6 +1550,24 @@ checksum = "510413f9de616762a4fbeab62509bf15c729603b72d7cd71280fbca431b1c118"
 dependencies = [
  "heck",
  "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "strum"
+version = "0.19.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "548779cd5867cc3c58521a613620578cf6cedc557d7dd5d51081f1c4c46adfa6"
+
+[[package]]
+name = "strum_macros"
+version = "0.19.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "875812c05b8135f41dc640a3e268bdebbd832576a05cf56471fc1eb70c602eb6"
+dependencies = [
+ "heck",
  "proc-macro2",
  "quote",
  "syn",

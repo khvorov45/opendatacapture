@@ -55,6 +55,9 @@ pub enum Error {
     /// Unexpected access string
     #[error("unexpected access string: {0}")]
     UnexpectedAccessString(String),
+    /// Strum error
+    #[error(transparent)]
+    Strum(#[from] strum::ParseError),
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]

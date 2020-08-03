@@ -126,20 +126,17 @@ impl AdminDB {
             admin_email,
             admin_password
         );
-        let admin_password_hash = auth::hash(admin_password)?;
-        self.get_con()
-            .await?
-            .execute(
-                format!(
-                    "INSERT INTO \"user\" \
-                    (\"email\", \"access\", \"password_hash\") \
-                    VALUES ('{}', 'admin', '{}')",
-                    admin_email, admin_password_hash
-                )
-                .as_str(),
-                &[],
-            )
-            .await?;
+        let admin = User::new(admin_email, admin_password, Access::Admin)?;
+        self.insert_user(&admin).await?;
+        Ok(())
+    }
+    /// Insert a user
+    async fn insert_user(&self, user: &User) -> Result<()> {
+        self.get_con().await?.execute(
+            "INSERT INTO \"user\" (\"email\", \"access\", \"password_hash\")
+            VALUES ($1, $2, $3)",
+            &[&user.email, &user.access.to_string(), &user.password_hash],
+        ).await?;
         Ok(())
     }
     /// Authenticates an email/password combination
@@ -298,11 +295,21 @@ pub struct User {
 }
 
 impl User {
+    pub fn new(email: &str, password: &str, access: Access) -> Result<Self> {
+        let u = Self {
+            id: 1, // Disregard since postgres will handle auto-incrementing
+            email: email.to_string(),
+            access,
+            password_hash: auth::hash(password)?,
+        };
+        Ok(u)
+    }
     pub fn from_row(row: tokio_postgres::Row) -> Result<Self> {
+        use std::str::FromStr;
         let u = Self {
             id: row.get("id"),
             email: row.get("email"),
-            access: Access::from_string(row.get("access"))?,
+            access: Access::from_str(row.get("access"))?,
             password_hash: row.get("password_hash"),
         };
         Ok(u)
@@ -310,32 +317,18 @@ impl User {
 }
 
 #[derive(
-    serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq, PartialOrd,
+    serde::Deserialize,
+    serde::Serialize,
+    Debug,
+    Clone,
+    PartialEq,
+    PartialOrd,
+    strum_macros::Display,
+    strum_macros::EnumString,
 )]
 pub enum Access {
     Admin,
     User,
-}
-
-impl std::fmt::Display for Access {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Access::Admin => write!(f, "admin"),
-            Access::User => write!(f, "user"),
-        }
-    }
-}
-
-impl Access {
-    pub fn from_string(s: &str) -> Result<Self> {
-        if s == Self::Admin.to_string() {
-            Ok(Self::Admin)
-        } else if s == Self::User.to_string() {
-            Ok(Self::User)
-        } else {
-            Err(Error::UnexpectedAccessString(s.to_string()))
-        }
-    }
 }
 
 #[cfg(test)]
