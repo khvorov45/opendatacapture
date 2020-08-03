@@ -3,6 +3,7 @@ use crate::{Error, Result};
 const SALT_LENGTH: usize = 30;
 const AUTH_TOKEN_LENGTH: usize = 30;
 const N_SUBSECS: u16 = 6; // Postgres precision
+pub const AUTH_TOKEN_HOURS_TO_LIVE: i64 = 24;
 
 /// Generate an auth token
 fn gen_auth_token() -> String {
@@ -28,13 +29,21 @@ fn gen_rand_string(len: usize) -> String {
         .collect()
 }
 
-/// Authentication outcome
+/// Authentication outcome for email/password
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
-pub enum Outcome {
+pub enum PasswordOutcome {
     /// Contains the auth token
     Ok(Token),
     Wrong,
-    IdNotFound,
+    EmailNotFound,
+}
+
+/// Authentication outcome for id/token
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
+pub enum TokenOutcome {
+    Ok,
+    TokenTooOld,
+    TokenNotFound,
 }
 
 /// Auth token
@@ -69,6 +78,11 @@ impl Token {
             token: row.get("token"),
             created: row.get("created"),
         }
+    }
+    pub fn age_hours(&self) -> i64 {
+        self.created
+            .signed_duration_since(chrono::Utc::now())
+            .num_hours()
     }
 }
 

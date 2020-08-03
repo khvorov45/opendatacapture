@@ -49,14 +49,14 @@ impl DB for AdminDB {
         .await?;
         con.execute(
             "CREATE TABLE \"user\" (\
-                    \"id\" SERIAL PRIMARY KEY,\
-                    \"email\" TEXT NOT NULL UNIQUE,\
-                    \"access\" TEXT NOT NULL,\
-                    \"password_hash\" TEXT NOT NULL,\
-                    FOREIGN KEY(\"access\") REFERENCES \
-                    \"access\"(\"access_type\") \
-                    ON UPDATE CASCADE ON DELETE CASCADE
-                )",
+                \"id\" SERIAL PRIMARY KEY,\
+                \"email\" TEXT NOT NULL UNIQUE,\
+                \"access\" TEXT NOT NULL,\
+                \"password_hash\" TEXT NOT NULL,\
+                FOREIGN KEY(\"access\") REFERENCES \
+                \"access\"(\"access_type\") \
+                ON UPDATE CASCADE ON DELETE CASCADE\
+            )",
             &[],
         )
         .await?;
@@ -65,7 +65,7 @@ impl DB for AdminDB {
                     \"user\" INTEGER NOT NULL,\
                     \"token\" TEXT NOT NULL,\
                     \"created\" TIMESTAMPTZ NOT NULL,\
-                    PRIMARY KEY(\"user\", \"created\"),
+                    PRIMARY KEY(\"user\", \"token\"),
                     FOREIGN KEY(\"user\") REFERENCES \
                     \"user\"(\"id\") \
                     ON UPDATE CASCADE ON DELETE CASCADE
@@ -109,8 +109,8 @@ impl AdminDB {
             .await?
             .execute(
                 "INSERT INTO \"access\" (\"access_type\") \
-                VALUES ('admin'), ('user')",
-                &[],
+                VALUES ($1), ($2)",
+                &[&Access::Admin.to_string(), &Access::User.to_string()],
             )
             .await?;
         Ok(())
@@ -146,8 +146,8 @@ impl AdminDB {
     pub async fn authenticate_email_password(
         &self,
         cred: EmailPassword,
-    ) -> Result<auth::Outcome> {
-        match self.get_user(cred.email.as_str()).await {
+    ) -> Result<auth::PasswordOutcome> {
+        match self.get_user_by_email(cred.email.as_str()).await {
             Ok(user) => {
                 if argon2::verify_encoded(
                     user.password_hash.as_str(),
@@ -155,38 +155,97 @@ impl AdminDB {
                 )? {
                     let tok = auth::Token::new(user.id);
                     self.insert_token(&tok).await?;
-                    Ok(auth::Outcome::Ok(tok))
+                    Ok(auth::PasswordOutcome::Ok(tok))
                 } else {
-                    Ok(auth::Outcome::Wrong)
+                    Ok(auth::PasswordOutcome::Wrong)
                 }
             }
             Err(e) => {
                 if let Error::NoSuchUser(_) = e {
-                    Ok(auth::Outcome::IdNotFound)
+                    Ok(auth::PasswordOutcome::EmailNotFound)
                 } else {
                     Err(e)
                 }
             }
         }
     }
-    /// Returns the user for the given email
-    async fn get_user(&self, email: &str) -> Result<User> {
+    /// Authenticates an id/token combination
+    pub async fn authenticate_id_token(
+        &self,
+        cred: &auth::IdToken,
+    ) -> Result<auth::TokenOutcome> {
+        let tok: auth::Token;
+        match self.get_token(cred).await {
+            Ok(t) => tok = t,
+            Err(e) => match e {
+                Error::NoSuchToken(_, _) => {
+                    return Ok(auth::TokenOutcome::TokenNotFound)
+                }
+                _ => return Err(e),
+            },
+        }
+        if tok.age_hours() > auth::AUTH_TOKEN_HOURS_TO_LIVE {
+            return Ok(auth::TokenOutcome::TokenTooOld);
+        }
+        Ok(auth::TokenOutcome::Ok)
+    }
+    pub async fn get_users(&self) -> Result<Vec<User>> {
+        let res = self
+            .get_con()
+            .await?
+            .query("SELECT * FROM \"user\"", &[])
+            .await?;
+        let mut users = Vec::with_capacity(res.len());
+        for row in res {
+            users.push(User::from_row(row)?);
+        }
+        Ok(users)
+    }
+    /// Returns the user given their token
+    pub async fn get_user_by_id(&self, id: i32) -> Result<User> {
         let res = self
             .get_con()
             .await?
             .query_opt(
-                "SELECT \"id\", \"email\", \"password_hash\" \
+                "SELECT * \
+                FROM \"user\" WHERE \"id\" = $1",
+                &[&id],
+            )
+            .await?;
+        match res {
+            Some(row) => User::from_row(row),
+            None => Err(Error::NoSuchUser(id.to_string())),
+        }
+    }
+    /// Returns the user for the given email
+    async fn get_user_by_email(&self, email: &str) -> Result<User> {
+        let res = self
+            .get_con()
+            .await?
+            .query_opt(
+                "SELECT * \
                 FROM \"user\" WHERE \"email\" = $1",
                 &[&email],
             )
             .await?;
         match res {
-            Some(row) => Ok(User {
-                id: row.get(0),
-                email: row.get(1),
-                password_hash: row.get(2),
-            }),
+            Some(row) => User::from_row(row),
             None => Err(Error::NoSuchUser(email.to_string())),
+        }
+    }
+    async fn get_token(&self, cred: &auth::IdToken) -> Result<auth::Token> {
+        let res = self
+            .get_con()
+            .await?
+            .query_opt(
+                "SELECT * \
+                FROM \"token\" WHERE \"user\" = $1 AND \"token\" = $2",
+                &[&cred.id, &cred.token],
+            )
+            .await?;
+        match res {
+            Some(row) => Ok(auth::Token::from_row(&row)),
+            None => Err(Error::NoSuchToken(cred.id, cred.token.to_string())),
         }
     }
     /// Inserts a token
@@ -197,6 +256,29 @@ impl AdminDB {
             ($1, $2, $3)",
             &[tok.user(), tok.token(), tok.created()],
         ).await?;
+        Ok(())
+    }
+    /// Checks that id/token are valid and that the id has the
+    /// appropriate access
+    pub async fn verify_access(
+        &self,
+        cred: &auth::IdToken,
+        req_access: Access,
+    ) -> Result<()> {
+        use crate::error::Unauthorized;
+        match self.authenticate_id_token(cred).await? {
+            auth::TokenOutcome::Ok => (),
+            auth::TokenOutcome::TokenTooOld => {
+                return Err(Error::Unauthorized(Unauthorized::TokenTooOld))
+            }
+            auth::TokenOutcome::TokenNotFound => {
+                return Err(Error::Unauthorized(Unauthorized::TokenNotFound))
+            }
+        }
+        let user = self.get_user_by_id(cred.id).await?;
+        if user.access < req_access {
+            return Err(Error::Unauthorized(Unauthorized::InsufficientAccess));
+        }
         Ok(())
     }
 }
@@ -211,7 +293,49 @@ pub struct EmailPassword {
 pub struct User {
     id: i32,
     email: String,
+    access: Access,
     password_hash: String,
+}
+
+impl User {
+    pub fn from_row(row: tokio_postgres::Row) -> Result<Self> {
+        let u = Self {
+            id: row.get("id"),
+            email: row.get("email"),
+            access: Access::from_string(row.get("access"))?,
+            password_hash: row.get("password_hash"),
+        };
+        Ok(u)
+    }
+}
+
+#[derive(
+    serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq, PartialOrd,
+)]
+pub enum Access {
+    Admin,
+    User,
+}
+
+impl std::fmt::Display for Access {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Access::Admin => write!(f, "admin"),
+            Access::User => write!(f, "user"),
+        }
+    }
+}
+
+impl Access {
+    pub fn from_string(s: &str) -> Result<Self> {
+        if s == Self::Admin.to_string() {
+            Ok(Self::Admin)
+        } else if s == Self::User.to_string() {
+            Ok(Self::User)
+        } else {
+            Err(Error::UnexpectedAccessString(s.to_string()))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -256,17 +380,14 @@ mod tests {
             .await
             .unwrap()
             .query_one(
-                "SELECT \"id\", \"email\", \"password_hash\" FROM \"user\" \
+                "SELECT \"id\", \"email\", \"password_hash\", \"access\"\
+                FROM \"user\" \
                 WHERE \"id\" = '1'",
                 &[],
             )
             .await
             .unwrap();
-        let user = User {
-            id: res.get(0),
-            email: res.get(1),
-            password_hash: res.get(2),
-        };
+        let user = User::from_row(res).unwrap();
         log::info!("first user is {:?}", user);
         user
     }
@@ -299,8 +420,8 @@ mod tests {
             })
             .await
             .unwrap();
-        assert!(matches!(tok, auth::Outcome::Ok(_)));
-        if let auth::Outcome::Ok(tok) = tok {
+        assert!(matches!(tok, auth::PasswordOutcome::Ok(_)));
+        if let auth::PasswordOutcome::Ok(tok) = tok {
             tok
         } else {
             panic!("")

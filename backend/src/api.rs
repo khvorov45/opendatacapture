@@ -4,9 +4,7 @@ use warp::Filter;
 pub fn routes(
     db: std::sync::Arc<db::admin::AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    let public = authenticate_email_password(db.clone());
-    let protected = get_users(db);
-    public.or(protected)
+    authenticate_email_password(db.clone()).or(get_users(db))
 }
 
 pub fn authenticate_email_password(
@@ -48,11 +46,35 @@ fn auth_header(
     )
 }
 
+fn access(
+    admindb: std::sync::Arc<db::admin::AdminDB>,
+    req_access: crate::db::admin::Access,
+) -> impl Filter<Extract = ((),), Error = warp::Rejection> + Clone {
+    auth_header().and_then(move |cred: auth::IdToken| {
+        let admin_database = admindb.clone();
+        let req_access = req_access.clone();
+        async move {
+            match admin_database.verify_access(&cred, req_access).await {
+                Ok(_) => Ok(()),
+                Err(e) => Err(warp::reject::custom(e)),
+            }
+        }
+    })
+}
+
 pub fn get_users(
-    _db: std::sync::Arc<db::admin::AdminDB>,
+    admindb: std::sync::Arc<db::admin::AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::get()
         .and(warp::path("users"))
-        .and(auth_header())
-        .map(|cred| warp::reply::json(&cred))
+        .and(access(admindb.clone(), crate::db::admin::Access::Admin))
+        .and_then(move |()| {
+            let admindb = admindb.clone();
+            async move {
+                match admindb.get_users().await {
+                    Ok(users) => Ok(warp::reply::json(&users)),
+                    Err(e) => Err(warp::reject::custom(e)),
+                }
+            }
+        })
 }

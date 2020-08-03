@@ -25,6 +25,9 @@ pub enum Error {
     /// User not found
     #[error("no such user: {0}")]
     NoSuchUser(String),
+    /// User not found
+    #[error("no such token: userid: {0}, token: {1}")]
+    NoSuchToken(i32, String),
     /// Represents all cases of `std::io::Error`
     #[error(transparent)]
     IO(#[from] std::io::Error),
@@ -37,13 +40,38 @@ pub enum Error {
     // Wrong authentication type
     #[error("got auth type: {0}; while expected 'basic'")]
     WrongAuthType(String),
-    // All cases of base64 decode error
+    /// All cases of base64 decode error
     #[error(transparent)]
     Base64(#[from] base64::DecodeError),
-    // All cases of utf8 error
+    /// All cases of utf8 error
     #[error(transparent)]
     Utf8(#[from] std::str::Utf8Error),
-    // All cases of parse int error
+    /// All cases of parse int error
     #[error(transparent)]
     ParseInt(#[from] std::num::ParseIntError),
+    /// Unauthorized
+    #[error("unauthorized: {0}")]
+    Unauthorized(Unauthorized),
+    /// Unexpected access string
+    #[error("unexpected access string: {0}")]
+    UnexpectedAccessString(String),
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum Unauthorized {
+    TokenTooOld,
+    TokenNotFound,
+    InsufficientAccess,
+}
+
+impl std::fmt::Display for Unauthorized {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Unauthorized::TokenTooOld => write!(f, "token too old"),
+            Unauthorized::TokenNotFound => write!(f, "token not found"),
+            Unauthorized::InsufficientAccess => {
+                write!(f, "insufficient access")
+            }
+        }
+    }
 }
