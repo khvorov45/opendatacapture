@@ -62,14 +62,14 @@ impl DB for AdminDB {
         .await?;
         con.execute(
             "CREATE TABLE \"token\" (\
-                    \"user\" INTEGER NOT NULL,\
-                    \"token\" TEXT NOT NULL,\
-                    \"created\" TIMESTAMPTZ NOT NULL,\
-                    PRIMARY KEY(\"user\", \"token\"),
-                    FOREIGN KEY(\"user\") REFERENCES \
-                    \"user\"(\"id\") \
-                    ON UPDATE CASCADE ON DELETE CASCADE
-                )",
+                \"user\" INTEGER NOT NULL,\
+                \"token\" TEXT NOT NULL,\
+                \"created\" TIMESTAMPTZ NOT NULL,\
+                PRIMARY KEY(\"user\", \"token\"),
+                FOREIGN KEY(\"user\") REFERENCES \
+                \"user\"(\"id\") \
+                ON UPDATE CASCADE ON DELETE CASCADE
+            )",
             &[],
         )
         .await?;
@@ -166,8 +166,8 @@ impl AdminDB {
             }
         }
     }
-    /// Authenticates an id/token combination
-    pub async fn authenticate_id_token(
+    /// Verifies that the id/token combination is valid
+    pub async fn verify_id_token(
         &self,
         cred: &auth::IdToken,
     ) -> Result<auth::TokenOutcome> {
@@ -263,7 +263,7 @@ impl AdminDB {
         req_access: Access,
     ) -> Result<()> {
         use crate::error::Unauthorized;
-        match self.authenticate_id_token(cred).await? {
+        match self.verify_id_token(cred).await? {
             auth::TokenOutcome::Ok => (),
             auth::TokenOutcome::TokenTooOld => {
                 return Err(Error::Unauthorized(Unauthorized::TokenTooOld))
@@ -321,8 +321,8 @@ impl User {
     strum_macros::EnumString,
 )]
 pub enum Access {
-    Admin,
     User,
+    Admin,
 }
 
 #[cfg(test)]
@@ -414,6 +414,11 @@ mod tests {
             panic!("")
         }
     }
+    #[test]
+    fn test_access() {
+        assert!(Access::Admin > Access::User);
+        assert_eq!(Access::Admin, Access::Admin);
+    }
 
     #[tokio::test]
     async fn test() {
@@ -440,5 +445,55 @@ mod tests {
         assert_ne!(user1.password_hash, user3.password_hash); // Different salt
         let tok3 = verify_password(&test_db).await;
         assert_ne!(tok3.token(), tok2_reset.token());
+        // Insert a regular user
+        test_db
+            .insert_user(
+                &User::new("user@example.com", "user", Access::User).unwrap(),
+            )
+            .await
+            .unwrap();
+        let auth_res = test_db
+            .authenticate_email_password(auth::EmailPassword {
+                email: "user@example.com".to_string(),
+                password: "user".to_string(),
+            })
+            .await
+            .unwrap();
+        let user_tok;
+        if let auth::PasswordOutcome::Ok(tok) = auth_res {
+            user_tok = tok;
+        } else {
+            panic!("")
+        }
+        let res = test_db
+            .verify_access(
+                &auth::IdToken {
+                    id: *user_tok.user(),
+                    token: user_tok.token().clone(),
+                },
+                Access::User,
+            )
+            .await
+            .unwrap();
+        assert_eq!(res, ());
+        let res = test_db
+            .verify_access(
+                &auth::IdToken {
+                    id: *user_tok.user(),
+                    token: user_tok.token().clone(),
+                },
+                Access::Admin,
+            )
+            .await
+            .unwrap_err();
+        assert!(matches!(res, Error::Unauthorized(_)));
+        if let Error::Unauthorized(unauthorized) = res {
+            assert_eq!(
+                unauthorized,
+                crate::error::Unauthorized::InsufficientAccess
+            )
+        } else {
+            panic!("")
+        }
     }
 }
