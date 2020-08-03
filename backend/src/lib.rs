@@ -2,10 +2,10 @@ use std::sync::Arc;
 use structopt::StructOpt;
 
 pub mod api;
+mod auth;
 pub mod db;
 pub mod error;
 pub mod json;
-mod password;
 
 pub use error::Error;
 
@@ -51,13 +51,9 @@ pub async fn run(opt: Opt) -> Result<()> {
     // Administrative database
     let admin_database =
         db::admin::AdminDB::new(db::admin::Config::from_opts(&opt)).await?;
-    let admin_database = Arc::new(admin_database);
     // API routes
-    let authenticate_email_password =
-        api::authenticate_email_password(admin_database);
-    warp::serve(authenticate_email_password)
-        .run(([127, 0, 0, 1], opt.apiport))
-        .await;
+    let routes = api::routes(Arc::new(admin_database));
+    warp::serve(routes).run(([127, 0, 0, 1], opt.apiport)).await;
     Ok(())
 }
 
