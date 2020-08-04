@@ -1,13 +1,18 @@
 {
     "cSpell.words": [
         "Arseniy",
+        "Ccodegen",
+        "Cinline",
+        "Cpanic",
         "Initialises",
         "Khvorov",
         "Rustfmt",
         "TIMESTAMPTZ",
+        "Zpanic",
         "admindb",
         "admindbname",
         "clippy",
+        "codecov",
         "dbconfig",
         "dbhost",
         "dbname",
