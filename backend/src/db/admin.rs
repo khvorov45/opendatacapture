@@ -473,9 +473,8 @@ mod tests {
                 },
                 Access::User,
             )
-            .await
-            .unwrap();
-        assert_eq!(res, ());
+            .await;
+        assert!(res.is_ok());
         let res = test_db
             .verify_access(
                 &auth::IdToken {
