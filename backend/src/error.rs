@@ -60,6 +60,8 @@ pub enum Error {
     Strum(#[from] strum::ParseError),
 }
 
+impl warp::reject::Reject for Error {}
+
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Unauthorized {
     TokenTooOld,

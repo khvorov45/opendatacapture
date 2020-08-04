@@ -56,5 +56,3 @@ pub async fn run(opt: Opt) -> Result<()> {
     warp::serve(routes).run(([127, 0, 0, 1], opt.apiport)).await;
     Ok(())
 }
-
-impl warp::reject::Reject for Error {}
