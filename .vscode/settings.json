@@ -15,6 +15,7 @@
         "initialise",
         "initialised",
         "initialising",
+        "isready",
         "mobc",
         "nobackup",
         "odcadmin",
