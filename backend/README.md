@@ -24,3 +24,12 @@
 - With an empty database (or if `--clean` is passed), one new admin user will
   be automatically created with email `admin@example.com` and password `admin`.
   Pass `--admin-email` and `--admin-password` to override these defaults.
+
+# API
+
+All request bodies and responses are in the `json` format.
+
+|             Path              |  Type  |                Body                 |          Headers          |
+| :---------------------------: | :----: | :---------------------------------: | :-----------------------: |
+| `authenticate/email-password` | `POST` | `{email: String, password: String}` |                           |
+|            `users`            | `GET`  |                                     | `Authorization: id:token` |
