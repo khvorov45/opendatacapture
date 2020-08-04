@@ -1,8 +1,7 @@
 use super::table::{ColMeta, ColSpec};
 use super::*;
 
-// Assume that there is a database called odctest,
-// connect with the same user and password
+// Test config
 fn get_test_config() -> tokio_postgres::Config {
     let mut dbconfig = tokio_postgres::Config::new();
     dbconfig
@@ -12,6 +11,26 @@ fn get_test_config() -> tokio_postgres::Config {
         .user("odcapi")
         .password("odcapi");
     dbconfig
+}
+
+// Makes sure odctest database exists.
+// Assumes odcadmin database exists
+async fn setup_odctest() {
+    let mut config = get_test_config();
+    config.dbname("odcadmin");
+    let (odcadmin_client, con) =
+        config.connect(tokio_postgres::NoTls).await.unwrap();
+    tokio::spawn(async move {
+        con.await.unwrap();
+    });
+    odcadmin_client
+        .execute("DROP DATABASE IF EXISTS odctest", &[])
+        .await
+        .unwrap();
+    odcadmin_client
+        .execute("CREATE DATABASE odctest", &[])
+        .await
+        .unwrap();
 }
 
 // Test primary table
@@ -114,6 +133,7 @@ async fn test_rows_present(db: &UserDB) {
 #[tokio::test]
 async fn user_db() {
     let _ = pretty_env_logger::try_init();
+    setup_odctest().await;
     let test_config = get_test_config();
     // Manually created database object - use to control what database we
     // are connecting to
