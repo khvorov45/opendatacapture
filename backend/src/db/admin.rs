@@ -329,8 +329,8 @@ pub enum Access {
 mod tests {
     use super::*;
 
-    // Create a database
-    async fn test_create(clean: bool) -> AdminDB {
+    // Test database config
+    fn gen_test_config() -> tokio_postgres::Config {
         let mut pg_config = tokio_postgres::Config::new();
         pg_config
             .host("localhost")
@@ -338,6 +338,32 @@ mod tests {
             .dbname("odcadmin_test")
             .user("odcapi")
             .password("odcapi");
+        pg_config
+    }
+
+    // Makes sure odcadmin_test database exists.
+    // Assumes odcadmin database exists
+    async fn setup_odcadmin_test() {
+        let mut config = gen_test_config();
+        config.dbname("odcadmin");
+        let (odcadmin_client, con) =
+            config.connect(tokio_postgres::NoTls).await.unwrap();
+        tokio::spawn(async move {
+            con.await.unwrap();
+        });
+        odcadmin_client
+            .execute("DROP DATABASE IF EXISTS odcadmin_test", &[])
+            .await
+            .unwrap();
+        odcadmin_client
+            .execute("CREATE DATABASE odcadmin_test", &[])
+            .await
+            .unwrap();
+    }
+
+    // Create a database
+    async fn test_create(clean: bool) -> AdminDB {
+        let pg_config = gen_test_config();
         let admin_conf = Config {
             config: pg_config,
             clean,
@@ -423,6 +449,7 @@ mod tests {
     #[tokio::test]
     async fn test() {
         let _ = pretty_env_logger::try_init();
+        setup_odcadmin_test().await;
         // Start clean
         log::info!("start clean");
         let test_db = test_create(true).await;
