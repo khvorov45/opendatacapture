@@ -28,7 +28,7 @@ export default function App({
   return (
     <div>
       <ThemeProvider theme={theme}>
-        <Nav darkState={darkState} handleThemeChange={handleThemeChange} />
+        <Nav handleThemeChange={handleThemeChange} />
       </ThemeProvider>
     </div>
   )
