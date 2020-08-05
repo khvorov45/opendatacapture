@@ -64,11 +64,10 @@ jobs:
           CARGO_INCREMENTAL: "0"
           RUSTFLAGS: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests"
           RUSTDOCFLAGS: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests"
-      - id: coverage
-        uses: actions-rs/grcov@v0.1
+      - run: grcov ./backend/target/debug -s . -t lcov --llvm --branch --ignore-not-existing -o ./backend-coverage.info
       - uses: codecov/codecov-action@v1
         with:
-          file: ${{ steps.coverage.outputs.report }}
+          file: ./backend-coverage.info
 
   fmt:
     name: Rustfmt
