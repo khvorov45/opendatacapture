@@ -3,14 +3,14 @@ import ReactDOM from "react-dom"
 import "./index.css"
 import App from "./App"
 import * as serviceWorker from "./serviceWorker"
-import { theme_init } from "./lib/theme"
+import { themeInit } from "./lib/theme"
 
 // Work out the theme before rendering
-theme_init()
+const initPalette = themeInit()
 
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+    <App initPalette={initPalette} />
   </React.StrictMode>,
   document.getElementById("root")
 )

@@ -1,37 +1,35 @@
 import React, { useState } from "react"
-import { createMuiTheme, ThemeProvider } from "@material-ui/core/styles"
-import "./App.css"
-import Switch from "@material-ui/core/Switch"
+import { createMuiTheme, ThemeProvider, Theme } from "@material-ui/core/styles"
+import Nav from "./components/nav"
 
-function App() {
-  const [darkState, setDarkState] = useState(
-    localStorage.getItem("theme") === "dark"
-  )
-  const palletType = darkState ? "dark" : "light"
-  const darkTheme = createMuiTheme({
+function createThemeFromPalette(palette: "dark" | "light"): Theme {
+  return createMuiTheme({
     palette: {
-      type: palletType,
+      type: palette,
     },
   })
+}
+
+export default function App({
+  initPalette,
+}: {
+  initPalette: "dark" | "light"
+}) {
+  const [darkState, setDarkState] = useState(initPalette === "dark")
+  const [theme, setTheme] = useState(createThemeFromPalette(initPalette))
   const handleThemeChange = () => {
     let newDarkState = !darkState
-    let newDarkStateName = newDarkState ? "dark" : "light"
     setDarkState(newDarkState)
-    document.documentElement.setAttribute("theme", newDarkStateName)
-    localStorage.setItem("theme", newDarkStateName)
+    let newPalette: "dark" | "light" = newDarkState ? "dark" : "light"
+    setTheme(createThemeFromPalette(newPalette))
+    document.documentElement.setAttribute("theme", newPalette)
+    localStorage.setItem("theme", newPalette)
   }
   return (
-    <div className="App">
-      <ThemeProvider theme={darkTheme}>
-        <Switch
-          id="themeswitch"
-          data-testid="themeswitch"
-          checked={darkState}
-          onClick={handleThemeChange}
-        />
+    <div>
+      <ThemeProvider theme={theme}>
+        <Nav darkState={darkState} handleThemeChange={handleThemeChange} />
       </ThemeProvider>
     </div>
   )
 }
-
-export default App
