@@ -23,7 +23,12 @@ function App() {
   return (
     <div className="App">
       <ThemeProvider theme={darkTheme}>
-        <Switch checked={darkState} onChange={handleThemeChange} />
+        <Switch
+          id="themeswitch"
+          data-testid="themeswitch"
+          checked={darkState}
+          onClick={handleThemeChange}
+        />
       </ThemeProvider>
     </div>
   )

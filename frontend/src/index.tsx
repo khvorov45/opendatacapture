@@ -3,15 +3,10 @@ import ReactDOM from "react-dom"
 import "./index.css"
 import App from "./App"
 import * as serviceWorker from "./serviceWorker"
+import { theme_init } from "./lib/theme"
 
 // Work out the theme before rendering
-let localtheme = localStorage.getItem("theme")
-if (!localtheme) {
-  localStorage.setItem("theme", "dark")
-  document.documentElement.setAttribute("theme", "dark")
-} else {
-  document.documentElement.setAttribute("theme", localtheme)
-}
+theme_init()
 
 ReactDOM.render(
   <React.StrictMode>
