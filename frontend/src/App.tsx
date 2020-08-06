@@ -2,6 +2,7 @@ import React, { useState } from "react"
 import { createMuiTheme, ThemeProvider, Theme } from "@material-ui/core/styles"
 import Nav from "./components/nav"
 import Login from "./components/login"
+import { IdToken } from "./lib/auth"
 
 function createThemeFromPalette(palette: "dark" | "light"): Theme {
   return createMuiTheme({
@@ -26,10 +27,13 @@ export default function App({
     document.documentElement.setAttribute("theme", newPalette)
     localStorage.setItem("theme", newPalette)
   }
+  function updateCred(cred: IdToken) {
+    console.log(cred)
+  }
   return (
     <ThemeProvider theme={theme}>
       <Nav handleThemeChange={handleThemeChange} />
-      <Login />
+      <Login updateCred={updateCred} />
     </ThemeProvider>
   )
 }

@@ -1,11 +1,11 @@
 import React from "react"
 import { render, fireEvent } from "@testing-library/react"
 import App from "./App"
-import { theme_init } from "./lib/theme"
+import { themeInit } from "./lib/theme"
 
 test("theme switching", () => {
-  theme_init()
-  const { getByTestId } = render(<App />)
+  themeInit()
+  const { getByTestId } = render(<App initPalette="dark" />)
   let themeswitch = getByTestId("themeswitch")
   expect(themeswitch).toBeInTheDocument()
   expect(localStorage.theme).toBe("dark")
