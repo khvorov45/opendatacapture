@@ -41,7 +41,7 @@ function LoginForm({
       loginForm: {
         display: "flex",
         "flex-direction": "column",
-        "max-width": "50ch",
+        "max-width": "50em",
       },
       submitButton: {
         "margin-top": "2em",
@@ -52,14 +52,23 @@ function LoginForm({
   let [email, setEmail] = useState("")
   let [emailError, setEmailError] = useState(false)
   let [emailMsg, setEmailMsg] = useState("")
+  let [passwordError, setPasswordError] = useState(false)
+  let [passwordMsg, setPasswordMsg] = useState("")
   let [password, setPassword] = useState("")
   function handleSubmit() {
     sendEmailPassword({ email: email, password: password })
       .then((tok) => updateToken(tok))
       .catch((e) => {
         if (e.message === "EmailNotFound") {
+          setPasswordError(false)
+          setPasswordMsg("")
           setEmailError(true)
           setEmailMsg("Email not found")
+        } else if (e.message === "WrongPassword") {
+          setEmailError(false)
+          setEmailMsg("")
+          setPasswordError(true)
+          setPasswordMsg("Wrong password")
         } else {
           updateTokenError(e.message)
         }
@@ -77,6 +86,8 @@ function LoginForm({
         autoComplete="email"
       />
       <TextField
+        error={passwordError}
+        helperText={passwordMsg}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         label="Password"
