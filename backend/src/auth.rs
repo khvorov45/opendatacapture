@@ -34,7 +34,7 @@ fn gen_rand_string(len: usize) -> String {
 pub enum PasswordOutcome {
     /// Contains the auth token
     Ok(Token),
-    Wrong,
+    WrongPassword,
     EmailNotFound,
 }
 

@@ -154,7 +154,7 @@ impl AdminDB {
                     self.insert_token(&tok).await?;
                     Ok(auth::PasswordOutcome::Ok(tok))
                 } else {
-                    Ok(auth::PasswordOutcome::Wrong)
+                    Ok(auth::PasswordOutcome::WrongPassword)
                 }
             }
             Err(e) => {
