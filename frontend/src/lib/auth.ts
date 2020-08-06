@@ -28,8 +28,17 @@ export async function sendEmailPassword(cred: EmailPassword): Promise<Token> {
   if (typeof res.data === "string") {
     throw Error(res.data)
   }
-  if (!res.data.Ok) {
+  if (
+    !res.data.Ok ||
+    !res.data.Ok.user ||
+    !res.data.Ok.token ||
+    !res.data.Ok.created
+  ) {
     throw Error("unexpected response data")
   }
-  return res.data.Ok
+  return {
+    user: res.data.Ok.user,
+    token: res.data.Ok.token,
+    created: new Date(res.data.Ok.created),
+  }
 }
