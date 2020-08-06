@@ -57,27 +57,33 @@ function LoginForm({
       .catch((e) => updateTokenError(e.message))
   }
   return (
-    <div className={classes.loginForm}>
+    <form className={classes.loginForm}>
       <TextField
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         label="Email"
         type="email"
+        autoComplete="email"
       />
       <TextField
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         label="Password"
         type="password"
+        autoComplete="current-password"
       />
       <Button
         variant="contained"
         color="primary"
+        type="submit"
         className={classes.submitButton}
-        onClick={(e) => handleSubmit()}
+        onClick={(e) => {
+          e.preventDefault()
+          handleSubmit()
+        }}
       >
         Submit
       </Button>
-    </div>
+    </form>
   )
 }
