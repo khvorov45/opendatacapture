@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 import { createMuiTheme, ThemeProvider, Theme } from "@material-ui/core/styles"
 import Nav from "./components/nav"
+import Login from "./components/login"
 
 function createThemeFromPalette(palette: "dark" | "light"): Theme {
   return createMuiTheme({
@@ -26,10 +27,9 @@ export default function App({
     localStorage.setItem("theme", newPalette)
   }
   return (
-    <div>
-      <ThemeProvider theme={theme}>
-        <Nav handleThemeChange={handleThemeChange} />
-      </ThemeProvider>
-    </div>
+    <ThemeProvider theme={theme}>
+      <Nav handleThemeChange={handleThemeChange} />
+      <Login />
+    </ThemeProvider>
   )
 }

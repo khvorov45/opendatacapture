@@ -8,7 +8,7 @@ export default function Nav({
   handleThemeChange: () => void
 }) {
   return (
-    <AppBar>
+    <AppBar position="sticky">
       <Toolbar>
         <ThemeSwitch handleThemeChange={handleThemeChange} />
       </Toolbar>
