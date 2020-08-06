@@ -35,9 +35,6 @@ export default function App({
     setToken(tok)
     console.log("Login success: " + JSON.stringify(tok))
   }
-  function updateTokenError(msg: string) {
-    console.log("login failed: " + msg)
-  }
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -45,10 +42,7 @@ export default function App({
       <Router>
         <Switch>
           <Route path="/login">
-            <Login
-              updateToken={updateToken}
-              updateTokenError={updateTokenError}
-            />
+            <Login updateToken={updateToken} />
           </Route>
           <Route path="/">
             <Home token={token} />

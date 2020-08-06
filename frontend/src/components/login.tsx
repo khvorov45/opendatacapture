@@ -1,14 +1,12 @@
 import React, { useState } from "react"
-import { TextField, Button } from "@material-ui/core"
+import { TextField, Button, FormHelperText } from "@material-ui/core"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 import { sendEmailPassword, Token } from "../lib/auth"
 
 export default function Login({
   updateToken,
-  updateTokenError,
 }: {
   updateToken: (cred: Token) => void
-  updateTokenError: (msg: string) => void
 }) {
   const useStyles = makeStyles((theme: Theme) =>
     createStyles({
@@ -21,21 +19,12 @@ export default function Login({
   const classes = useStyles()
   return (
     <div className={classes.loginPage}>
-      <LoginForm
-        updateToken={updateToken}
-        updateTokenError={updateTokenError}
-      />
+      <LoginForm updateToken={updateToken} />
     </div>
   )
 }
 
-function LoginForm({
-  updateToken,
-  updateTokenError,
-}: {
-  updateToken: (cred: Token) => void
-  updateTokenError: (msg: string) => void
-}) {
+function LoginForm({ updateToken }: { updateToken: (cred: Token) => void }) {
   const useStyles = makeStyles((theme: Theme) =>
     createStyles({
       loginForm: {
@@ -55,6 +44,7 @@ function LoginForm({
   let [passwordError, setPasswordError] = useState(false)
   let [passwordMsg, setPasswordMsg] = useState("")
   let [password, setPassword] = useState("")
+  let [buttonMsg, setButtonMsg] = useState("")
   function handleSubmit() {
     sendEmailPassword({ email: email, password: password })
       .then((tok) => updateToken(tok))
@@ -70,7 +60,7 @@ function LoginForm({
           setPasswordError(true)
           setPasswordMsg("Wrong password")
         } else {
-          updateTokenError(e.message)
+          setButtonMsg(e.message)
         }
       })
   }
@@ -106,6 +96,7 @@ function LoginForm({
       >
         Submit
       </Button>
+      <FormHelperText error={true}>{buttonMsg}</FormHelperText>
     </form>
   )
 }
