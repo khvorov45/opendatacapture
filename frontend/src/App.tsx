@@ -4,6 +4,8 @@ import Nav from "./components/nav"
 import Login from "./components/login"
 import { Token } from "./lib/auth"
 import CssBaseline from "@material-ui/core/CssBaseline"
+import { BrowserRouter as Router, Switch, Route } from "react-router-dom"
+import Home from "./components/home"
 
 function createThemeFromPalette(palette: "dark" | "light"): Theme {
   return createMuiTheme({
@@ -38,7 +40,19 @@ export default function App({
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Nav handleThemeChange={handleThemeChange} />
-      <Login updateToken={updateToken} updateTokenError={updateTokenError} />
+      <Router>
+        <Switch>
+          <Route path="/login">
+            <Login
+              updateToken={updateToken}
+              updateTokenError={updateTokenError}
+            />
+          </Route>
+          <Route path="/">
+            <Home />
+          </Route>
+        </Switch>
+      </Router>
     </ThemeProvider>
   )
 }
