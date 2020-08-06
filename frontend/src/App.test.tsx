@@ -3,14 +3,18 @@ import { render, fireEvent } from "@testing-library/react"
 import App from "./App"
 import { themeInit } from "./lib/theme"
 
+function expectTheme(theme: "dark" | "light") {
+  expect(localStorage.theme).toBe(theme)
+  expect(document.documentElement.getAttribute("theme")).toBe(theme)
+}
+
 test("theme switching", () => {
+  localStorage.removeItem("theme")
   themeInit()
   const { getByTestId } = render(<App initPalette="dark" />)
   let themeswitch = getByTestId("themeswitch")
   expect(themeswitch).toBeInTheDocument()
-  expect(localStorage.theme).toBe("dark")
-  expect(document.documentElement.getAttribute("theme")).toBe("dark")
+  expectTheme("dark")
   fireEvent.click(themeswitch)
-  expect(localStorage.theme).toBe("light")
-  expect(document.documentElement.getAttribute("theme")).toBe("light")
+  expectTheme("light")
 })
