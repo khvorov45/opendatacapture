@@ -1,12 +1,14 @@
 import React, { useState } from "react"
 import { TextField, Button } from "@material-ui/core"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
-import { sendEmailPassword, IdToken } from "../lib/auth"
+import { sendEmailPassword, Token } from "../lib/auth"
 
 export default function Login({
-  updateCred,
+  updateToken,
+  updateTokenError,
 }: {
-  updateCred: (cred: IdToken) => void
+  updateToken: (cred: Token) => void
+  updateTokenError: (msg: string) => void
 }) {
   const useStyles = makeStyles((theme: Theme) =>
     createStyles({
@@ -19,12 +21,21 @@ export default function Login({
   const classes = useStyles()
   return (
     <div className={classes.loginPage}>
-      <LoginForm updateCred={updateCred} />
+      <LoginForm
+        updateToken={updateToken}
+        updateTokenError={updateTokenError}
+      />
     </div>
   )
 }
 
-function LoginForm({ updateCred }: { updateCred: (cred: IdToken) => void }) {
+function LoginForm({
+  updateToken,
+  updateTokenError,
+}: {
+  updateToken: (cred: Token) => void
+  updateTokenError: (msg: string) => void
+}) {
   const useStyles = makeStyles((theme: Theme) =>
     createStyles({
       loginForm: {
@@ -42,8 +53,8 @@ function LoginForm({ updateCred }: { updateCred: (cred: IdToken) => void }) {
   let [password, setPassword] = useState("")
   function handleSubmit() {
     sendEmailPassword({ email: email, password: password })
-      .then((cred) => console.log("Got cred: " + JSON.stringify(cred)))
-      .catch((e) => console.error("could not get credentials: " + e))
+      .then((tok) => updateToken(tok))
+      .catch((e) => updateTokenError(e.message))
   }
   return (
     <div className={classes.loginForm}>

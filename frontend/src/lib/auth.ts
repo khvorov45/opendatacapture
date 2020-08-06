@@ -10,7 +10,13 @@ export interface IdToken {
   token: string
 }
 
-export async function sendEmailPassword(cred: EmailPassword) {
+export interface Token {
+  user: number
+  token: string
+  created: Date
+}
+
+export async function sendEmailPassword(cred: EmailPassword): Promise<Token> {
   const myHeaders = new Headers()
   myHeaders.append("Content-Type", "application/json")
   myHeaders.append("Accept", "application/json")
@@ -18,5 +24,12 @@ export async function sendEmailPassword(cred: EmailPassword) {
     "http://localhost:4321/authenticate/email-password",
     cred
   )
-  return res.data
+  // Should be an object with Ok field if successful
+  if (typeof res.data === "string") {
+    throw Error(res.data)
+  }
+  if (!res.data.Ok) {
+    throw Error("unexpected response data")
+  }
+  return res.data.Ok
 }
