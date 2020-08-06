@@ -42,7 +42,7 @@ function LoginForm({ updateCred }: { updateCred: (cred: IdToken) => void }) {
   let [password, setPassword] = useState("")
   function handleSubmit() {
     sendEmailPassword({ email: email, password: password })
-      .then((cred) => console.log("Got cred: " + cred))
+      .then((cred) => console.log("Got cred: " + JSON.stringify(cred)))
       .catch((e) => console.error("could not get credentials: " + e))
   }
   return (
