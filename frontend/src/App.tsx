@@ -30,7 +30,9 @@ export default function App({
     document.documentElement.setAttribute("theme", newPalette)
     localStorage.setItem("theme", newPalette)
   }
+  const [token, setToken] = useState<Token | null>(null)
   function updateToken(tok: Token) {
+    setToken(tok)
     console.log("Login success: " + JSON.stringify(tok))
   }
   function updateTokenError(msg: string) {
@@ -49,7 +51,7 @@ export default function App({
             />
           </Route>
           <Route path="/">
-            <Home />
+            <Home token={token} />
           </Route>
         </Switch>
       </Router>
