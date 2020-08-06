@@ -35,3 +35,10 @@ jobs:
       - name: Test
         run: npm test -- --watchAll=false
         working-directory: frontend
+      - name: Generate coverage reports
+        run: npm test -- --watchAll=false --coverage
+        working-directory: frontend
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          directory: ./frontend
