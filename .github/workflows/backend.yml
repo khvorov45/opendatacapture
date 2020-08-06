@@ -1,4 +1,28 @@
-on: [push, pull_request]
+on:
+  push:
+    paths-ignore:
+      - ".vscode/**"
+      - "docs/**"
+      - "frontend/**"
+      - ".gitignore"
+      - "LICENSE"
+      - "README.md"
+      - "backend/.gitignore"
+      - "backend/README.md"
+      - "backend/.vscode/**"
+      - "backend/backup-json/**"
+  pull_request:
+    paths-ignore:
+      - ".vscode/**"
+      - "docs/**"
+      - "frontend/**"
+      - ".gitignore"
+      - "LICENSE"
+      - "README.md"
+      - "backend/.gitignore"
+      - "backend/README.md"
+      - "backend/.vscode/**"
+      - "backend/backup-json/**"
 
 name: Backend CI
 
