@@ -50,15 +50,26 @@ function LoginForm({
   )
   const classes = useStyles()
   let [email, setEmail] = useState("")
+  let [emailError, setEmailError] = useState(false)
+  let [emailMsg, setEmailMsg] = useState("")
   let [password, setPassword] = useState("")
   function handleSubmit() {
     sendEmailPassword({ email: email, password: password })
       .then((tok) => updateToken(tok))
-      .catch((e) => updateTokenError(e.message))
+      .catch((e) => {
+        if (e.message === "EmailNotFound") {
+          setEmailError(true)
+          setEmailMsg("Email not found")
+        } else {
+          updateTokenError(e.message)
+        }
+      })
   }
   return (
     <form className={classes.loginForm}>
       <TextField
+        error={emailError}
+        helperText={emailMsg}
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         label="Email"
