@@ -2,6 +2,7 @@
 
 ![Backend CI](https://github.com/khvorov45/opendatacapture/workflows/Backend%20CI/badge.svg?branch=master)
 ![Frontend CI](https://github.com/khvorov45/opendatacapture/workflows/Frontend%20CI/badge.svg?branch=master)
+[![codecov](https://codecov.io/gh/khvorov45/opendatacapture/branch/master/graph/badge.svg)](https://codecov.io/gh/khvorov45/opendatacapture)
 
 An open-source tool for capturing data in a relational database.
 
