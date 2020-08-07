@@ -1,0 +1,95 @@
+on:
+  push:
+    paths-ignore:
+      - ".vscode/**"
+      - "docs/**"
+      - ".gitignore"
+      - "LICENSE"
+      - "README.md"
+      - "frontend/.gitignore"
+      - "frontend/README.md"
+      - "frontend/.vscode/**"
+      - "backend/.gitignore"
+      - "backend/README.md"
+      - "backend/.vscode/**"
+      - "backend/backup-json/**"
+  pull_request:
+    paths-ignore:
+      - ".vscode/**"
+      - "docs/**"
+      - ".gitignore"
+      - "LICENSE"
+      - "README.md"
+      - "frontend/.gitignore"
+      - "frontend/README.md"
+      - "frontend/.vscode/**"
+      - "backend/.gitignore"
+      - "backend/README.md"
+      - "backend/.vscode/**"
+      - "backend/backup-json/**"
+
+name: Coverage
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14.x
+      - name: Install dependencies
+        run: npm install
+        working-directory: frontend
+      - name: Generate coverage reports
+        run: npm test -- --watchAll=false --coverage
+        working-directory: frontend
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          directory: ./frontend
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:12
+        env:
+          POSTGRES_USER: odcapi
+          POSTGRES_PASSWORD: odcapi
+          POSTGRES_DB: odcadmin
+        ports:
+          - 5432:5432
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+      - name: Collect coverage
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all-features --no-fail-fast
+        env:
+          CARGO_INCREMENTAL: "0"
+          RUSTFLAGS: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests"
+          RUSTDOCFLAGS: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests"
+      - name: Generate coverage report
+        id: coverage
+        uses: actions-rs/grcov@v0.1
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          file: ${{ steps.coverage.outputs.report }}
