@@ -1,7 +1,39 @@
 import React from "react"
-import { render, fireEvent, waitForDomChange } from "@testing-library/react"
+import {
+  render,
+  fireEvent,
+  waitForDomChange,
+  wait,
+} from "@testing-library/react"
 import Login from "./login"
 import { Token } from "../lib/auth"
+
+test("basic functionality", async () => {
+  let token: Token | null = null
+  let token_expected = { user: 1, token: "213", created: new Date() }
+  const { getByTestId } = render(
+    <Login
+      updateToken={(tok: Token) => {
+        token = tok
+      }}
+      tokenFetcher={(c) =>
+        new Promise((resolve, reject) => resolve(token_expected))
+      }
+    />
+  )
+  let emailInput = getByTestId("email-input") as HTMLInputElement
+  let passwordInput = getByTestId("password-input") as HTMLInputElement
+  let submitButton = getByTestId("login-submit")
+  expect(emailInput.value).toBe("")
+  fireEvent.change(emailInput, { target: { value: "admin@example.com" } })
+  expect(emailInput.value).toBe("admin@example.com")
+  expect(passwordInput.value).toBe("")
+  fireEvent.change(passwordInput, { target: { value: "admin" } })
+  expect(passwordInput.value).toBe("admin")
+  expect(token).toBe(null)
+  fireEvent.click(submitButton)
+  await wait(() => expect(token).toBe(token_expected))
+})
 
 test("login when can't connect to server", async () => {
   const { getByTestId } = render(
