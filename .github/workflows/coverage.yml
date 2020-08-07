@@ -32,6 +32,7 @@ name: Coverage
 
 jobs:
   frontend:
+    name: Frontend
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
