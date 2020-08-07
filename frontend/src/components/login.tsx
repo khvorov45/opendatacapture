@@ -57,14 +57,15 @@ function LoginForm({
     tokenFetcher({ email: email, password: password })
       .then((tok) => updateToken(tok))
       .catch((e) => {
+        setPasswordError(false)
+        setPasswordMsg("")
+        setButtonMsg("")
+        setEmailError(false)
+        setEmailMsg("")
         if (e.message === "EmailNotFound") {
-          setPasswordError(false)
-          setPasswordMsg("")
           setEmailError(true)
           setEmailMsg("Email not found")
         } else if (e.message === "WrongPassword") {
-          setEmailError(false)
-          setEmailMsg("")
           setPasswordError(true)
           setPasswordMsg("Wrong password")
         } else {
@@ -75,6 +76,7 @@ function LoginForm({
   return (
     <form className={classes.loginForm} data-testid="login-form">
       <TextField
+        data-testid="email-field"
         error={emailError}
         helperText={emailMsg}
         value={email}
@@ -85,6 +87,7 @@ function LoginForm({
         inputProps={{ "data-testid": "email-input" }}
       />
       <TextField
+        data-testid="password-field"
         error={passwordError}
         helperText={passwordMsg}
         value={password}
