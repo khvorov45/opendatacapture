@@ -24,7 +24,7 @@ export default function Login({
   )
 }
 
-function LoginForm({ updateToken }: { updateToken: (cred: Token) => void }) {
+function LoginForm({ updateToken }: { updateToken: (tok: Token) => void }) {
   const useStyles = makeStyles((theme: Theme) =>
     createStyles({
       loginForm: {
@@ -65,7 +65,7 @@ function LoginForm({ updateToken }: { updateToken: (cred: Token) => void }) {
       })
   }
   return (
-    <form className={classes.loginForm}>
+    <form className={classes.loginForm} data-testid="login-form">
       <TextField
         error={emailError}
         helperText={emailMsg}
@@ -74,6 +74,7 @@ function LoginForm({ updateToken }: { updateToken: (cred: Token) => void }) {
         label="Email"
         type="email"
         autoComplete="email"
+        inputProps={{ "data-testid": "email-input" }}
       />
       <TextField
         error={passwordError}
@@ -83,6 +84,7 @@ function LoginForm({ updateToken }: { updateToken: (cred: Token) => void }) {
         label="Password"
         type="password"
         autoComplete="current-password"
+        inputProps={{ "data-testid": "password-input" }}
       />
       <Button
         variant="contained"
@@ -93,10 +95,13 @@ function LoginForm({ updateToken }: { updateToken: (cred: Token) => void }) {
           e.preventDefault()
           handleSubmit()
         }}
+        data-testid="login-submit"
       >
         Submit
       </Button>
-      <FormHelperText error={true}>{buttonMsg}</FormHelperText>
+      <FormHelperText error={true} data-testid="login-button-msg">
+        {buttonMsg}
+      </FormHelperText>
     </form>
   )
 }
