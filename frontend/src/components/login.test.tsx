@@ -3,8 +3,15 @@ import { render, fireEvent, waitForDomChange } from "@testing-library/react"
 import Login from "./login"
 import { Token } from "../lib/auth"
 
-test("login when server offline", async () => {
-  const { getByTestId } = render(<Login updateToken={(token: Token) => {}} />)
+test("login when can't connect to server", async () => {
+  const { getByTestId } = render(
+    <Login
+      updateToken={(token: Token) => {}}
+      tokenFetcher={(c) =>
+        new Promise((resolve, reject) => reject(Error("Network Error")))
+      }
+    />
+  )
   let emailInput = getByTestId("email-input")
   let passwordInput = getByTestId("password-input")
   let submitButton = getByTestId("login-submit")

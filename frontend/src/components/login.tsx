@@ -1,12 +1,14 @@
 import React, { useState } from "react"
 import { TextField, Button, FormHelperText } from "@material-ui/core"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
-import { sendEmailPassword, Token } from "../lib/auth"
+import { EmailPassword, Token } from "../lib/auth"
 
 export default function Login({
   updateToken,
+  tokenFetcher,
 }: {
-  updateToken: (cred: Token) => void
+  updateToken: (tok: Token) => void
+  tokenFetcher: (cred: EmailPassword) => Promise<Token>
 }) {
   const useStyles = makeStyles((theme: Theme) =>
     createStyles({
@@ -19,12 +21,18 @@ export default function Login({
   const classes = useStyles()
   return (
     <div className={classes.loginPage}>
-      <LoginForm updateToken={updateToken} />
+      <LoginForm updateToken={updateToken} tokenFetcher={tokenFetcher} />
     </div>
   )
 }
 
-function LoginForm({ updateToken }: { updateToken: (tok: Token) => void }) {
+function LoginForm({
+  updateToken,
+  tokenFetcher,
+}: {
+  updateToken: (tok: Token) => void
+  tokenFetcher: (cred: EmailPassword) => Promise<Token>
+}) {
   const useStyles = makeStyles((theme: Theme) =>
     createStyles({
       loginForm: {
@@ -46,7 +54,7 @@ function LoginForm({ updateToken }: { updateToken: (tok: Token) => void }) {
   let [password, setPassword] = useState("")
   let [buttonMsg, setButtonMsg] = useState("")
   function handleSubmit() {
-    sendEmailPassword({ email: email, password: password })
+    tokenFetcher({ email: email, password: password })
       .then((tok) => updateToken(tok))
       .catch((e) => {
         if (e.message === "EmailNotFound") {
