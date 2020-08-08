@@ -96,11 +96,11 @@ jobs:
         with:
           toolchain: stable
           override: true
-      - name: Install cargo-tarpaulin
+      - name: Install tarpaulin
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: tarpaulin
+          args: cargo-tarpaulin
       - name: Generate coverage report
         uses: actions-rs/cargo@v1
         with:
