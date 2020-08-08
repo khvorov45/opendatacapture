@@ -96,7 +96,7 @@ jobs:
         with:
           toolchain: stable
           override: true
-      - name: Install tarpaulin
+      - name: Install cargo-tarpaulin
         uses: actions-rs/cargo@v1
         with:
           command: install
