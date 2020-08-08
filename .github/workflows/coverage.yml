@@ -13,6 +13,8 @@ on:
       - "backend/README.md"
       - "backend/.vscode/**"
       - "backend/backup-json/**"
+      - ".github/workflows/backend.yml"
+      - ".github/workflows/frontend.yml"
   pull_request:
     paths-ignore:
       - ".vscode/**"
@@ -27,6 +29,8 @@ on:
       - "backend/README.md"
       - "backend/.vscode/**"
       - "backend/backup-json/**"
+      - ".github/workflows/backend.yml"
+      - ".github/workflows/frontend.yml"
 
 name: Coverage
 

@@ -11,6 +11,8 @@ on:
       - "backend/README.md"
       - "backend/.vscode/**"
       - "backend/backup-json/**"
+      - ".github/workflows/frontend.yml"
+      - ".github/workflows/coverage.yml"
   pull_request:
     paths-ignore:
       - ".vscode/**"
@@ -23,6 +25,8 @@ on:
       - "backend/README.md"
       - "backend/.vscode/**"
       - "backend/backup-json/**"
+      - ".github/workflows/frontend.yml"
+      - ".github/workflows/coverage.yml"
 
 name: Backend CI
 

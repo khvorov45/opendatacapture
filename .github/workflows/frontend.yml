@@ -10,6 +10,8 @@ on:
       - "frontend/.gitignore"
       - "frontend/README.md"
       - "frontend/.vscode/**"
+      - ".github/workflows/backend.yml"
+      - ".github/workflows/coverage.yml"
   pull_request:
     paths-ignore:
       - ".vscode/**"
@@ -21,6 +23,8 @@ on:
       - "frontend/.gitignore"
       - "frontend/README.md"
       - "frontend/.vscode/**"
+      - ".github/workflows/backend.yml"
+      - ".github/workflows/coverage.yml"
 
 name: Frontend CI
 
