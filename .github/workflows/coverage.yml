@@ -51,7 +51,7 @@ jobs:
       - name: Install dependencies
         run: npm install
         working-directory: frontend
-      - name: Generate coverage reports
+      - name: Generate coverage report
         run: npm test -- --watchAll=false --coverage
         working-directory: frontend
       - name: Upload coverage to Codecov
@@ -91,24 +91,22 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
-      - name: Install nightly
+      - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           override: true
-      - name: Collect coverage
+      - name: Install tarpaulin
         uses: actions-rs/cargo@v1
         with:
-          command: test
-          args: --all-features --no-fail-fast
-        env:
-          CARGO_INCREMENTAL: "0"
-          RUSTFLAGS: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests"
-          RUSTDOCFLAGS: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests"
+          command: install
+          args: tarpaulin
       - name: Generate coverage report
-        id: coverage
-        uses: actions-rs/grcov@v0.1
+        uses: actions-rs/cargo@v1
+        with:
+          command: tarpaulin
+          args: --out Lcov
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
         with:
-          file: ${{ steps.coverage.outputs.report }}
+          file: lcov.info
