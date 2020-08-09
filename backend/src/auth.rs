@@ -114,6 +114,21 @@ pub fn parse_basic_header(header_content: &str) -> Result<IdToken> {
     })
 }
 
+#[derive(
+    serde::Deserialize,
+    serde::Serialize,
+    Debug,
+    Clone,
+    PartialEq,
+    PartialOrd,
+    strum_macros::Display,
+    strum_macros::EnumString,
+)]
+pub enum Access {
+    User,
+    Admin,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -133,5 +148,10 @@ mod tests {
     fn test_parse_basic_header() {
         test_parse_basic_header_tok("pass123");
         test_parse_basic_header_tok("123: sad gg")
+    }
+    #[test]
+    fn test_access() {
+        assert!(Access::Admin > Access::User);
+        assert_eq!(Access::Admin, Access::Admin);
     }
 }

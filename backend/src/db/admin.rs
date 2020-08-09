@@ -110,7 +110,10 @@ impl AdminDB {
             .execute(
                 "INSERT INTO \"access\" (\"access_type\") \
                 VALUES ($1), ($2)",
-                &[&Access::Admin.to_string(), &Access::User.to_string()],
+                &[
+                    &auth::Access::Admin.to_string(),
+                    &auth::Access::User.to_string(),
+                ],
             )
             .await?;
         Ok(())
@@ -126,7 +129,8 @@ impl AdminDB {
             admin_email,
             admin_password
         );
-        let admin = User::new(admin_email, admin_password, Access::Admin)?;
+        let admin =
+            User::new(admin_email, admin_password, auth::Access::Admin)?;
         self.insert_user(&admin).await?;
         Ok(())
     }
@@ -260,7 +264,7 @@ impl AdminDB {
     pub async fn verify_access(
         &self,
         cred: &auth::IdToken,
-        req_access: Access,
+        req_access: auth::Access,
     ) -> Result<()> {
         use crate::error::Unauthorized;
         match self.verify_id_token(cred).await? {
@@ -284,12 +288,16 @@ impl AdminDB {
 pub struct User {
     id: i32,
     email: String,
-    access: Access,
+    access: auth::Access,
     password_hash: String,
 }
 
 impl User {
-    pub fn new(email: &str, password: &str, access: Access) -> Result<Self> {
+    pub fn new(
+        email: &str,
+        password: &str,
+        access: auth::Access,
+    ) -> Result<Self> {
         let u = Self {
             id: 1, // Disregard since postgres will handle auto-incrementing
             email: email.to_string(),
@@ -303,26 +311,11 @@ impl User {
         let u = Self {
             id: row.get("id"),
             email: row.get("email"),
-            access: Access::from_str(row.get("access"))?,
+            access: auth::Access::from_str(row.get("access"))?,
             password_hash: row.get("password_hash"),
         };
         Ok(u)
     }
-}
-
-#[derive(
-    serde::Deserialize,
-    serde::Serialize,
-    Debug,
-    Clone,
-    PartialEq,
-    PartialOrd,
-    strum_macros::Display,
-    strum_macros::EnumString,
-)]
-pub enum Access {
-    User,
-    Admin,
 }
 
 #[cfg(test)]
@@ -440,11 +433,6 @@ mod tests {
             panic!("")
         }
     }
-    #[test]
-    fn test_access() {
-        assert!(Access::Admin > Access::User);
-        assert_eq!(Access::Admin, Access::Admin);
-    }
 
     #[tokio::test]
     async fn test() {
@@ -475,7 +463,8 @@ mod tests {
         // Insert a regular user
         test_db
             .insert_user(
-                &User::new("user@example.com", "user", Access::User).unwrap(),
+                &User::new("user@example.com", "user", auth::Access::User)
+                    .unwrap(),
             )
             .await
             .unwrap();
@@ -498,7 +487,7 @@ mod tests {
                     id: *user_tok.user(),
                     token: user_tok.token().clone(),
                 },
-                Access::User,
+                auth::Access::User,
             )
             .await;
         assert!(res.is_ok());
@@ -508,7 +497,7 @@ mod tests {
                     id: *user_tok.user(),
                     token: user_tok.token().clone(),
                 },
-                Access::Admin,
+                auth::Access::Admin,
             )
             .await
             .unwrap_err();

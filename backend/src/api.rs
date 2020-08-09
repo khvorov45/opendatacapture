@@ -86,7 +86,7 @@ fn auth_header(
 
 fn access(
     admindb: std::sync::Arc<db::admin::AdminDB>,
-    req_access: crate::db::admin::Access,
+    req_access: crate::auth::Access,
 ) -> impl Filter<Extract = ((),), Error = warp::Rejection> + Clone {
     auth_header().and_then(move |cred: auth::IdToken| {
         let admin_database = admindb.clone();
@@ -105,7 +105,7 @@ pub fn get_users(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::get()
         .and(warp::path("users"))
-        .and(access(admindb.clone(), crate::db::admin::Access::Admin))
+        .and(access(admindb.clone(), crate::auth::Access::Admin))
         .and_then(move |()| {
             let admindb = admindb.clone();
             async move {
