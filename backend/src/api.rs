@@ -32,8 +32,7 @@ fn generate_session_token(
     db: std::sync::Arc<db::admin::AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
-        .and(warp::path("auth"))
-        .and(warp::path("session-token"))
+        .and(warp::path!("auth" / "session-token"))
         .and(warp::body::json())
         .and_then(move |cred: auth::EmailPassword| {
             let db = db.clone();
@@ -50,7 +49,7 @@ fn generate_session_token(
 fn get_user_by_token(
     db: std::sync::Arc<db::admin::AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::post()
+    warp::get()
         .and(warp::path!("get" / "user" / "by" / "token" / String))
         .and_then(move |tok: String| {
             let db = db.clone();
@@ -98,7 +97,7 @@ pub fn get_users(
     admindb: std::sync::Arc<db::admin::AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::get()
-        .and(warp::path("users"))
+        .and(warp::path!("get" / "users"))
         .and(sufficient_access(admindb.clone(), auth::Access::Admin))
         .and_then(move |()| {
             let admindb = admindb.clone();
