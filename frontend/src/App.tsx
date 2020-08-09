@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { createMuiTheme, ThemeProvider, Theme } from "@material-ui/core/styles"
 import Nav from "./components/nav"
 import Login from "./components/login"
-import { Token, sendEmailPassword } from "./lib/auth"
+import { Token, sendEmailPassword, tokenValidator } from "./lib/auth"
 import CssBaseline from "@material-ui/core/CssBaseline"
 import { BrowserRouter as Router, Switch, Route } from "react-router-dom"
 import Home from "./components/home"
@@ -17,8 +17,10 @@ function createThemeFromPalette(palette: "dark" | "light"): Theme {
 
 export default function App({
   initPalette,
+  initToken,
 }: {
   initPalette: "dark" | "light"
+  initToken: Token | null
 }) {
   const [darkState, setDarkState] = useState(initPalette === "dark")
   const [theme, setTheme] = useState(createThemeFromPalette(initPalette))
@@ -30,10 +32,10 @@ export default function App({
     document.documentElement.setAttribute("theme", newPalette)
     localStorage.setItem("theme", newPalette)
   }
-  const [token, setToken] = useState<Token | null>(null)
+  const [token, setToken] = useState<Token | null>(initToken)
   function updateToken(tok: Token) {
     setToken(tok)
-    console.log("Login success: " + JSON.stringify(tok))
+    localStorage.setItem("token", JSON.stringify(tok))
   }
   return (
     <ThemeProvider theme={theme}>
@@ -45,7 +47,7 @@ export default function App({
             <Login updateToken={updateToken} tokenFetcher={sendEmailPassword} />
           </Route>
           <Route path="/">
-            <Home token={token} />
+            <Home token={token} tokenValidator={tokenValidator} />
           </Route>
         </Switch>
       </Router>

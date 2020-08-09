@@ -16,10 +16,13 @@ export interface Token {
   created: Date
 }
 
+export enum Access {
+  Unauthorized,
+  User,
+  Admin,
+}
+
 export async function sendEmailPassword(cred: EmailPassword): Promise<Token> {
-  const myHeaders = new Headers()
-  myHeaders.append("Content-Type", "application/json")
-  myHeaders.append("Accept", "application/json")
   const res = await axios.post(
     "http://localhost:4321/authenticate/email-password",
     cred
@@ -41,4 +44,9 @@ export async function sendEmailPassword(cred: EmailPassword): Promise<Token> {
     token: res.data.Ok.token,
     created: new Date(res.data.Ok.created),
   }
+}
+
+export async function tokenValidator(tok: Token): Promise<Access> {
+  // @UNIMPLEMENTED
+  return Access.Admin
 }
