@@ -20,5 +20,9 @@ export default function Home({
   if (!access) {
     return <></>
   }
-  return <p>This is the homepage</p>
+  return (
+    <p>
+      This is the homepage for user id {token.user} with access {access}
+    </p>
+  )
 }
