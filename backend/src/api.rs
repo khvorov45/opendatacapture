@@ -14,17 +14,17 @@ pub fn routes(
         warp::http::header::HeaderValue::from_static("Content-Type"),
     );
     let opts = warp::options().map(warp::reply);
-    authenticate_email_password(db.clone())
+    auth_email_password(db.clone())
         .or(get_users(db))
         .or(opts)
         .with(warp::reply::with::headers(headers))
 }
 
-fn authenticate_email_password(
+fn auth_email_password(
     db: std::sync::Arc<db::admin::AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
-        .and(warp::path("authenticate"))
+        .and(warp::path("auth"))
         .and(warp::path("email-password"))
         .and(token(db))
         .map(|t| warp::reply::json(&t))
