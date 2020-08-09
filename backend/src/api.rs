@@ -4,56 +4,30 @@ use warp::Filter;
 pub fn routes(
     db: std::sync::Arc<db::admin::AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    authenticate_email_password::route(db.clone()).or(get_users(db))
+    let mut headers = warp::http::header::HeaderMap::new();
+    headers.insert(
+        "Access-Control-Allow-Origin",
+        warp::http::header::HeaderValue::from_static("*"),
+    );
+    headers.insert(
+        "Access-Control-Allow-Headers",
+        warp::http::header::HeaderValue::from_static("Content-Type"),
+    );
+    let opts = warp::options().map(warp::reply);
+    authenticate_email_password(db.clone())
+        .or(get_users(db))
+        .or(opts)
+        .with(warp::reply::with::headers(headers))
 }
 
-mod authenticate_email_password {
-    use super::token;
-    use crate::db;
-    use warp::Filter;
-
-    pub fn route(
-        db: std::sync::Arc<db::admin::AdminDB>,
-    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
-    {
-        opts().or(post(db))
-    }
-
-    fn opts(
-    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
-    {
-        let mut headers = warp::http::header::HeaderMap::new();
-        headers.insert(
-            "Access-Control-Allow-Origin",
-            warp::http::header::HeaderValue::from_static("*"),
-        );
-        headers.insert(
-            "Access-Control-Allow-Headers",
-            warp::http::header::HeaderValue::from_static("Content-Type"),
-        );
-        warp::options()
-            .and(warp::path("authenticate"))
-            .and(warp::path("email-password"))
-            .map(warp::reply)
-            .with(warp::reply::with::headers(headers))
-    }
-
-    fn post(
-        db: std::sync::Arc<db::admin::AdminDB>,
-    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
-    {
-        let mut headers = warp::http::header::HeaderMap::new();
-        headers.insert(
-            "Access-Control-Allow-Origin",
-            warp::http::header::HeaderValue::from_static("*"),
-        );
-        warp::post()
-            .and(warp::path("authenticate"))
-            .and(warp::path("email-password"))
-            .and(token(db))
-            .map(|t| warp::reply::json(&t))
-            .with(warp::reply::with::headers(headers))
-    }
+fn authenticate_email_password(
+    db: std::sync::Arc<db::admin::AdminDB>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::post()
+        .and(warp::path("authenticate"))
+        .and(warp::path("email-password"))
+        .and(token(db))
+        .map(|t| warp::reply::json(&t))
 }
 
 fn token(
