@@ -35,6 +35,17 @@ export function tokenFromString(s: string): Token {
   return tokenFromObject(JSON.parse(s))
 }
 
+export function tokenInit(): Token | null {
+  const initTokenString = localStorage.getItem("token")
+  let initToken: Token | null = null
+  if (initTokenString) {
+    try {
+      initToken = tokenFromString(initTokenString)
+    } catch (e) {}
+  }
+  return initToken
+}
+
 export enum Access {
   Unauthorized,
   User,

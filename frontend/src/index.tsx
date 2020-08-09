@@ -4,19 +4,13 @@ import "./index.css"
 import App from "./App"
 import * as serviceWorker from "./serviceWorker"
 import { themeInit } from "./lib/theme"
-import { tokenFromString, Token } from "./lib/auth"
+import { tokenInit } from "./lib/auth"
 
 // Work out the theme before rendering
 const initPalette = themeInit()
 
 // Work out the initial token
-const initTokenString = localStorage.getItem("token")
-let initToken: Token | null = null
-if (initTokenString) {
-  try {
-    initToken = tokenFromString(initTokenString)
-  } catch (e) {}
-}
+const initToken = tokenInit()
 
 ReactDOM.render(
   <React.StrictMode>
