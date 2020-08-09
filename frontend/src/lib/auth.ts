@@ -54,14 +54,14 @@ export enum Access {
 
 export async function tokenFetcher(cred: EmailPassword): Promise<Token> {
   const res = await axios.post(
-    "http://localhost:4321/authenticate/email-password",
+    "http://localhost:4321/auth/email-password",
     cred
   )
-  // Should be an object with Ok field if successful
+  // Should be an object if successful
   if (typeof res.data === "string") {
     throw Error(res.data)
   }
-  return tokenFromObject(res.data.Ok)
+  return tokenFromObject(res.data)
 }
 
 export async function tokenValidator(tok: Token): Promise<Access> {
