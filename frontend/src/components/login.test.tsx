@@ -7,19 +7,27 @@ import {
 } from "@testing-library/react"
 import Login from "./login"
 import { Token } from "../lib/auth"
+import { BrowserRouter, Switch, Route, Redirect } from "react-router-dom"
 
 test("basic functionality", async () => {
   let token: Token | null = null
   let token_expected = { user: 1, token: "213", created: new Date() }
-  const { getByTestId } = render(
-    <Login
-      updateToken={(tok: Token) => {
-        token = tok
-      }}
-      tokenFetcher={(c) =>
-        new Promise((resolve, reject) => resolve(token_expected))
-      }
-    />
+  let { getByTestId } = render(
+    <BrowserRouter>
+      <Switch>
+        <Route path="/login">
+          <Login
+            updateToken={(t) => (token = t)}
+            tokenFetcher={(c) =>
+              new Promise((resolve, reject) => resolve(token_expected))
+            }
+          />
+        </Route>
+        <Route path="/">
+          <Redirect to="/login" />
+        </Route>
+      </Switch>
+    </BrowserRouter>
   )
   let emailInput = getByTestId("email-input") as HTMLInputElement
   let passwordInput = getByTestId("password-input") as HTMLInputElement
@@ -32,7 +40,9 @@ test("basic functionality", async () => {
   expect(passwordInput.value).toBe("admin")
   expect(token).toBe(null)
   fireEvent.click(submitButton)
-  await wait(() => expect(token).toBe(token_expected))
+  await wait(() => {
+    expect(token).toBe(token_expected)
+  })
 })
 
 test("login when can't connect to server", async () => {
