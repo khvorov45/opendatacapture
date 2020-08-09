@@ -8,7 +8,8 @@ pub fn routes(
 }
 
 mod authenticate_email_password {
-    use crate::{auth, db};
+    use super::token;
+    use crate::db;
     use warp::Filter;
 
     pub fn route(
@@ -49,21 +50,38 @@ mod authenticate_email_password {
         warp::post()
             .and(warp::path("authenticate"))
             .and(warp::path("email-password"))
-            .and(warp::body::json())
-            .and_then(move |cred: auth::EmailPassword| {
-                let admin_database = db.clone();
-                async move {
-                    let auth =
-                        admin_database.authenticate_email_password(cred).await;
-                    match auth {
-                        Ok(res) => Ok(warp::reply::json(&res)),
-                        Err(crate::Error::NoSuchUser(_)) => Err(warp::reject()),
-                        Err(e) => Err(warp::reject::custom(e)),
-                    }
-                }
-            })
+            .and(token(db))
+            .map(|t| warp::reply::json(&t))
             .with(warp::reply::with::headers(headers))
     }
+}
+
+fn token(
+    admindb: std::sync::Arc<db::admin::AdminDB>,
+) -> impl Filter<Extract = (auth::Token,), Error = warp::Rejection> + Clone {
+    use crate::error::Unauthorized;
+    warp::body::json().and_then(move |cred: auth::EmailPassword| {
+        let admin_database = admindb.clone();
+        async move {
+            let auth = admin_database.verify_email_password(cred).await;
+            match auth {
+                Ok(res) => match res {
+                    auth::PasswordOutcome::Ok(t) => Ok(t),
+                    auth::PasswordOutcome::WrongPassword => {
+                        Err(warp::reject::custom(Error::Unauthorized(
+                            Unauthorized::WrongPassword,
+                        )))
+                    }
+                    auth::PasswordOutcome::EmailNotFound => {
+                        Err(warp::reject::custom(Error::Unauthorized(
+                            Unauthorized::EmailNotFound,
+                        )))
+                    }
+                },
+                Err(e) => Err(warp::reject::custom(e)),
+            }
+        }
+    })
 }
 
 fn auth_header(

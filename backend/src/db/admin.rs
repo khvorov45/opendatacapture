@@ -144,7 +144,7 @@ impl AdminDB {
         Ok(())
     }
     /// Authenticates an email/password combination
-    pub async fn authenticate_email_password(
+    pub async fn verify_email_password(
         &self,
         cred: auth::EmailPassword,
     ) -> Result<auth::PasswordOutcome> {
@@ -423,7 +423,7 @@ mod tests {
     async fn verify_password(db: &AdminDB) -> auth::Token {
         log::info!("verifying that admin@example.com password is admin");
         let tok = db
-            .authenticate_email_password(auth::EmailPassword {
+            .verify_email_password(auth::EmailPassword {
                 email: "admin@example.com".to_string(),
                 password: "admin".to_string(),
             })
@@ -472,7 +472,7 @@ mod tests {
             .await
             .unwrap();
         let auth_res = test_db
-            .authenticate_email_password(auth::EmailPassword {
+            .verify_email_password(auth::EmailPassword {
                 email: "user@example.com".to_string(),
                 password: "user".to_string(),
             })

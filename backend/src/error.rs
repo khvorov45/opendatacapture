@@ -62,21 +62,18 @@ pub enum Error {
 
 impl warp::reject::Reject for Error {}
 
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    serde::Serialize,
+    serde::Deserialize,
+    strum_macros::Display,
+)]
 pub enum Unauthorized {
     TokenTooOld,
     TokenNotFound,
     InsufficientAccess,
-}
-
-impl std::fmt::Display for Unauthorized {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Unauthorized::TokenTooOld => write!(f, "token too old"),
-            Unauthorized::TokenNotFound => write!(f, "token not found"),
-            Unauthorized::InsufficientAccess => {
-                write!(f, "insufficient access")
-            }
-        }
-    }
+    WrongPassword,
+    EmailNotFound,
 }
