@@ -15,6 +15,7 @@ pub fn routes(
     );
     let opts = warp::options().map(warp::reply);
     auth_email_password(db.clone())
+        .or(auth_id_token(db.clone()))
         .or(get_users(db))
         .or(opts)
         .with(warp::reply::with::headers(headers))
@@ -28,6 +29,20 @@ fn auth_email_password(
         .and(warp::path("email-password"))
         .and(token(db))
         .map(|t| warp::reply::json(&t))
+}
+
+fn auth_id_token(
+    db: std::sync::Arc<db::admin::AdminDB>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::post()
+        .and(warp::path("auth"))
+        .and(warp::path("id-token"))
+        .and(warp::body::json())
+        .and_then(move |cred: auth::IdToken| {
+            let admin_database = db.clone();
+            async move { extract_access(admin_database, &cred).await }
+        })
+        .map(|a| warp::reply::json(&a))
 }
 
 fn token(
@@ -79,28 +94,29 @@ fn auth_header(
 fn access(
     admindb: std::sync::Arc<db::admin::AdminDB>,
 ) -> impl Filter<Extract = (auth::Access,), Error = warp::Rejection> + Clone {
-    use crate::error::Unauthorized;
     auth_header().and_then(move |cred: auth::IdToken| {
         let admin_database = admindb.clone();
-        async move {
-            match admin_database.verify_id_token(&cred).await {
-                Ok(out) => match out {
-                    auth::TokenOutcome::Ok(a) => Ok(a),
-                    auth::TokenOutcome::TokenTooOld => {
-                        Err(warp::reject::custom(Error::Unauthorized(
-                            Unauthorized::TokenTooOld,
-                        )))
-                    }
-                    auth::TokenOutcome::TokenNotFound => {
-                        Err(warp::reject::custom(Error::Unauthorized(
-                            Unauthorized::TokenNotFound,
-                        )))
-                    }
-                },
-                Err(e) => Err(warp::reject::custom(e)),
-            }
-        }
+        async move { extract_access(admin_database, &cred).await }
     })
+}
+
+async fn extract_access(
+    admindb: std::sync::Arc<db::admin::AdminDB>,
+    cred: &auth::IdToken,
+) -> Result<auth::Access, warp::Rejection> {
+    use crate::error::Unauthorized;
+    match admindb.verify_id_token(&cred).await {
+        Ok(out) => match out {
+            auth::TokenOutcome::Ok(a) => Ok(a),
+            auth::TokenOutcome::TokenTooOld => Err(warp::reject::custom(
+                Error::Unauthorized(Unauthorized::TokenTooOld),
+            )),
+            auth::TokenOutcome::TokenNotFound => Err(warp::reject::custom(
+                Error::Unauthorized(Unauthorized::TokenNotFound),
+            )),
+        },
+        Err(e) => Err(warp::reject::custom(e)),
+    }
 }
 
 fn sufficient_access(
