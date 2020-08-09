@@ -1,17 +1,19 @@
 use crate::{auth, db, Error};
 use warp::Filter;
 
+/// All routes
 pub fn routes(
     db: std::sync::Arc<db::admin::AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let opts = warp::options().map(warp::reply);
-    auth_email_password(db.clone())
-        .or(auth_id_token(db.clone()))
+    generate_session_token(db.clone())
+        .or(get_user_by_token(db.clone()))
         .or(get_users(db))
         .or(opts)
         .with(access_headers())
 }
 
+/// CORS headers
 fn access_headers() -> warp::filters::reply::WithHeaders {
     let mut headers = warp::http::header::HeaderMap::new();
     headers.insert(
@@ -25,131 +27,79 @@ fn access_headers() -> warp::filters::reply::WithHeaders {
     warp::reply::with::headers(headers)
 }
 
-fn auth_email_password(
+/// Generate session token. Returns only the string.
+fn generate_session_token(
     db: std::sync::Arc<db::admin::AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
         .and(warp::path("auth"))
-        .and(warp::path("email-password"))
-        .and(token(db))
-        .map(|t| warp::reply::json(&t))
-}
-
-fn auth_id_token(
-    db: std::sync::Arc<db::admin::AdminDB>,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::post()
-        .and(warp::path("auth"))
-        .and(warp::path("id-token"))
+        .and(warp::path("session-token"))
         .and(warp::body::json())
-        .and_then(move |cred: auth::IdToken| {
-            let admin_database = db.clone();
-            async move { extract_access(admin_database, &cred).await }
-        })
-        .map(|a| warp::reply::json(&a))
-}
-
-fn token(
-    admindb: std::sync::Arc<db::admin::AdminDB>,
-) -> impl Filter<Extract = (auth::Token,), Error = warp::Rejection> + Clone {
-    use crate::error::Unauthorized;
-    warp::body::json().and_then(move |cred: auth::EmailPassword| {
-        let admin_database = admindb.clone();
-        async move {
-            let auth = admin_database.verify_email_password(cred).await;
-            match auth {
-                Ok(res) => match res {
-                    auth::PasswordOutcome::Ok(t) => Ok(t),
-                    auth::PasswordOutcome::WrongPassword => {
-                        Err(warp::reject::custom(Error::Unauthorized(
-                            Unauthorized::WrongPassword,
-                        )))
-                    }
-                    auth::PasswordOutcome::EmailNotFound => {
-                        Err(warp::reject::custom(Error::Unauthorized(
-                            Unauthorized::EmailNotFound,
-                        )))
-                    }
-                },
-                Err(e) => Err(warp::reject::custom(e)),
-            }
-        }
-    })
-}
-
-fn auth_header(
-) -> impl Filter<Extract = (auth::IdToken,), Error = warp::Rejection> + Clone {
-    warp::header::<String>("Authorization").and_then(
-        move |auth_header: String| {
-            log::info!("{}", auth_header);
+        .and_then(move |cred: auth::EmailPassword| {
+            let db = db.clone();
             async move {
-                match auth::parse_basic_header(auth_header.as_str()) {
-                    Ok(cred) => Ok(cred),
-                    Err(e) => {
-                        log::error!("{}", e);
-                        Err(warp::reject::custom(e))
-                    }
+                match db.generate_session_token(cred).await {
+                    Ok(t) => Ok(warp::reply::json(t.token())),
+                    Err(e) => Err(warp::reject::custom(e)),
                 }
             }
-        },
-    )
+        })
 }
 
-fn access(
-    admindb: std::sync::Arc<db::admin::AdminDB>,
-) -> impl Filter<Extract = (auth::Access,), Error = warp::Rejection> + Clone {
-    auth_header().and_then(move |cred: auth::IdToken| {
-        let admin_database = admindb.clone();
-        async move { extract_access(admin_database, &cred).await }
-    })
+/// Get user by token
+fn get_user_by_token(
+    db: std::sync::Arc<db::admin::AdminDB>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::post()
+        .and(warp::path!("get" / "user" / "by" / "token" / String))
+        .and_then(move |tok: String| {
+            let db = db.clone();
+            async move {
+                match db.get_user_by_token(tok.as_str()).await {
+                    Ok(u) => Ok(warp::reply::json(&u)),
+                    Err(e) => Err(warp::reject::custom(e)),
+                }
+            }
+        })
 }
 
-async fn extract_access(
-    admindb: std::sync::Arc<db::admin::AdminDB>,
-    cred: &auth::IdToken,
-) -> Result<auth::Access, warp::Rejection> {
-    use crate::error::Unauthorized;
-    match admindb.verify_id_token(&cred).await {
-        Ok(out) => match out {
-            auth::TokenOutcome::Ok(a) => Ok(a),
-            auth::TokenOutcome::TokenTooOld => Err(warp::reject::custom(
-                Error::Unauthorized(Unauthorized::TokenTooOld),
-            )),
-            auth::TokenOutcome::TokenNotFound => Err(warp::reject::custom(
-                Error::Unauthorized(Unauthorized::TokenNotFound),
-            )),
-        },
-        Err(e) => Err(warp::reject::custom(e)),
-    }
-}
-
+/// Rejects if the access (as per the Authorization header) is not high enough
 fn sufficient_access(
-    admindb: std::sync::Arc<db::admin::AdminDB>,
+    db: std::sync::Arc<db::admin::AdminDB>,
     req_access: crate::auth::Access,
 ) -> impl Filter<Extract = ((),), Error = warp::Rejection> + Clone {
-    access(admindb).and_then(move |a: auth::Access| {
-        let req_access = req_access.clone();
-        async move {
-            if a < req_access {
-                Err(warp::reject::custom(Error::Unauthorized(
-                    crate::error::Unauthorized::InsufficientAccess,
-                )))
+    warp::header::<String>("Authorization")
+        .and_then(move |tok_raw: String| async move {
+            match auth::parse_bearer_header(tok_raw.as_str()) {
+                Ok(t) => Ok(t.to_string()),
+                Err(e) => Err(warp::reject::custom(e)),
+            }
+        })
+        .and_then(move |tok: String| {
+            let db = db.clone();
+            async move {
+                match db.get_user_by_token(tok.as_str()).await {
+                    Ok(u) => Ok(u),
+                    Err(e) => Err(warp::reject::custom(e)),
+                }
+            }
+        })
+        .and_then(move |u: db::admin::User| async move {
+            if u.access() < req_access {
+                Err(warp::reject::custom(Error::InsufficientAccess))
             } else {
                 Ok(())
             }
-        }
-    })
+        })
 }
 
+/// Get all users
 pub fn get_users(
     admindb: std::sync::Arc<db::admin::AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::get()
         .and(warp::path("users"))
-        .and(sufficient_access(
-            admindb.clone(),
-            crate::auth::Access::Admin,
-        ))
+        .and(sufficient_access(admindb.clone(), auth::Access::Admin))
         .and_then(move |()| {
             let admindb = admindb.clone();
             async move {

@@ -29,6 +29,15 @@ fn gen_rand_string(len: usize) -> String {
         .collect()
 }
 
+/// Parses the bearer header
+pub fn parse_bearer_header(raw: &str) -> Result<&str> {
+    let header: Vec<&str> = raw.splitn(2, ' ').collect();
+    if header[0] != "Bearer" {
+        return Err(Error::WrongAuthType(header[0].to_string()));
+    }
+    Ok(header[1])
+}
+
 /// Authentication outcome for email/password
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
 pub enum PasswordOutcome {
@@ -63,8 +72,8 @@ impl Token {
             created: chrono::Utc::now().round_subsecs(N_SUBSECS),
         }
     }
-    pub fn user(&self) -> &i32 {
-        &self.user
+    pub fn user(&self) -> i32 {
+        self.user
     }
     pub fn token(&self) -> &String {
         &self.token
@@ -98,27 +107,12 @@ pub struct EmailPassword {
     pub password: String,
 }
 
-/// Parses the authentication header
-pub fn parse_basic_header(header_content: &str) -> Result<IdToken> {
-    let header: Vec<&str> = header_content.splitn(2, ' ').collect();
-    if header[0] != "Basic" {
-        return Err(Error::WrongAuthType(header[0].to_string()));
-    }
-    let header_decoded = base64::decode(header[1])?;
-    let header_parsed: Vec<&str> = std::str::from_utf8(&header_decoded)?
-        .splitn(2, ':')
-        .collect();
-    Ok(IdToken {
-        id: header_parsed[0].parse()?,
-        token: header_parsed[1].to_string(),
-    })
-}
-
 #[derive(
     serde::Deserialize,
     serde::Serialize,
     Debug,
     Clone,
+    Copy,
     PartialEq,
     PartialOrd,
     strum_macros::Display,
@@ -132,23 +126,6 @@ pub enum Access {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn test_parse_basic_header_tok(tok: &str) {
-        let header_raw =
-            format!("Basic {}", base64::encode(format!("1:{}", tok)));
-        let header_parsed = parse_basic_header(header_raw.as_str()).unwrap();
-        assert_eq!(
-            header_parsed,
-            IdToken {
-                id: 1,
-                token: tok.to_string()
-            }
-        )
-    }
-    #[test]
-    fn test_parse_basic_header() {
-        test_parse_basic_header_tok("pass123");
-        test_parse_basic_header_tok("123: sad gg")
-    }
     #[test]
     fn test_access() {
         assert!(Access::Admin > Access::User);
