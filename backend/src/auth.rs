@@ -41,7 +41,7 @@ pub enum PasswordOutcome {
 /// Authentication outcome for id/token
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
 pub enum TokenOutcome {
-    Ok,
+    Ok(Access),
     TokenTooOld,
     TokenNotFound,
 }

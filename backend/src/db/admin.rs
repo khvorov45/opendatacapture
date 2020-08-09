@@ -188,7 +188,9 @@ impl AdminDB {
         if tok.age_hours() > auth::AUTH_TOKEN_HOURS_TO_LIVE {
             return Ok(auth::TokenOutcome::TokenTooOld);
         }
-        Ok(auth::TokenOutcome::Ok)
+        Ok(auth::TokenOutcome::Ok(
+            self.get_user_by_id(cred.id).await?.access,
+        ))
     }
     pub async fn get_users(&self) -> Result<Vec<User>> {
         let res = self
@@ -268,19 +270,20 @@ impl AdminDB {
     ) -> Result<()> {
         use crate::error::Unauthorized;
         match self.verify_id_token(cred).await? {
-            auth::TokenOutcome::Ok => (),
+            auth::TokenOutcome::Ok(a) => {
+                if a < req_access {
+                    Err(Error::Unauthorized(Unauthorized::InsufficientAccess))
+                } else {
+                    Ok(())
+                }
+            }
             auth::TokenOutcome::TokenTooOld => {
-                return Err(Error::Unauthorized(Unauthorized::TokenTooOld))
+                Err(Error::Unauthorized(Unauthorized::TokenTooOld))
             }
             auth::TokenOutcome::TokenNotFound => {
-                return Err(Error::Unauthorized(Unauthorized::TokenNotFound))
+                Err(Error::Unauthorized(Unauthorized::TokenNotFound))
             }
         }
-        let user = self.get_user_by_id(cred.id).await?;
-        if user.access < req_access {
-            return Err(Error::Unauthorized(Unauthorized::InsufficientAccess));
-        }
-        Ok(())
     }
 }
 
