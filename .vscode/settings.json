@@ -30,6 +30,7 @@
         "odcapi",
         "odctest",
         "postgres",
+        "splitn",
         "structopt",
         "testdb"
     ]

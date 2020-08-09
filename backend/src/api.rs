@@ -1,4 +1,4 @@
-use crate::{auth, db};
+use crate::{auth, db, Error};
 use warp::Filter;
 
 pub fn routes(
@@ -86,15 +86,44 @@ fn auth_header(
 
 fn access(
     admindb: std::sync::Arc<db::admin::AdminDB>,
-    req_access: crate::auth::Access,
-) -> impl Filter<Extract = ((),), Error = warp::Rejection> + Clone {
+) -> impl Filter<Extract = (auth::Access,), Error = warp::Rejection> + Clone {
+    use crate::error::Unauthorized;
     auth_header().and_then(move |cred: auth::IdToken| {
         let admin_database = admindb.clone();
+        async move {
+            match admin_database.verify_id_token(&cred).await {
+                Ok(out) => match out {
+                    auth::TokenOutcome::Ok(a) => Ok(a),
+                    auth::TokenOutcome::TokenTooOld => {
+                        Err(warp::reject::custom(Error::Unauthorized(
+                            Unauthorized::TokenTooOld,
+                        )))
+                    }
+                    auth::TokenOutcome::TokenNotFound => {
+                        Err(warp::reject::custom(Error::Unauthorized(
+                            Unauthorized::TokenNotFound,
+                        )))
+                    }
+                },
+                Err(e) => Err(warp::reject::custom(e)),
+            }
+        }
+    })
+}
+
+fn sufficient_access(
+    admindb: std::sync::Arc<db::admin::AdminDB>,
+    req_access: crate::auth::Access,
+) -> impl Filter<Extract = ((),), Error = warp::Rejection> + Clone {
+    access(admindb).and_then(move |a: auth::Access| {
         let req_access = req_access.clone();
         async move {
-            match admin_database.verify_access(&cred, req_access).await {
-                Ok(_) => Ok(()),
-                Err(e) => Err(warp::reject::custom(e)),
+            if a < req_access {
+                Err(warp::reject::custom(Error::Unauthorized(
+                    crate::error::Unauthorized::InsufficientAccess,
+                )))
+            } else {
+                Ok(())
             }
         }
     })
@@ -105,7 +134,10 @@ pub fn get_users(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::get()
         .and(warp::path("users"))
-        .and(access(admindb.clone(), crate::auth::Access::Admin))
+        .and(sufficient_access(
+            admindb.clone(),
+            crate::auth::Access::Admin,
+        ))
         .and_then(move |()| {
             let admindb = admindb.clone();
             async move {
