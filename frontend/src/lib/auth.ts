@@ -16,13 +16,32 @@ export interface Token {
   created: Date
 }
 
+export function tokenFromObject(o: any): Token {
+  if (!o || !o.user || !o.token || !o.created) {
+    throw Error("cannot create token from object: " + JSON.stringify(o))
+  }
+  const created = new Date(o.created)
+  if (isNaN(created.getTime())) {
+    throw Error("invalid date: " + JSON.stringify(o.created))
+  }
+  return {
+    user: o.user,
+    token: o.token,
+    created: created,
+  }
+}
+
+export function tokenFromString(s: string): Token {
+  return tokenFromObject(JSON.parse(s))
+}
+
 export enum Access {
   Unauthorized,
   User,
   Admin,
 }
 
-export async function sendEmailPassword(cred: EmailPassword): Promise<Token> {
+export async function tokenFetcher(cred: EmailPassword): Promise<Token> {
   const res = await axios.post(
     "http://localhost:4321/authenticate/email-password",
     cred
@@ -31,19 +50,7 @@ export async function sendEmailPassword(cred: EmailPassword): Promise<Token> {
   if (typeof res.data === "string") {
     throw Error(res.data)
   }
-  if (
-    !res.data.Ok ||
-    !res.data.Ok.user ||
-    !res.data.Ok.token ||
-    !res.data.Ok.created
-  ) {
-    throw Error("unexpected response data")
-  }
-  return {
-    user: res.data.Ok.user,
-    token: res.data.Ok.token,
-    created: new Date(res.data.Ok.created),
-  }
+  return tokenFromObject(res.data.Ok)
 }
 
 export async function tokenValidator(tok: Token): Promise<Access> {

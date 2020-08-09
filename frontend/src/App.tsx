@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { createMuiTheme, ThemeProvider, Theme } from "@material-ui/core/styles"
 import Nav from "./components/nav"
 import Login from "./components/login"
-import { Token, sendEmailPassword, tokenValidator } from "./lib/auth"
+import { Token, tokenFetcher, tokenValidator } from "./lib/auth"
 import CssBaseline from "@material-ui/core/CssBaseline"
 import { BrowserRouter as Router, Switch, Route } from "react-router-dom"
 import Home from "./components/home"
@@ -44,7 +44,7 @@ export default function App({
       <Router>
         <Switch>
           <Route path="/login">
-            <Login updateToken={updateToken} tokenFetcher={sendEmailPassword} />
+            <Login updateToken={updateToken} tokenFetcher={tokenFetcher} />
           </Route>
           <Route path="/">
             <Home token={token} tokenValidator={tokenValidator} />
