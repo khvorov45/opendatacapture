@@ -4,6 +4,15 @@ use warp::Filter;
 pub fn routes(
     db: std::sync::Arc<db::admin::AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let opts = warp::options().map(warp::reply);
+    auth_email_password(db.clone())
+        .or(auth_id_token(db.clone()))
+        .or(get_users(db))
+        .or(opts)
+        .with(access_headers())
+}
+
+fn access_headers() -> warp::filters::reply::WithHeaders {
     let mut headers = warp::http::header::HeaderMap::new();
     headers.insert(
         "Access-Control-Allow-Origin",
@@ -13,12 +22,7 @@ pub fn routes(
         "Access-Control-Allow-Headers",
         warp::http::header::HeaderValue::from_static("Content-Type"),
     );
-    let opts = warp::options().map(warp::reply);
-    auth_email_password(db.clone())
-        .or(auth_id_token(db.clone()))
-        .or(get_users(db))
-        .or(opts)
-        .with(warp::reply::with::headers(headers))
+    warp::reply::with::headers(headers)
 }
 
 fn auth_email_password(
