@@ -65,6 +65,19 @@ export async function tokenFetcher(cred: EmailPassword): Promise<Token> {
 }
 
 export async function tokenValidator(tok: Token): Promise<Access> {
-  // @UNIMPLEMENTED
-  return Access.Admin
+  const res = await axios.post("http://localhost:4321/auth/id-token", {
+    id: tok.user,
+    token: tok.token,
+  })
+  // Should be a string if successful
+  if (typeof res.data !== "string") {
+    throw Error("Unexpected respose type " + typeof res.data)
+  }
+  if (res.data === "Admin") {
+    return Access.Admin
+  } else if (res.data === "User") {
+    return Access.User
+  } else {
+    throw Error("Unexpected response value " + res.data)
+  }
 }

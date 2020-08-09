@@ -12,7 +12,9 @@ export default function Home({
   const [access, setAccess] = useState<Access | null>(null)
   useEffect(() => {
     if (!token) return
-    tokenValidator(token).then((a) => setAccess(a))
+    tokenValidator(token)
+      .then((a) => setAccess(a))
+      .catch((e) => setAccess(Access.Unauthorized))
   }, [token, tokenValidator])
   if (!token || access === Access.Unauthorized) {
     return <Redirect to="/login" />
