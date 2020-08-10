@@ -235,7 +235,7 @@ impl AdminDB {
             self.insert_token(&tok).await?;
             Ok(tok)
         } else {
-            Err(Error::WrongPassword)
+            Err(Error::WrongPassword(cred.password))
         }
     }
 }

@@ -29,8 +29,8 @@ pub enum Error {
     #[error("no such token: {0}")]
     NoSuchToken(String),
     /// Wrong password
-    #[error("wrong password")]
-    WrongPassword,
+    #[error("wrong password: {0}")]
+    WrongPassword(String),
     /// Token too old
     #[error("token too old")]
     TokenTooOld,

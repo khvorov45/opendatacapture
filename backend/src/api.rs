@@ -1,16 +1,48 @@
 use crate::{auth, db, Error};
-use warp::Filter;
+use std::convert::Infallible;
+use warp::{Filter, Reply};
 
 /// All routes
 pub fn routes(
     db: std::sync::Arc<db::admin::AdminDB>,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+) -> impl Filter<Extract = impl Reply, Error = Infallible> + Clone {
     let opts = warp::options().map(warp::reply);
     generate_session_token(db.clone())
         .or(get_user_by_token(db.clone()))
         .or(get_users(db))
         .or(opts)
+        .recover(handle_rejection)
         .with(access_headers())
+}
+
+async fn handle_rejection(
+    err: warp::Rejection,
+) -> Result<impl warp::Reply, Infallible> {
+    use warp::http::StatusCode;
+    let status;
+    let message;
+    if err.is_not_found() {
+        status = StatusCode::NOT_FOUND;
+        message = "NOT_FOUND".to_string();
+    } else if let Some(e) = err.find::<Error>() {
+        use Error::*;
+        match e {
+            NoSuchUser(_) | WrongPassword(_) | NoSuchToken(_) => {
+                status = StatusCode::UNAUTHORIZED;
+                message = format!("{:?}", e);
+            }
+            _ => {
+                status = StatusCode::INTERNAL_SERVER_ERROR;
+                message = e.to_string();
+            }
+        }
+    } else {
+        log::error!("Unhandled rejection: {:?}", err);
+        status = StatusCode::INTERNAL_SERVER_ERROR;
+        message = "UNHANDLED_REJECTION".to_string();
+    }
+    let json = warp::reply::json(&message);
+    Ok(warp::reply::with_status(json, status))
 }
 
 /// CORS headers

@@ -19,16 +19,33 @@ export interface User {
 }
 
 export async function tokenFetcher(cred: EmailPassword): Promise<string> {
-  const res = await axios.post("http://localhost:4321/auth/session-token", cred)
+  const res = await axios.post(
+    "http://localhost:4321/auth/session-token",
+    cred,
+    {
+      validateStatus: (s: number) =>
+        [
+          httpStatusCodes.OK,
+          httpStatusCodes.UNAUTHORIZED,
+          httpStatusCodes.INTERNAL_SERVER_ERROR,
+        ].includes(s),
+    }
+  )
+  if (typeof res.data !== "string") {
+    throw Error(`unexpected response data: ${JSON.stringify(res.data)}`)
+  }
   if (res.status !== httpStatusCodes.OK) {
+    if (res.data.startsWith("NoSuchUser")) {
+      throw Error("EmailNotFound")
+    }
+    if (res.data.startsWith("WrongPassword")) {
+      throw Error("WrongPassword")
+    }
     throw Error(
       `login failed with status ${res.status} and data ${JSON.stringify(
         res.data
       )}`
     )
-  }
-  if (typeof res.data !== "string") {
-    throw Error(`unexpected response data: ${JSON.stringify(res.data)}`)
   }
   return res.data
 }
