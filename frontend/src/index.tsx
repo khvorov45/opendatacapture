@@ -8,9 +8,12 @@ import { themeInit } from "./lib/theme"
 // Work out the theme before rendering
 const initPalette = themeInit()
 
+// Work out the initial token
+const initToken = localStorage.getItem("token")
+
 ReactDOM.render(
   <React.StrictMode>
-    <App initPalette={initPalette} />
+    <App initPalette={initPalette} initToken={initToken} />
   </React.StrictMode>,
   document.getElementById("root")
 )

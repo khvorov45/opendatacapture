@@ -25,9 +25,18 @@ pub enum Error {
     /// User not found
     #[error("no such user: {0}")]
     NoSuchUser(String),
-    /// User not found
-    #[error("no such token: userid: {0}, token: {1}")]
-    NoSuchToken(i32, String),
+    /// Token not found
+    #[error("no such token: {0}")]
+    NoSuchToken(String),
+    /// Wrong password
+    #[error("wrong password")]
+    WrongPassword,
+    /// Token too old
+    #[error("token too old")]
+    TokenTooOld,
+    /// Insufficient access
+    #[error("Insufficient access")]
+    InsufficientAccess,
     /// Represents all cases of `std::io::Error`
     #[error(transparent)]
     IO(#[from] std::io::Error),
@@ -49,9 +58,6 @@ pub enum Error {
     /// All cases of parse int error
     #[error(transparent)]
     ParseInt(#[from] std::num::ParseIntError),
-    /// Unauthorized
-    #[error("unauthorized: {0}")]
-    Unauthorized(Unauthorized),
     /// Unexpected access string
     #[error("unexpected access string: {0}")]
     UnexpectedAccessString(String),
@@ -61,22 +67,3 @@ pub enum Error {
 }
 
 impl warp::reject::Reject for Error {}
-
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub enum Unauthorized {
-    TokenTooOld,
-    TokenNotFound,
-    InsufficientAccess,
-}
-
-impl std::fmt::Display for Unauthorized {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Unauthorized::TokenTooOld => write!(f, "token too old"),
-            Unauthorized::TokenNotFound => write!(f, "token not found"),
-            Unauthorized::InsufficientAccess => {
-                write!(f, "insufficient access")
-            }
-        }
-    }
-}

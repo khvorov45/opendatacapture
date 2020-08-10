@@ -63,12 +63,11 @@ impl DB for AdminDB {
         con.execute(
             "CREATE TABLE \"token\" (\
                 \"user\" INTEGER NOT NULL,\
-                \"token\" TEXT NOT NULL,\
+                \"token\" TEXT PRIMARY KEY,\
                 \"created\" TIMESTAMPTZ NOT NULL,\
-                PRIMARY KEY(\"user\", \"token\"),
                 FOREIGN KEY(\"user\") REFERENCES \
                 \"user\"(\"id\") \
-                ON UPDATE CASCADE ON DELETE CASCADE
+                ON UPDATE CASCADE ON DELETE CASCADE\
             )",
             &[],
         )
@@ -102,6 +101,9 @@ impl AdminDB {
         }
         Ok(admindb)
     }
+
+    // Access table -----------------------------------------------------------
+
     /// Fill the access table. Assume that it's empty.
     async fn fill_access(&self) -> Result<()> {
         log::info!("filling presumably empty access table");
@@ -110,11 +112,17 @@ impl AdminDB {
             .execute(
                 "INSERT INTO \"access\" (\"access_type\") \
                 VALUES ($1), ($2)",
-                &[&Access::Admin.to_string(), &Access::User.to_string()],
+                &[
+                    &auth::Access::Admin.to_string(),
+                    &auth::Access::User.to_string(),
+                ],
             )
             .await?;
         Ok(())
     }
+
+    // User table -------------------------------------------------------------
+
     /// Insert an admin. Assume the admin table is empty.
     async fn insert_admin(
         &self,
@@ -126,7 +134,8 @@ impl AdminDB {
             admin_email,
             admin_password
         );
-        let admin = User::new(admin_email, admin_password, Access::Admin)?;
+        let admin =
+            User::new(admin_email, admin_password, auth::Access::Admin)?;
         self.insert_user(&admin).await?;
         Ok(())
     }
@@ -139,53 +148,7 @@ impl AdminDB {
         ).await?;
         Ok(())
     }
-    /// Authenticates an email/password combination
-    pub async fn authenticate_email_password(
-        &self,
-        cred: auth::EmailPassword,
-    ) -> Result<auth::PasswordOutcome> {
-        match self.get_user_by_email(cred.email.as_str()).await {
-            Ok(user) => {
-                if argon2::verify_encoded(
-                    user.password_hash.as_str(),
-                    cred.password.as_bytes(),
-                )? {
-                    let tok = auth::Token::new(user.id);
-                    self.insert_token(&tok).await?;
-                    Ok(auth::PasswordOutcome::Ok(tok))
-                } else {
-                    Ok(auth::PasswordOutcome::WrongPassword)
-                }
-            }
-            Err(e) => {
-                if let Error::NoSuchUser(_) = e {
-                    Ok(auth::PasswordOutcome::EmailNotFound)
-                } else {
-                    Err(e)
-                }
-            }
-        }
-    }
-    /// Verifies that the id/token combination is valid
-    pub async fn verify_id_token(
-        &self,
-        cred: &auth::IdToken,
-    ) -> Result<auth::TokenOutcome> {
-        let tok: auth::Token;
-        match self.get_token(cred).await {
-            Ok(t) => tok = t,
-            Err(e) => match e {
-                Error::NoSuchToken(_, _) => {
-                    return Ok(auth::TokenOutcome::TokenNotFound)
-                }
-                _ => return Err(e),
-            },
-        }
-        if tok.age_hours() > auth::AUTH_TOKEN_HOURS_TO_LIVE {
-            return Ok(auth::TokenOutcome::TokenTooOld);
-        }
-        Ok(auth::TokenOutcome::Ok)
-    }
+    /// Get all users
     pub async fn get_users(&self) -> Result<Vec<User>> {
         let res = self
             .get_con()
@@ -203,11 +166,7 @@ impl AdminDB {
         let res = self
             .get_con()
             .await?
-            .query_opt(
-                "SELECT * \
-                FROM \"user\" WHERE \"id\" = $1",
-                &[&id],
-            )
+            .query_opt("SELECT * FROM \"user\" WHERE \"id\" = $1", &[&id])
             .await?;
         match res {
             Some(row) => User::from_row(row),
@@ -219,30 +178,37 @@ impl AdminDB {
         let res = self
             .get_con()
             .await?
-            .query_opt(
-                "SELECT * \
-                FROM \"user\" WHERE \"email\" = $1",
-                &[&email],
-            )
+            .query_opt("SELECT * FROM \"user\" WHERE \"email\" = $1", &[&email])
             .await?;
         match res {
             Some(row) => User::from_row(row),
             None => Err(Error::NoSuchUser(email.to_string())),
         }
     }
-    async fn get_token(&self, cred: &auth::IdToken) -> Result<auth::Token> {
+    /// Gets the user who the given token belongs to
+    pub async fn get_user_by_token(&self, tok: &str) -> Result<User> {
+        let tok = self.get_token(tok).await?;
+        if tok.age_hours() > auth::AUTH_TOKEN_HOURS_TO_LIVE {
+            return Err(Error::TokenTooOld);
+        }
+        self.get_user_by_id(tok.user()).await
+    }
+
+    // Token table ------------------------------------------------------------
+
+    /// Get token by the unique string
+    async fn get_token(&self, token: &str) -> Result<auth::Token> {
         let res = self
             .get_con()
             .await?
             .query_opt(
-                "SELECT * \
-                FROM \"token\" WHERE \"user\" = $1 AND \"token\" = $2",
-                &[&cred.id, &cred.token],
+                "SELECT * FROM \"token\" WHERE \"token\" = $1",
+                &[&token],
             )
             .await?;
         match res {
             Some(row) => Ok(auth::Token::from_row(&row)),
-            None => Err(Error::NoSuchToken(cred.id, cred.token.to_string())),
+            None => Err(Error::NoSuchToken(token.to_string())),
         }
     }
     /// Inserts a token
@@ -251,32 +217,26 @@ impl AdminDB {
         self.get_con().await?.execute(
             "INSERT INTO \"token\" (\"user\", \"token\", \"created\") VALUES \
             ($1, $2, $3)",
-            &[tok.user(), tok.token(), tok.created()],
+            &[&tok.user(), tok.token(), tok.created()],
         ).await?;
         Ok(())
     }
-    /// Checks that id/token are valid and that the id has the
-    /// appropriate access
-    pub async fn verify_access(
+    /// Generate a token from email/password combination
+    pub async fn generate_session_token(
         &self,
-        cred: &auth::IdToken,
-        req_access: Access,
-    ) -> Result<()> {
-        use crate::error::Unauthorized;
-        match self.verify_id_token(cred).await? {
-            auth::TokenOutcome::Ok => (),
-            auth::TokenOutcome::TokenTooOld => {
-                return Err(Error::Unauthorized(Unauthorized::TokenTooOld))
-            }
-            auth::TokenOutcome::TokenNotFound => {
-                return Err(Error::Unauthorized(Unauthorized::TokenNotFound))
-            }
+        cred: auth::EmailPassword,
+    ) -> Result<auth::Token> {
+        let user = self.get_user_by_email(cred.email.as_str()).await?;
+        if argon2::verify_encoded(
+            user.password_hash.as_str(),
+            cred.password.as_bytes(),
+        )? {
+            let tok = auth::Token::new(user.id);
+            self.insert_token(&tok).await?;
+            Ok(tok)
+        } else {
+            Err(Error::WrongPassword)
         }
-        let user = self.get_user_by_id(cred.id).await?;
-        if user.access < req_access {
-            return Err(Error::Unauthorized(Unauthorized::InsufficientAccess));
-        }
-        Ok(())
     }
 }
 
@@ -284,12 +244,16 @@ impl AdminDB {
 pub struct User {
     id: i32,
     email: String,
-    access: Access,
+    access: auth::Access,
     password_hash: String,
 }
 
 impl User {
-    pub fn new(email: &str, password: &str, access: Access) -> Result<Self> {
+    pub fn new(
+        email: &str,
+        password: &str,
+        access: auth::Access,
+    ) -> Result<Self> {
         let u = Self {
             id: 1, // Disregard since postgres will handle auto-incrementing
             email: email.to_string(),
@@ -303,26 +267,23 @@ impl User {
         let u = Self {
             id: row.get("id"),
             email: row.get("email"),
-            access: Access::from_str(row.get("access"))?,
+            access: auth::Access::from_str(row.get("access"))?,
             password_hash: row.get("password_hash"),
         };
         Ok(u)
     }
-}
-
-#[derive(
-    serde::Deserialize,
-    serde::Serialize,
-    Debug,
-    Clone,
-    PartialEq,
-    PartialOrd,
-    strum_macros::Display,
-    strum_macros::EnumString,
-)]
-pub enum Access {
-    User,
-    Admin,
+    pub fn id(&self) -> i32 {
+        self.id
+    }
+    pub fn email(&self) -> &str {
+        self.email.as_str()
+    }
+    pub fn access(&self) -> auth::Access {
+        self.access
+    }
+    pub fn password_hash(&self) -> &str {
+        self.password_hash.as_str()
+    }
 }
 
 #[cfg(test)]
@@ -424,26 +385,14 @@ mod tests {
     }
 
     // Verify the default password
-    async fn verify_password(db: &AdminDB) -> auth::Token {
+    async fn gen_tok(db: &AdminDB) -> auth::Token {
         log::info!("verifying that admin@example.com password is admin");
-        let tok = db
-            .authenticate_email_password(auth::EmailPassword {
-                email: "admin@example.com".to_string(),
-                password: "admin".to_string(),
-            })
-            .await
-            .unwrap();
-        assert!(matches!(tok, auth::PasswordOutcome::Ok(_)));
-        if let auth::PasswordOutcome::Ok(tok) = tok {
-            tok
-        } else {
-            panic!("")
-        }
-    }
-    #[test]
-    fn test_access() {
-        assert!(Access::Admin > Access::User);
-        assert_eq!(Access::Admin, Access::Admin);
+        db.generate_session_token(auth::EmailPassword {
+            email: "admin@example.com".to_string(),
+            password: "admin".to_string(),
+        })
+        .await
+        .unwrap()
     }
 
     #[tokio::test]
@@ -454,7 +403,7 @@ mod tests {
         log::info!("start clean");
         let test_db = test_create(true).await;
         let user1 = extract_first_user(&test_db).await;
-        let tok1 = verify_password(&test_db).await;
+        let tok1 = gen_tok(&test_db).await;
         assert_eq!(extract_first_user_token(&test_db).await, tok1);
         // Restart
         log::info!("restart");
@@ -463,63 +412,31 @@ mod tests {
         let tok2 = extract_first_user_token(&test_db).await;
         assert_eq!(user1, user2);
         assert_eq!(tok1, tok2);
-        let tok2_reset = verify_password(&test_db).await;
+        let tok2_reset = gen_tok(&test_db).await;
         assert_ne!(tok2.token(), tok2_reset.token());
         // Start clean again
         log::info!("start clean again");
         let test_db = test_create(true).await;
         let user3 = extract_first_user(&test_db).await;
         assert_ne!(user1.password_hash, user3.password_hash); // Different salt
-        let tok3 = verify_password(&test_db).await;
+        let tok3 = gen_tok(&test_db).await;
         assert_ne!(tok3.token(), tok2_reset.token());
         // Insert a regular user
         test_db
             .insert_user(
-                &User::new("user@example.com", "user", Access::User).unwrap(),
+                &User::new("user@example.com", "user", auth::Access::User)
+                    .unwrap(),
             )
             .await
             .unwrap();
-        let auth_res = test_db
-            .authenticate_email_password(auth::EmailPassword {
+        let user_tok = test_db
+            .generate_session_token(auth::EmailPassword {
                 email: "user@example.com".to_string(),
                 password: "user".to_string(),
             })
             .await
             .unwrap();
-        let user_tok;
-        if let auth::PasswordOutcome::Ok(tok) = auth_res {
-            user_tok = tok;
-        } else {
-            panic!("")
-        }
-        let res = test_db
-            .verify_access(
-                &auth::IdToken {
-                    id: *user_tok.user(),
-                    token: user_tok.token().clone(),
-                },
-                Access::User,
-            )
-            .await;
-        assert!(res.is_ok());
-        let res = test_db
-            .verify_access(
-                &auth::IdToken {
-                    id: *user_tok.user(),
-                    token: user_tok.token().clone(),
-                },
-                Access::Admin,
-            )
-            .await
-            .unwrap_err();
-        assert!(matches!(res, Error::Unauthorized(_)));
-        if let Error::Unauthorized(unauthorized) = res {
-            assert_eq!(
-                unauthorized,
-                crate::error::Unauthorized::InsufficientAccess
-            )
-        } else {
-            panic!("")
-        }
+        let user = test_db.get_user_by_token(user_tok.token()).await.unwrap();
+        assert_eq!(user.id, user_tok.user());
     }
 }
