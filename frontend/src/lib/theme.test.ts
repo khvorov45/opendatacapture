@@ -11,4 +11,6 @@ test("themeInit", () => {
   expectTheme("dark")
   localStorage.setItem("theme", "light")
   expectTheme("light")
+  localStorage.setItem("theme", "dark")
+  expectTheme("dark")
 })
