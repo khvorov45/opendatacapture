@@ -5,6 +5,8 @@ import App from "./App"
 import * as serviceWorker from "./serviceWorker"
 import { themeInit } from "./lib/theme"
 
+/* istanbul ignore file */
+
 // Work out the theme before rendering
 const initPalette = themeInit()
 
