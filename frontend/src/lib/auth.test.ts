@@ -5,13 +5,13 @@ jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
 test("tokenFetcher", async () => {
-  expect.assertions(5)
+  expect.assertions(6)
   let cred = { email: "test@example.com", password: "test" }
   mockedAxios.post.mockResolvedValue({ status: 200, data: "123" })
   expect(await tokenFetcher(cred)).toBe("123")
-  mockedAxios.post.mockResolvedValue({ status: 201, data: "123" })
+  mockedAxios.post.mockResolvedValue({ status: 500, data: "123" })
   tokenFetcher(cred).catch((e) =>
-    expect(e.message).toBe('login failed with status 201 and data "123"')
+    expect(e.message).toBe('login failed with status 500 and data "123"')
   )
   mockedAxios.post.mockResolvedValue({ status: 200, data: null })
   tokenFetcher(cred).catch((e) =>
@@ -21,6 +21,13 @@ test("tokenFetcher", async () => {
   tokenFetcher(cred).catch((e) => expect(e.message).toBe("EmailNotFound"))
   mockedAxios.post.mockResolvedValue({ status: 201, data: "WrongPassword" })
   tokenFetcher(cred).catch((e) => expect(e.message).toBe("WrongPassword"))
+  mockedAxios.post.mockImplementation(async (address, data, config) => {
+    if (!config) throw Error()
+    if (!config.validateStatus) throw Error()
+    if (config.validateStatus(201)) throw Error()
+    return { status: 200, data: "123" }
+  })
+  expect(await tokenFetcher(cred)).toBe("123")
 })
 
 test("tokenValidator", async () => {
