@@ -2,7 +2,6 @@ import React from "react"
 import { render, fireEvent } from "@testing-library/react"
 import App from "./App"
 import { themeInit } from "./lib/theme"
-import { MemoryRouter } from "react-router-dom"
 
 function expectTheme(theme: "dark" | "light") {
   expect(localStorage.theme).toBe(theme)
@@ -21,11 +20,7 @@ test("theme switching", () => {
 })
 
 test("reroute to login", () => {
-  const { getByTestId } = render(
-    <MemoryRouter initialEntries={["/"]}>
-      <App initPalette="dark" initToken={null} />
-    </MemoryRouter>
-  )
+  const { getByTestId } = render(<App initPalette="dark" initToken={null} />)
   let loginForm = getByTestId("login-form")
   expect(loginForm).toBeInTheDocument()
 })

@@ -8,13 +8,10 @@ enum AuthStatus {
   Err,
 }
 
-export default function Home({
-  token,
-  tokenValidator,
-}: {
-  token: string | null
-  tokenValidator: (t: string) => Promise<User>
-}) {
+function useToken(
+  token: string | null,
+  tokenValidator: (s: string) => Promise<User>
+): { user: User | null; auth: AuthStatus } {
   const [user, setUser] = useState<User | null>(null)
   const [auth, setAuth] = useState<AuthStatus>(AuthStatus.InProgress)
   useEffect(() => {
@@ -29,10 +26,21 @@ export default function Home({
       })
       .catch((e) => setAuth(AuthStatus.Err))
   }, [token, tokenValidator])
+  return { user: user, auth: auth }
+}
+
+export default function Home({
+  token,
+  tokenValidator,
+}: {
+  token: string | null
+  tokenValidator: (t: string) => Promise<User>
+}) {
+  const { user, auth } = useToken(token, tokenValidator)
   if (auth === AuthStatus.Err) {
     return <Redirect to="/login" />
   }
-  if (auth === AuthStatus.InProgress || !user) {
+  if (!user || auth === AuthStatus.InProgress) {
     return <></>
   }
   return (
