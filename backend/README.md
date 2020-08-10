@@ -29,7 +29,8 @@
 
 All request bodies and responses are in the `json` format.
 
-|             Path              |  Type  |                Body                 |          Headers          |
-| :---------------------------: | :----: | :---------------------------------: | :-----------------------: |
-| `authenticate/email-password` | `POST` | `{email: String, password: String}` |                           |
-|            `users`            | `GET`  |                                     | `Authorization: id:token` |
+|            Path            |  Type  |                Body                 |             Headers             |
+| :------------------------: | :----: | :---------------------------------: | :-----------------------------: |
+|    `auth/session-token`    | `POST` | `{email: String, password: String}` |                                 |
+| `get/user/by/token/:token` | `GET`  |                                     | `Authorization: Bearer <token>` |
+|          `users`           | `GET`  |                                     | `Authorization: Bearer <token>` |
