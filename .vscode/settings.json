@@ -17,6 +17,7 @@
         "dbhost",
         "dbname",
         "dbport",
+        "esnext",
         "grcov",
         "initialise",
         "initialised",

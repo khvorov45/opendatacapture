@@ -44,8 +44,8 @@ export default function Home({
     return <></>
   }
   return (
-    <p>
+    <div data-testid="homepage">
       This is the homepage for user {user.email} with access {user.access}
-    </p>
+    </div>
   )
 }
