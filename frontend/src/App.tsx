@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { createMuiTheme, ThemeProvider, Theme } from "@material-ui/core/styles"
 import Nav from "./components/nav"
 import Login from "./components/login"
-import { Token, tokenFetcher, tokenValidator } from "./lib/auth"
+import { tokenFetcher, tokenValidator } from "./lib/auth"
 import CssBaseline from "@material-ui/core/CssBaseline"
 import { BrowserRouter as Router, Switch, Route } from "react-router-dom"
 import Home from "./components/home"
@@ -20,7 +20,7 @@ export default function App({
   initToken,
 }: {
   initPalette: "dark" | "light"
-  initToken: Token | null
+  initToken: string | null
 }) {
   const [darkState, setDarkState] = useState(initPalette === "dark")
   const [theme, setTheme] = useState(createThemeFromPalette(initPalette))
@@ -32,10 +32,10 @@ export default function App({
     document.documentElement.setAttribute("theme", newPalette)
     localStorage.setItem("theme", newPalette)
   }
-  const [token, setToken] = useState<Token | null>(initToken)
-  function updateToken(tok: Token) {
+  const [token, setToken] = useState<string | null>(initToken)
+  function updateToken(tok: string) {
     setToken(tok)
-    localStorage.setItem("token", JSON.stringify(tok))
+    localStorage.setItem("token", tok)
   }
   return (
     <ThemeProvider theme={theme}>
