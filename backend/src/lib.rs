@@ -56,3 +56,54 @@ pub async fn run(opt: Opt) -> Result<()> {
     warp::serve(routes).run(([127, 0, 0, 1], opt.apiport)).await;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Test database config
+    fn gen_test_config(dbname: &str) -> tokio_postgres::Config {
+        let mut pg_config = tokio_postgres::Config::new();
+        pg_config
+            .host("localhost")
+            .port(5432)
+            .dbname(dbname)
+            .user("odcapi")
+            .password("odcapi");
+        pg_config
+    }
+
+    // Makes sure odcadmin_test database exists.
+    // Assumes odcadmin database exists
+    async fn setup_test_db(dbname: &str) {
+        let mut config = gen_test_config(dbname);
+        config.dbname("odcadmin");
+        let (odcadmin_client, con) =
+            config.connect(tokio_postgres::NoTls).await.unwrap();
+        tokio::spawn(async move {
+            con.await.unwrap();
+        });
+        odcadmin_client
+            .execute(
+                format!("DROP DATABASE IF EXISTS {}", dbname).as_str(),
+                &[],
+            )
+            .await
+            .unwrap();
+        odcadmin_client
+            .execute(format!("CREATE DATABASE {}", dbname).as_str(), &[])
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test() {
+        let _ = pretty_env_logger::try_init();
+        let dbname = "odcadmin_test_lib";
+        setup_test_db(dbname).await;
+        let opt = Opt::from_iter(["appname", "--admindbname", dbname].iter());
+        tokio::spawn(async move {
+            run(opt).await.unwrap();
+        });
+    }
+}
