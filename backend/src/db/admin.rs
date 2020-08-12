@@ -140,7 +140,8 @@ impl AdminDB {
         Ok(())
     }
     /// Insert a user
-    async fn insert_user(&self, user: &User) -> Result<()> {
+    pub async fn insert_user(&self, user: &User) -> Result<()> {
+        log::info!("inserting user {:?}", user);
         self.get_con().await?.execute(
             "INSERT INTO \"user\" (\"email\", \"access\", \"password_hash\")
             VALUES ($1, $2, $3)",

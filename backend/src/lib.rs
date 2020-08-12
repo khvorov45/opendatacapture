@@ -97,7 +97,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_api() {
+    async fn test_lib() {
         let _ = pretty_env_logger::try_init();
         let dbname = "odcadmin_test_lib";
         setup_test_db(dbname).await;
