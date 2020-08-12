@@ -104,7 +104,7 @@ fn generate_session_token(
             let db = db.clone();
             async move {
                 match db.generate_session_token(cred).await {
-                    Ok(t) => Ok(warp::reply::json(t.token())),
+                    Ok(t) => Ok(warp::reply::json(&t.token().to_string())),
                     Err(e) => Err(warp::reject::custom(e)),
                 }
             }

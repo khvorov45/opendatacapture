@@ -218,7 +218,7 @@ impl AdminDB {
         self.get_con().await?.execute(
             "INSERT INTO \"token\" (\"user\", \"token\", \"created\") VALUES \
             ($1, $2, $3)",
-            &[&tok.user(), tok.token(), tok.created()],
+            &[&tok.user(), &tok.token(), tok.created()],
         ).await?;
         Ok(())
     }

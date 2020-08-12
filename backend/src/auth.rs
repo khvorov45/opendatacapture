@@ -75,8 +75,8 @@ impl Token {
     pub fn user(&self) -> i32 {
         self.user
     }
-    pub fn token(&self) -> &String {
-        &self.token
+    pub fn token(&self) -> &str {
+        self.token.as_str()
     }
     pub fn created(&self) -> &chrono::DateTime<chrono::Utc> {
         &self.created
@@ -130,5 +130,17 @@ mod tests {
     fn test_access() {
         assert!(Access::Admin > Access::User);
         assert_eq!(Access::Admin, Access::Admin);
+    }
+    #[test]
+    fn test_parse_header() {
+        assert_eq!(parse_bearer_header("Bearer 123abc").unwrap(), "123abc");
+        assert_eq!(
+            parse_bearer_header("Bearer 12 3; \\abc").unwrap(),
+            "12 3; \\abc"
+        );
+        assert!(matches!(
+            parse_bearer_header("Basic u:p").unwrap_err(),
+            Error::WrongAuthType(b) if b == "Basic"
+        ));
     }
 }
