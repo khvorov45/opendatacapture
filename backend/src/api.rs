@@ -159,73 +159,13 @@ pub fn get_users(
 mod tests {
     use super::*;
     use crate::db::admin;
-    use crate::db::admin::AdminDB;
+    use crate::tests;
     use std::sync::Arc;
-
-    // Test database config
-    fn gen_test_config(dbname: &str) -> tokio_postgres::Config {
-        let mut pg_config = tokio_postgres::Config::new();
-        pg_config
-            .host("localhost")
-            .port(5432)
-            .dbname(dbname)
-            .user("odcapi")
-            .password("odcapi");
-        pg_config
-    }
-
-    // Makes sure odcadmin_test database exists.
-    // Assumes odcadmin database exists
-    async fn setup_test_db(dbname: &str) {
-        let mut config = gen_test_config(dbname);
-        config.dbname("odcadmin");
-        let (odcadmin_client, con) =
-            config.connect(tokio_postgres::NoTls).await.unwrap();
-        tokio::spawn(async move {
-            con.await.unwrap();
-        });
-        odcadmin_client
-            .execute(
-                format!("DROP DATABASE IF EXISTS {}", dbname).as_str(),
-                &[],
-            )
-            .await
-            .unwrap();
-        odcadmin_client
-            .execute(format!("CREATE DATABASE {}", dbname).as_str(), &[])
-            .await
-            .unwrap();
-    }
-
-    // Create a database
-    async fn create_test_admindb(dbname: &str) -> AdminDB {
-        setup_test_db(dbname).await;
-        let pg_config = gen_test_config(dbname);
-        let admin_conf = crate::db::admin::Config {
-            config: pg_config,
-            clean: true,
-            admin_email: "admin@example.com".to_string(),
-            admin_password: "admin".to_string(),
-        };
-        let admindb = AdminDB::new(admin_conf).await.unwrap();
-        admindb
-            .insert_user(
-                &admin::User::new(
-                    "user@example.com",
-                    "user",
-                    auth::Access::User,
-                )
-                .unwrap(),
-            )
-            .await
-            .unwrap();
-        admindb
-    }
 
     #[tokio::test]
     async fn test_api() {
         let _ = pretty_env_logger::try_init();
-        let admindb = create_test_admindb("odcadmin_test_api").await;
+        let admindb = tests::create_test_admindb("odcadmin_test_api").await;
         let admindb_ref = Arc::new(admindb);
         let session_token_filter = generate_session_token(admindb_ref.clone());
 

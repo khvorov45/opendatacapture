@@ -58,11 +58,11 @@ pub async fn run(opt: Opt) -> Result<()> {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
 
-    // Test database config
-    fn gen_test_config(dbname: &str) -> tokio_postgres::Config {
+    /// Test database config
+    pub fn gen_test_config(dbname: &str) -> tokio_postgres::Config {
         let mut pg_config = tokio_postgres::Config::new();
         pg_config
             .host("localhost")
@@ -73,9 +73,9 @@ mod tests {
         pg_config
     }
 
-    // Makes sure odcadmin_test database exists.
-    // Assumes odcadmin database exists
-    async fn setup_test_db(dbname: &str) {
+    /// Makes sure odcadmin_test database exists.
+    /// Assumes odcadmin database exists
+    pub async fn setup_test_db(dbname: &str) {
         let mut config = gen_test_config(dbname);
         config.dbname("odcadmin");
         let (odcadmin_client, con) =
@@ -94,6 +94,31 @@ mod tests {
             .execute(format!("CREATE DATABASE {}", dbname).as_str(), &[])
             .await
             .unwrap();
+    }
+
+    /// Create an admin database
+    pub async fn create_test_admindb(dbname: &str) -> db::admin::AdminDB {
+        setup_test_db(dbname).await;
+        let pg_config = gen_test_config(dbname);
+        let admin_conf = db::admin::Config {
+            config: pg_config,
+            clean: true,
+            admin_email: "admin@example.com".to_string(),
+            admin_password: "admin".to_string(),
+        };
+        let admindb = db::admin::AdminDB::new(admin_conf).await.unwrap();
+        admindb
+            .insert_user(
+                &db::admin::User::new(
+                    "user@example.com",
+                    "user",
+                    auth::Access::User,
+                )
+                .unwrap(),
+            )
+            .await
+            .unwrap();
+        admindb
     }
 
     #[tokio::test]
