@@ -56,12 +56,15 @@ jobs:
         run: npm install
         working-directory: frontend
       - name: Generate coverage report
-        run: npm test -- --watchAll=false --coverage
+        run: npm test -- --watchAll=false --coverage --coverageReporters lcov
         working-directory: frontend
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
+      - name: Rename report
+        run: mv frontend/coverage/lcov.info frontend.info
+      - name: Upload report as artifact
+        uses: actions/upload-artifact@v2
         with:
-          directory: ./frontend
+          name: frontend.info
+          path: frontend.info
 
   backend:
     name: Backend
@@ -110,7 +113,28 @@ jobs:
         with:
           command: tarpaulin
           args: --out Lcov --exclude-files **/target/** --ignore-tests
+      - name: Rename report
+        run: mv lcov.info backend.info
+      - name: Upload report as artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: backend.info
+          path: backend.info
+
+  upload:
+    name: Upload
+    needs: [frontend, backend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download frontend
+        uses: actions/download-artifact@v2
+        with:
+          name: frontend.info
+      - name: Download backend
+        uses: actions/download-artifact@v2
+        with:
+          name: backend.info
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
         with:
-          file: lcov.info
+          files: [frontend.info, backend.info]
