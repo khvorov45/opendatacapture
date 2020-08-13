@@ -28,7 +28,7 @@ pub fn create_pool(config: tokio_postgres::Config) -> Result<DBPool> {
 #[async_trait::async_trait]
 pub trait DB {
     /// Database name
-    fn get_name(&self) -> String;
+    fn get_name(&self) -> &str;
 
     /// Client object
     fn get_pool(&self) -> &DBPool;

@@ -15,8 +15,8 @@ pub struct UserDB {
 
 #[async_trait::async_trait]
 impl DB for UserDB {
-    fn get_name(&self) -> String {
-        self.name.clone()
+    fn get_name(&self) -> &str {
+        self.name.as_str()
     }
     fn get_pool(&self) -> &DBPool {
         &self.pool

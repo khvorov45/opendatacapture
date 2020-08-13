@@ -34,8 +34,8 @@ impl Config {
 
 #[async_trait::async_trait]
 impl DB for AdminDB {
-    fn get_name(&self) -> String {
-        "admin".to_string()
+    fn get_name(&self) -> &str {
+        "admin"
     }
     fn get_pool(&self) -> &DBPool {
         &self.pool
