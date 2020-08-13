@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use structopt::StructOpt;
 
 pub mod api;
@@ -46,19 +45,8 @@ pub struct Opt {
     pub admin_password: String,
 }
 
-/// Runs the API with the supplied options
-pub async fn run(opt: Opt) -> Result<()> {
-    // Administrative database
-    let admin_database =
-        db::admin::AdminDB::new(db::admin::Config::from_opts(&opt)).await?;
-    // API routes
-    let routes = api::routes(Arc::new(admin_database));
-    warp::serve(routes).run(([127, 0, 0, 1], opt.apiport)).await;
-    Ok(())
-}
-
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use super::*;
 
     /// Test database config
@@ -119,16 +107,5 @@ pub mod tests {
             .await
             .unwrap();
         admindb
-    }
-
-    #[tokio::test]
-    async fn test_lib() {
-        let _ = pretty_env_logger::try_init();
-        let dbname = "odcadmin_test_lib";
-        setup_test_db(dbname).await;
-        let opt = Opt::from_iter(["appname", "--admindbname", dbname].iter());
-        tokio::spawn(async move {
-            run(opt).await.unwrap();
-        });
     }
 }

@@ -36,6 +36,11 @@ pub trait DB {
     /// Create all tables
     async fn create_all_tables(&self) -> Result<()>;
 
+    /// Health check
+    async fn health(&self) -> bool {
+        self.get_con().await.is_ok()
+    }
+
     /// Get a connection
     async fn get_con(&self) -> Result<DBCon> {
         let con = self.get_pool().get().await?;

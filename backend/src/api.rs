@@ -1,12 +1,14 @@
-use crate::{auth, db, Error};
+use crate::{auth, db, db::admin::AdminDB, db::DB, Error};
 use std::convert::Infallible;
+use std::sync::Arc;
 use warp::{http::Method, Filter, Reply};
 
 /// All routes
 pub fn routes(
-    db: std::sync::Arc<db::admin::AdminDB>,
+    db: Arc<AdminDB>,
 ) -> impl Filter<Extract = impl Reply, Error = Infallible> + Clone {
-    generate_session_token(db.clone())
+    health(db.clone())
+        .or(generate_session_token(db.clone()))
         .or(get_user_by_token(db.clone()))
         .or(get_users(db))
         .recover(handle_rejection)
@@ -59,7 +61,7 @@ async fn handle_rejection(
 
 /// Rejects if the access (as per the Authorization header) is not high enough
 fn sufficient_access(
-    db: std::sync::Arc<db::admin::AdminDB>,
+    db: Arc<AdminDB>,
     req_access: crate::auth::Access,
 ) -> impl Filter<Extract = ((),), Error = warp::Rejection> + Clone {
     warp::header::<String>("Authorization")
@@ -87,11 +89,37 @@ fn sufficient_access(
         })
 }
 
+/// Extracts the database reference
+fn with_db(
+    db: Arc<AdminDB>,
+) -> impl Filter<Extract = (Arc<AdminDB>,), Error = Infallible> + Clone {
+    warp::any().map(move || db.clone())
+}
+
 // Routes ---------------------------------------------------------------------
+
+/// Health check
+fn health(
+    db: Arc<AdminDB>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let cors = warp::cors()
+        .allow_methods(&[Method::GET])
+        .allow_any_origin();
+    async fn get_health(
+        db: Arc<AdminDB>,
+    ) -> Result<impl warp::Reply, Infallible> {
+        Ok(warp::reply::json(&db.health().await))
+    }
+    warp::get()
+        .and(warp::path("health"))
+        .and(with_db(db))
+        .and_then(get_health)
+        .with(cors)
+}
 
 /// Generate session token. Returns only the string.
 fn generate_session_token(
-    db: std::sync::Arc<db::admin::AdminDB>,
+    db: Arc<AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let cors = warp::cors()
         .allow_methods(&[Method::POST])
@@ -114,7 +142,7 @@ fn generate_session_token(
 
 /// Get user by token
 fn get_user_by_token(
-    db: std::sync::Arc<db::admin::AdminDB>,
+    db: Arc<AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let cors = warp::cors()
         .allow_methods(&[Method::GET])
@@ -135,7 +163,7 @@ fn get_user_by_token(
 
 /// Get all users
 pub fn get_users(
-    admindb: std::sync::Arc<db::admin::AdminDB>,
+    admindb: Arc<AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let cors = warp::cors()
         .allow_methods(&[Method::GET])
