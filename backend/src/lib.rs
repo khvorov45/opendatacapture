@@ -85,27 +85,36 @@ mod tests {
     }
 
     /// Create an admin database
-    pub async fn create_test_admindb(dbname: &str) -> db::admin::AdminDB {
-        setup_test_db(dbname).await;
+    /// If not clean then assume that the database already exists and don't
+    /// reset it.
+    pub async fn create_test_admindb(
+        dbname: &str,
+        clean: bool,
+    ) -> db::admin::AdminDB {
+        if clean {
+            setup_test_db(dbname).await;
+        }
         let pg_config = gen_test_config(dbname);
         let admin_conf = db::admin::Config {
             config: pg_config,
-            clean: true,
+            clean,
             admin_email: "admin@example.com".to_string(),
             admin_password: "admin".to_string(),
         };
-        let admindb = db::admin::AdminDB::new(admin_conf).await.unwrap();
-        admindb
-            .insert_user(
-                &db::admin::User::new(
-                    "user@example.com",
-                    "user",
-                    auth::Access::User,
-                )
-                .unwrap(),
+        db::admin::AdminDB::new(admin_conf).await.unwrap()
+    }
+
+    /// Insert a test user
+    pub async fn insert_test_user(db: &db::admin::AdminDB) {
+        db.insert_user(
+            &db::admin::User::new(
+                "user@example.com",
+                "user",
+                auth::Access::User,
             )
-            .await
-            .unwrap();
-        admindb
+            .unwrap(),
+        )
+        .await
+        .unwrap();
     }
 }

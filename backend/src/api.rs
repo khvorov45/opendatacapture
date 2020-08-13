@@ -193,7 +193,11 @@ mod tests {
     #[tokio::test]
     async fn test_api() {
         let _ = pretty_env_logger::try_init();
-        let admindb = tests::create_test_admindb("odcadmin_test_api").await;
+
+        let admindb =
+            tests::create_test_admindb("odcadmin_test_api", true).await;
+        tests::insert_test_user(&admindb).await;
+
         let admindb_ref = Arc::new(admindb);
 
         // Individual filters given good input --------------------------------

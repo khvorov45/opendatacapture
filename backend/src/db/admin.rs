@@ -291,63 +291,6 @@ impl User {
 mod tests {
     use super::*;
 
-    // Test database config
-    fn gen_test_config() -> tokio_postgres::Config {
-        let mut pg_config = tokio_postgres::Config::new();
-        pg_config
-            .host("localhost")
-            .port(5432)
-            .dbname("odcadmin_test")
-            .user("odcapi")
-            .password("odcapi");
-        pg_config
-    }
-
-    // Makes sure odcadmin_test database exists.
-    // Assumes odcadmin database exists
-    async fn setup_odcadmin_test() {
-        let mut config = gen_test_config();
-        config.dbname("odcadmin");
-        let (odcadmin_client, con) =
-            config.connect(tokio_postgres::NoTls).await.unwrap();
-        tokio::spawn(async move {
-            con.await.unwrap();
-        });
-        odcadmin_client
-            .execute("DROP DATABASE IF EXISTS odcadmin_test", &[])
-            .await
-            .unwrap();
-        odcadmin_client
-            .execute("CREATE DATABASE odcadmin_test", &[])
-            .await
-            .unwrap();
-    }
-
-    // Create a database
-    async fn test_create(clean: bool) -> AdminDB {
-        let pg_config = gen_test_config();
-        let admin_conf = Config {
-            config: pg_config,
-            clean,
-            admin_email: "admin@example.com".to_string(),
-            admin_password: "admin".to_string(),
-        };
-        let test_admin_db = AdminDB::new(admin_conf).await.unwrap();
-        // Clean or not, there should be one row in the user table
-        assert_eq!(
-            test_admin_db
-                .get_con()
-                .await
-                .unwrap()
-                .query("SELECT * FROM \"user\"", &[])
-                .await
-                .unwrap()
-                .len(),
-            1
-        );
-        test_admin_db
-    }
-
     // Extract first admin
     async fn extract_first_user(db: &AdminDB) -> User {
         let res = db
@@ -387,7 +330,6 @@ mod tests {
 
     // Verify the default password
     async fn gen_tok(db: &AdminDB) -> auth::Token {
-        log::info!("verifying that admin@example.com password is admin");
         db.generate_session_token(auth::EmailPassword {
             email: "admin@example.com".to_string(),
             password: "admin".to_string(),
@@ -397,39 +339,44 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test() {
+    async fn test_admin() {
         let _ = pretty_env_logger::try_init();
-        setup_odcadmin_test().await;
+
         // Start clean
         log::info!("start clean");
-        let test_db = test_create(true).await;
+        let test_db =
+            crate::tests::create_test_admindb("odcadmin_test_admin", true)
+                .await;
         let user1 = extract_first_user(&test_db).await;
         let tok1 = gen_tok(&test_db).await;
         assert_eq!(extract_first_user_token(&test_db).await, tok1);
+
         // Restart
         log::info!("restart");
-        let test_db = test_create(false).await;
+        drop(test_db);
+        let test_db =
+            crate::tests::create_test_admindb("odcadmin_test_admin", false)
+                .await;
         let user2 = extract_first_user(&test_db).await;
         let tok2 = extract_first_user_token(&test_db).await;
         assert_eq!(user1, user2);
         assert_eq!(tok1, tok2);
         let tok2_reset = gen_tok(&test_db).await;
         assert_ne!(tok2.token(), tok2_reset.token());
+
         // Start clean again
         log::info!("start clean again");
-        let test_db = test_create(true).await;
+        drop(test_db);
+        let test_db =
+            crate::tests::create_test_admindb("odcadmin_test_admin", true)
+                .await;
         let user3 = extract_first_user(&test_db).await;
         assert_ne!(user1.password_hash, user3.password_hash); // Different salt
         let tok3 = gen_tok(&test_db).await;
         assert_ne!(tok3.token(), tok2_reset.token());
+
         // Insert a regular user
-        test_db
-            .insert_user(
-                &User::new("user@example.com", "user", auth::Access::User)
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
+        crate::tests::insert_test_user(&test_db).await;
         let user_tok = test_db
             .generate_session_token(auth::EmailPassword {
                 email: "user@example.com".to_string(),
