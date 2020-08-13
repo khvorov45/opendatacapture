@@ -119,3 +119,82 @@ pub trait DB {
         Ok(all_tables.is_empty())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct TestDB {
+        pool: DBPool,
+    }
+
+    #[async_trait::async_trait]
+    impl DB for TestDB {
+        fn get_name(&self) -> &str {
+            "test"
+        }
+        fn get_pool(&self) -> &DBPool {
+            &self.pool
+        }
+        async fn create_all_tables(&self) -> Result<()> {
+            let con = self.pool.get().await.unwrap();
+            con.execute(
+                "CREATE TABLE \"test_table\" \
+                (\"test_field\" TEXT PRIMARY KEY)",
+                &[],
+            )
+            .await
+            .unwrap();
+            con.execute(
+                "CREATE TABLE \"test_table_2\" \
+                (\"test_field\" TEXT PRIMARY KEY)",
+                &[],
+            )
+            .await
+            .unwrap();
+            Ok(())
+        }
+    }
+
+    #[tokio::test]
+    pub async fn test_db() {
+        crate::tests::setup_test_db("odcadmin_test_db").await;
+        let test_db = TestDB {
+            pool: create_pool(crate::tests::gen_test_config(
+                "odcadmin_test_db",
+            ))
+            .unwrap(),
+        };
+        assert!(test_db.health().await);
+
+        // table creation
+        assert!(test_db.is_empty().await.unwrap());
+        test_db.create_all_tables().await.unwrap();
+        assert_eq!(
+            test_db.get_all_table_names().await.unwrap(),
+            vec!["test_table", "test_table_2"]
+        );
+        assert!(!test_db.is_empty().await.unwrap());
+
+        // Test reset
+        let con = test_db.pool.get().await.unwrap();
+        con.execute("INSERT INTO test_table VALUES ('test')", &[])
+            .await
+            .unwrap();
+        let test_table_content = con
+            .query_opt("SELECT * FROM test_table", &[])
+            .await
+            .unwrap();
+        assert!(test_table_content.is_some());
+        test_db.reset().await.unwrap();
+        let test_table_content = con
+            .query_opt("SELECT * FROM test_table", &[])
+            .await
+            .unwrap();
+        assert!(test_table_content.is_none());
+
+        // Drop tables
+        test_db.drop_all_tables().await.unwrap();
+        assert!(test_db.is_empty().await.unwrap());
+    }
+}
