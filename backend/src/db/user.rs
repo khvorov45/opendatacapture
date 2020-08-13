@@ -1,5 +1,5 @@
 use crate::db::{create_pool, DBPool, DB};
-use crate::{json, Error, Result};
+use crate::{Error, Result};
 
 pub mod table;
 
@@ -10,7 +10,6 @@ pub struct UserDB {
     name: String,
     pool: DBPool,
     tables: TableSpec,
-    backup_json_path: std::path::PathBuf,
 }
 
 #[async_trait::async_trait]
@@ -46,10 +45,6 @@ impl UserDB {
             name: name.clone(),
             pool,
             tables,
-            backup_json_path: std::path::PathBuf::from(&format!(
-                "backup-json/{}.json",
-                name
-            )),
         };
         // Attempt to initialise
         if db.is_empty().await? {
@@ -76,33 +71,6 @@ impl UserDB {
             .await?
             .execute(table.construct_create_query().as_str(), &[])
             .await?;
-        Ok(())
-    }
-    /// Backup in json format
-    pub async fn backup_json(&self) -> Result<()> {
-        log::debug!("writing json backup to {:?}", self.backup_json_path);
-        let db_json = self.get_db_json().await?;
-        json::write(&db_json, self.backup_json_path.as_path())?;
-        Ok(())
-    }
-    /// Restores data from json
-    pub async fn restore_json(&self) -> Result<()> {
-        log::debug!("restoring json backup from {:?}", self.backup_json_path);
-        let tables_json: Vec<TableJson> =
-            json::read(self.backup_json_path.as_path())?;
-        for table_json in tables_json {
-            self.find_table(table_json.name.as_str())?;
-            if table_json.rows.is_empty() {
-                log::info!("backup table \"{}\" is empty", table_json.name);
-                continue;
-            }
-            log::info!(
-                "restoring {} rows from \"{}\" table",
-                table_json.rows.len(),
-                table_json.name
-            );
-            self.insert(&table_json).await?
-        }
         Ok(())
     }
     /// See if the database is empty (no tables)
@@ -137,12 +105,12 @@ impl UserDB {
         rows_to_json(all_rows_json)
     }
     /// Get one table's data
-    async fn get_table_json(&self, table_name: &str) -> Result<TableJson> {
+    pub async fn get_table_json(&self, table_name: &str) -> Result<TableJson> {
         let table_json = self.get_rows_json(table_name).await?;
         Ok(TableJson::new(table_name, table_json))
     }
     /// Get all data as json as per the specification
-    async fn get_db_json(&self) -> Result<DBJson> {
+    pub async fn get_db_json(&self) -> Result<DBJson> {
         let mut db_json = Vec::with_capacity(self.tables.len());
         for table in &self.tables {
             let json = self.get_table_json(table.name.as_str()).await?;
