@@ -52,24 +52,16 @@ impl UserDB {
             )),
         };
         // Attempt to initialise
-        db.init().await?;
-        Ok(db)
-    }
-    /// Initialises the database.
-    /// No tables - creates them.
-    /// Some tables - does nothing (assumes that they are correct).
-    async fn init(&self) -> Result<()> {
-        // Empty database - table creation required
-        if self.is_empty().await? {
-            log::info!("initialising empty database \"{}\"", self.name);
-            self.create_all_tables().await?;
+        if db.is_empty().await? {
+            log::info!("initialising empty database \"{}\"", db.name);
+            db.create_all_tables().await?;
         } else {
             log::info!(
                 "found tables in database \"{}\", assuming they are correct",
-                self.name
+                db.name
             )
         }
-        Ok(())
+        Ok(db)
     }
     /// Creates the given tables
     async fn create_tables(&self, tables: &[TableMeta]) -> Result<()> {
@@ -215,59 +207,27 @@ mod tests {
     use super::table::{ColMeta, ColSpec};
     use super::*;
 
-    // Test config
-    fn get_test_config() -> tokio_postgres::Config {
-        let mut dbconfig = tokio_postgres::Config::new();
-        dbconfig
-            .host("localhost")
-            .port(5432)
-            .dbname("odctest")
-            .user("odcapi")
-            .password("odcapi");
-        dbconfig
-    }
-
-    // Makes sure odctest database exists.
-    // Assumes odcadmin database exists
-    async fn setup_odctest() {
-        let mut config = get_test_config();
-        config.dbname("odcadmin");
-        let (odcadmin_client, con) =
-            config.connect(tokio_postgres::NoTls).await.unwrap();
-        tokio::spawn(async move {
-            con.await.unwrap();
-        });
-        odcadmin_client
-            .execute("DROP DATABASE IF EXISTS odctest", &[])
-            .await
-            .unwrap();
-        odcadmin_client
-            .execute("CREATE DATABASE odctest", &[])
-            .await
-            .unwrap();
-    }
-
     // Test primary table
     fn get_test_primary_table() -> TableMeta {
         let mut cols = ColSpec::new();
-        cols.push(ColMeta::new("id", "SERIAL", "PRIMARY KEY"));
+        cols.push(ColMeta::new("id", "INTEGER", "PRIMARY KEY"));
         cols.push(ColMeta::new("email", "TEXT", "NOT NULL"));
         TableMeta::new("primary", cols, "")
     }
 
     // One entry for the primary table
-    fn get_primary_entry_from_json(json: &str) -> RowJson {
+    fn get_entry_from_json(json: &str) -> RowJson {
         serde_json::from_str::<RowJson>(json).unwrap()
     }
 
     // Some data for the primary table
     fn get_primary_sample_data() -> TableJson {
         let mut sample_data = Vec::new();
-        sample_data.push(get_primary_entry_from_json(
-            r#"{"email": "test1@example.com"}"#,
+        sample_data.push(get_entry_from_json(
+            r#"{"id": 1, "email": "test1@example.com"}"#,
         ));
-        sample_data.push(get_primary_entry_from_json(
-            r#"{"email": "test2@example.com"}"#,
+        sample_data.push(get_entry_from_json(
+            r#"{"id": 2, "email": "test2@example.com"}"#,
         ));
         TableJson::new("primary", sample_data)
     }
@@ -281,17 +241,15 @@ mod tests {
             "secondary",
             cols,
             "PRIMARY KEY(\"id\", \"timepoint\"),\
-        FOREIGN KEY(\"id\") REFERENCES \"primary\"(\"id\")",
+            FOREIGN KEY(\"id\") REFERENCES \"primary\"(\"id\")",
         )
     }
 
     // Some data for the secondary table
     fn get_secondary_sample_data() -> TableJson {
         let mut sample_data = Vec::new();
-        sample_data
-            .push(get_primary_entry_from_json(r#"{"id": 1, "timepoint": 1}"#));
-        sample_data
-            .push(get_primary_entry_from_json(r#"{"id": 1, "timepoint": 2}"#));
+        sample_data.push(get_entry_from_json(r#"{"id": 1, "timepoint": 1}"#));
+        sample_data.push(get_entry_from_json(r#"{"id": 1, "timepoint": 2}"#));
         TableJson::new("secondary", sample_data)
     }
 
@@ -345,49 +303,24 @@ mod tests {
 
     // Test database
     #[tokio::test]
-    async fn user_db() {
+    async fn test_user() {
         let _ = pretty_env_logger::try_init();
-        setup_odctest().await;
-        let test_config = get_test_config();
-        // Manually created database object - use to control what database we
-        // are connecting to
-        let db = UserDB {
-            name: String::from("odctest"),
-            backup_json_path: std::path::PathBuf::from(
-                "backup-json/odctest.json",
-            ),
-            pool: create_pool(test_config.clone()).unwrap(),
-            tables: get_testdb_spec(),
-        };
+        crate::tests::setup_test_db("odcadmin_test_user").await;
+        let db = UserDB::new(
+            crate::tests::gen_test_config("odcadmin_test_user"),
+            get_testdb_spec(),
+        )
+        .await
+        .unwrap();
 
-        // Make sure there are no tables
-        db.drop_all_tables().await.unwrap();
-        assert!(db.is_empty().await.unwrap());
-
-        // Connect to empty
-        let new_db = UserDB::new(test_config.clone(), get_testdb_spec())
-            .await
-            .unwrap();
-        test_rows_absent(&new_db).await;
-
-        // Recreate the tables
-        db.create_all_tables().await.unwrap();
+        // Make sure tables were created
         assert!(!db.is_empty().await.unwrap());
+        // But there is no data
+        test_rows_absent(&db).await;
 
         // Insert some data
         insert_test_data(&db).await;
-
-        // Connect to the now non-empty database
-        let new_db = UserDB::new(test_config.clone(), get_testdb_spec())
-            .await
-            .unwrap();
-        test_rows_present(&new_db).await;
-
-        // Reset
-        db.reset().await.unwrap();
-        test_rows_absent(&db).await;
-
-        insert_test_data(&db).await;
+        test_rows_present(&db).await;
 
         // Select query
         log::info!("test select query");
@@ -398,19 +331,30 @@ mod tests {
         assert_eq!(query_res.len(), 1);
         assert_eq!(query_res[0]["email"], "test1@example.com");
 
-        // Test connection to database while having a different expectation of it.
-        // This can happen only if the database was modified by something other than
-        // this backend.
+        // Select json
+        let db_json = db.get_db_json().await.unwrap();
+        assert_eq!(
+            db_json,
+            vec![get_primary_sample_data(), get_secondary_sample_data()]
+        );
+
+        // Test connection to database while having a different expectation
+        // of it.
+        // This can happen only if the database was modified by something other
+        // than this backend.
         log::info!("test connection to changed");
-        let new_db = UserDB::new(test_config, get_testdb_spec_alt())
-            .await
-            .unwrap();
+        let new_db = UserDB::new(
+            crate::tests::gen_test_config("odcadmin_test_user"),
+            get_testdb_spec_alt(),
+        )
+        .await
+        .unwrap();
         // The database is the same but we now think that secondary doesn't exist
         assert!(matches!(
             new_db.get_rows_json("secondary").await.unwrap_err(),
             Error::TableNotPresent(name) if name == "secondary"
         ));
-        // Reset with no backup should work
+        // Reset should straighten it out
         new_db.reset().await.unwrap();
         // Primary table should be empty
         assert!(db.get_rows_json("primary").await.unwrap().is_empty());

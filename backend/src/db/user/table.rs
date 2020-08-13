@@ -174,7 +174,7 @@ impl TableMeta {
 }
 
 /// Table json
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct TableJson {
     /// Table name
     pub name: String,
