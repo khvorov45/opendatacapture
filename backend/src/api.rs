@@ -195,11 +195,22 @@ mod tests {
         let _ = pretty_env_logger::try_init();
         let admindb = tests::create_test_admindb("odcadmin_test_api").await;
         let admindb_ref = Arc::new(admindb);
-        let session_token_filter = generate_session_token(admindb_ref.clone());
 
         // Individual filters given good input --------------------------------
 
+        // Health check
+        let health_filter = health(admindb_ref.clone());
+        let health_resp = warp::test::request()
+            .method("GET")
+            .path("/health")
+            .reply(&health_filter)
+            .await
+            .into_body();
+        let health = serde_json::from_slice::<bool>(&*health_resp).unwrap();
+        assert!(health);
+
         // Get session token
+        let session_token_filter = generate_session_token(admindb_ref.clone());
         let user_token_resp = warp::test::request()
             .method("POST")
             .path("/auth/session-token")
