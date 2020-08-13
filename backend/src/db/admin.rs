@@ -151,6 +151,7 @@ impl AdminDB {
     }
     /// Get all users
     pub async fn get_users(&self) -> Result<Vec<User>> {
+        log::debug!("get all users");
         let res = self
             .get_con()
             .await?
@@ -164,6 +165,7 @@ impl AdminDB {
     }
     /// Returns the user given their token
     pub async fn get_user_by_id(&self, id: i32) -> Result<User> {
+        log::debug!("getting user by id: {}", id);
         let res = self
             .get_con()
             .await?
@@ -176,6 +178,7 @@ impl AdminDB {
     }
     /// Returns the user for the given email
     async fn get_user_by_email(&self, email: &str) -> Result<User> {
+        log::debug!("getting user by email: {}", email);
         let res = self
             .get_con()
             .await?
@@ -188,7 +191,9 @@ impl AdminDB {
     }
     /// Gets the user who the given token belongs to
     pub async fn get_user_by_token(&self, tok: &str) -> Result<User> {
+        log::debug!("getting user by token {}", tok);
         let tok = self.get_token(tok).await?;
+        log::debug!("got token: {:?}", tok);
         if tok.age_hours() > auth::AUTH_TOKEN_HOURS_TO_LIVE {
             return Err(Error::TokenTooOld);
         }
@@ -347,6 +352,7 @@ mod tests {
         let test_db =
             crate::tests::create_test_admindb("odcadmin_test_admin", true)
                 .await;
+        // Generate token
         let user1 = extract_first_user(&test_db).await;
         let tok1 = gen_tok(&test_db).await;
         assert_eq!(extract_first_user_token(&test_db).await, tok1);
@@ -357,12 +363,14 @@ mod tests {
         let test_db =
             crate::tests::create_test_admindb("odcadmin_test_admin", false)
                 .await;
+        // Data should not be modified
         let user2 = extract_first_user(&test_db).await;
         let tok2 = extract_first_user_token(&test_db).await;
         assert_eq!(user1, user2);
         assert_eq!(tok1, tok2);
-        let tok2_reset = gen_tok(&test_db).await;
-        assert_ne!(tok2.token(), tok2_reset.token());
+        // Next generated token should be different
+        let tok2_next = gen_tok(&test_db).await;
+        assert_ne!(tok2.token(), tok2_next.token());
 
         // Start clean again
         log::info!("start clean again");
@@ -370,13 +378,24 @@ mod tests {
         let test_db =
             crate::tests::create_test_admindb("odcadmin_test_admin", true)
                 .await;
+        // Password hash should be different
         let user3 = extract_first_user(&test_db).await;
+        assert_eq!(user3.id(), user1.id());
         assert_ne!(user1.password_hash, user3.password_hash); // Different salt
-        let tok3 = gen_tok(&test_db).await;
-        assert_ne!(tok3.token(), tok2_reset.token());
+
+        // Token should be absent
+        let res = test_db
+            .get_con()
+            .await
+            .unwrap()
+            .query_opt("SELECT * FROM \"token\"", &[])
+            .await
+            .unwrap();
+        assert!(res.is_none());
 
         // Insert a regular user
         crate::tests::insert_test_user(&test_db).await;
+        // Token should be successfully generated
         let user_tok = test_db
             .generate_session_token(auth::EmailPassword {
                 email: "user@example.com".to_string(),
@@ -386,5 +405,35 @@ mod tests {
             .unwrap();
         let user = test_db.get_user_by_token(user_tok.token()).await.unwrap();
         assert_eq!(user.id, user_tok.user());
+
+        // Make that token appear older
+        test_db
+            .get_con()
+            .await
+            .unwrap()
+            .execute(
+                "UPDATE \"token\" \
+                SET \"created\" = '2000-08-14 08:15:29.425665+10' \
+                WHERE \"user\" = '2'",
+                &[],
+            )
+            .await
+            .unwrap();
+        let user = test_db.get_user_by_token(user_tok.token()).await;
+        assert!(matches!(user, Err(Error::TokenTooOld)));
+
+        // User 3 should not exist
+        let user3 = test_db.get_user_by_id(3).await;
+        assert!(matches!(user3, Err(Error::NoSuchUser(id)) if id == "3"));
+        let user3 = test_db.get_user_by_email("user3@email.com").await;
+        assert!(matches!(
+            user3,
+            Err(Error::NoSuchUser(email)) if email == "user3@email.com"
+        ));
+        let user3 = test_db.get_user_by_token("abc").await;
+        assert!(matches!(
+            user3,
+            Err(Error::NoSuchToken(tok)) if tok == "abc"
+        ));
     }
 }

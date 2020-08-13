@@ -89,8 +89,8 @@ impl Token {
         }
     }
     pub fn age_hours(&self) -> i64 {
-        self.created
-            .signed_duration_since(chrono::Utc::now())
+        chrono::Utc::now()
+            .signed_duration_since(self.created)
             .num_hours()
     }
 }
@@ -142,5 +142,13 @@ mod tests {
             parse_bearer_header("Basic u:p").unwrap_err(),
             Error::WrongAuthType(b) if b == "Basic"
         ));
+    }
+    #[test]
+    fn test_token() {
+        use chrono::prelude::*;
+        let mut tok = Token::new(1);
+        assert!(tok.age_hours() < 1);
+        tok.created = chrono::Utc.ymd(2000, 1, 1).and_hms(0, 0, 0);
+        assert!(tok.age_hours() > 1000);
     }
 }
