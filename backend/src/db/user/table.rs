@@ -165,9 +165,7 @@ impl TableMeta {
     fn verify_cols_present(&self, cols: &[&str]) -> Result<()> {
         let cols_not_present = self.find_cols_not_present(cols);
         if !cols_not_present.is_empty() {
-            let e = Error::ColsNotPresent(cols_not_present);
-            log::error!("{}", e);
-            return Err(e);
+            return Err(Error::ColsNotPresent(cols_not_present));
         }
         Ok(())
     }
