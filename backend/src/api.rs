@@ -21,11 +21,13 @@ async fn handle_rejection(
     use warp::http::StatusCode;
     let status;
     let message;
+    log::debug!("recover filter error: {:?}", err);
     // My errors
     if let Some(e) = err.find::<Error>() {
         use Error::*;
         match e {
-            NoSuchUser(_) | WrongPassword(_) | NoSuchToken(_) => {
+            NoSuchUser(_) | WrongPassword(_) | NoSuchToken(_)
+            | InsufficientAccess => {
                 status = StatusCode::UNAUTHORIZED;
                 message = format!("{:?}", e);
             }
@@ -35,25 +37,31 @@ async fn handle_rejection(
             }
         }
     // Not my errors
+    } else if let Some(e) = err.find::<warp::reject::MissingHeader>() {
+        if e.name() == "Authorization" {
+            status = StatusCode::UNAUTHORIZED;
+        } else {
+            status = StatusCode::BAD_REQUEST;
+        }
+        message = e.to_string();
+    } else if let Some(e) = err.find::<warp::filters::cors::CorsForbidden>() {
+        status = StatusCode::FORBIDDEN;
+        message = e.to_string();
+    } else if let Some(e) =
+        err.find::<warp::filters::body::BodyDeserializeError>()
+    {
+        status = StatusCode::BAD_REQUEST;
+        message = e.to_string();
+    } else if let Some(e) = err.find::<warp::reject::MethodNotAllowed>() {
+        status = StatusCode::METHOD_NOT_ALLOWED;
+        message = e.to_string();
     } else if err.is_not_found() {
         status = StatusCode::NOT_FOUND;
         message = "NOT_FOUND".to_string();
-    } else if err.find::<warp::filters::cors::CorsForbidden>().is_some() {
-        status = StatusCode::FORBIDDEN;
-        message = "CORS_FORBIDDEN".to_string();
-    } else if err
-        .find::<warp::filters::body::BodyDeserializeError>()
-        .is_some()
-    {
-        status = StatusCode::BAD_REQUEST;
-        message = "BAD_REQUEST".to_string();
-    } else if err.find::<warp::reject::MethodNotAllowed>().is_some() {
-        status = StatusCode::METHOD_NOT_ALLOWED;
-        message = "METHOD_NOT_ALLOWED".to_string();
     } else {
-        log::error!("Unhandled rejection: {:?}", err);
         status = StatusCode::INTERNAL_SERVER_ERROR;
-        message = "UNHANDLED_REJECTION".to_string();
+        message = format!("UNHANDLED_REJECTION: {:?}", err);
+        log::error!("{}", message);
     }
     let json = warp::reply::json(&message);
     Ok(warp::reply::with_status(json, status))
@@ -128,15 +136,15 @@ fn generate_session_token(
     warp::post()
         .and(warp::path!("auth" / "session-token"))
         .and(warp::body::json())
-        .and_then(move |cred: auth::EmailPassword| {
-            let db = db.clone();
-            async move {
+        .and(with_db(db))
+        .and_then(
+            move |cred: auth::EmailPassword, db: Arc<AdminDB>| async move {
                 match db.generate_session_token(cred).await {
                     Ok(t) => Ok(warp::reply::json(&t.token().to_string())),
                     Err(e) => Err(warp::reject::custom(e)),
                 }
-            }
-        })
+            },
+        )
         .with(cors)
 }
 
@@ -149,13 +157,11 @@ fn get_user_by_token(
         .allow_any_origin();
     warp::get()
         .and(warp::path!("get" / "user" / "by" / "token" / String))
-        .and_then(move |tok: String| {
-            let db = db.clone();
-            async move {
-                match db.get_user_by_token(tok.as_str()).await {
-                    Ok(u) => Ok(warp::reply::json(&u)),
-                    Err(e) => Err(warp::reject::custom(e)),
-                }
+        .and(with_db(db))
+        .and_then(move |tok: String, db: Arc<AdminDB>| async move {
+            match db.get_user_by_token(tok.as_str()).await {
+                Ok(u) => Ok(warp::reply::json(&u)),
+                Err(e) => Err(warp::reject::custom(e)),
             }
         })
         .with(cors)
@@ -163,21 +169,19 @@ fn get_user_by_token(
 
 /// Get all users
 pub fn get_users(
-    admindb: Arc<AdminDB>,
+    db: Arc<AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let cors = warp::cors()
         .allow_methods(&[Method::GET])
         .allow_any_origin();
     warp::get()
         .and(warp::path!("get" / "users"))
-        .and(sufficient_access(admindb.clone(), auth::Access::Admin))
-        .and_then(move |()| {
-            let admindb = admindb.clone();
-            async move {
-                match admindb.get_users().await {
-                    Ok(users) => Ok(warp::reply::json(&users)),
-                    Err(e) => Err(warp::reject::custom(e)),
-                }
+        .and(sufficient_access(db.clone(), auth::Access::Admin))
+        .and(with_db(db))
+        .and_then(move |(), db: Arc<AdminDB>| async move {
+            match db.get_users().await {
+                Ok(users) => Ok(warp::reply::json(&users)),
+                Err(e) => Err(warp::reject::custom(e)),
             }
         })
         .with(cors)
@@ -189,6 +193,7 @@ mod tests {
     use crate::db::admin;
     use crate::tests;
     use std::sync::Arc;
+    use warp::http::StatusCode;
 
     #[tokio::test]
     async fn test_api() {
@@ -235,10 +240,11 @@ mod tests {
                 password: "admin".to_string(),
             })
             .reply(&session_token_filter)
-            .await
-            .into_body();
+            .await;
+        assert_eq!(admin_token_resp.status(), StatusCode::OK);
         let admin_token =
-            serde_json::from_slice::<String>(&*admin_token_resp).unwrap();
+            serde_json::from_slice::<String>(&*admin_token_resp.body())
+                .unwrap();
 
         // Get user by token
         let get_user_by_token_filter = get_user_by_token(admindb_ref.clone());
@@ -247,25 +253,15 @@ mod tests {
             .path(format!("/get/user/by/token/{}", user_token).as_str())
             .header("Authorization", format!("Bearer {}", admin_token))
             .reply(&get_user_by_token_filter)
-            .await
-            .into_body();
+            .await;
+        assert_eq!(user_response.status(), StatusCode::OK);
         let user_obtained =
-            serde_json::from_slice::<admin::User>(&*user_response)
-                .unwrap_or_else(|e| {
-                    panic!(
-                        "Could not deserialize into user: {:?} because {}",
-                        std::str::from_utf8(&*user_response),
-                        e
-                    )
-                });
+            serde_json::from_slice::<admin::User>(&*user_response.body())
+                .unwrap();
         assert_eq!(user_obtained.email(), "user@example.com");
         assert!(
             argon2::verify_encoded(user_obtained.password_hash(), b"user")
-                .unwrap_or_else(|e| panic!(
-                    "could not verify hash: {} because {}",
-                    user_obtained.password_hash(),
-                    e
-                ))
+                .unwrap()
         );
         assert_eq!(user_obtained.access(), auth::Access::User);
 
@@ -276,17 +272,11 @@ mod tests {
             .path("/get/users")
             .header("Authorization", format!("Bearer {}", admin_token))
             .reply(&get_users_filter)
-            .await
-            .into_body();
+            .await;
+        assert_eq!(users_response.status(), StatusCode::OK);
         let users_obtained =
-            serde_json::from_slice::<Vec<admin::User>>(&*users_response)
-                .unwrap_or_else(|e| {
-                    panic!(
-                        "Could not deserialize into users: {:?} because {}",
-                        std::str::from_utf8(&*users_response),
-                        e
-                    )
-                });
+            serde_json::from_slice::<Vec<admin::User>>(&*users_response.body())
+                .unwrap();
         assert_eq!(users_obtained.len(), 2);
 
         // Rejections ---------------------------------------------------------
@@ -302,10 +292,11 @@ mod tests {
                 password: "user".to_string(),
             })
             .reply(&routes)
-            .await
-            .into_body();
+            .await;
+        assert_eq!(wrong_email_resp.status(), StatusCode::UNAUTHORIZED);
         let wrong_email =
-            serde_json::from_slice::<String>(&*wrong_email_resp).unwrap();
+            serde_json::from_slice::<String>(&*wrong_email_resp.body())
+                .unwrap();
         assert_eq!(wrong_email, "NoSuchUser(\"user1@example.com\")");
 
         // Wrong password
@@ -317,10 +308,84 @@ mod tests {
                 password: "user1".to_string(),
             })
             .reply(&routes)
-            .await
-            .into_body();
+            .await;
+        assert_eq!(wrong_password_resp.status(), StatusCode::UNAUTHORIZED);
         let wrong_email =
-            serde_json::from_slice::<String>(&*wrong_password_resp).unwrap();
+            serde_json::from_slice::<String>(&*wrong_password_resp.body())
+                .unwrap();
         assert_eq!(wrong_email, "WrongPassword(\"user1\")");
+
+        // Wrong token
+        let wrong_token_resp = warp::test::request()
+            .method("GET")
+            .path("/get/user/by/token/123")
+            .reply(&routes)
+            .await;
+        assert_eq!(wrong_token_resp.status(), StatusCode::UNAUTHORIZED);
+        let wrong_token =
+            serde_json::from_slice::<String>(&*wrong_token_resp.body())
+                .unwrap();
+        assert_eq!(wrong_token, "NoSuchToken(\"123\")");
+        let wrong_token_resp = warp::test::request()
+            .method("GET")
+            .path("/get/users")
+            .header("Authorization", "Bearer 123")
+            .reply(&routes)
+            .await;
+        assert_eq!(wrong_token_resp.status(), StatusCode::UNAUTHORIZED);
+        let wrong_token =
+            serde_json::from_slice::<String>(&*wrong_token_resp.body())
+                .unwrap();
+        assert_eq!(wrong_token, "NoSuchToken(\"123\")");
+
+        // Insufficient access
+        let ins_access_resp = warp::test::request()
+            .method("GET")
+            .path("/get/users")
+            .header("Authorization", format!("Bearer {}", user_token))
+            .reply(&routes)
+            .await;
+        assert_eq!(ins_access_resp.status(), StatusCode::UNAUTHORIZED);
+        let ins_access =
+            serde_json::from_slice::<String>(&*ins_access_resp.body()).unwrap();
+        assert_eq!(ins_access, "InsufficientAccess");
+
+        // Missing header
+        let miss_head_resp = warp::test::request()
+            .method("GET")
+            .path("/get/users")
+            .reply(&routes)
+            .await;
+        assert_eq!(miss_head_resp.status(), StatusCode::UNAUTHORIZED);
+        let miss_head =
+            serde_json::from_slice::<String>(&*miss_head_resp.body()).unwrap();
+        assert_eq!(miss_head, "Missing request header \"Authorization\"");
+
+        // Missing body
+        let miss_body_resp = warp::test::request()
+            .method("POST")
+            .path("/auth/session-token")
+            .reply(&routes)
+            .await;
+        assert_eq!(miss_body_resp.status(), StatusCode::BAD_REQUEST);
+        let miss_body =
+            serde_json::from_slice::<String>(&*miss_body_resp.body()).unwrap();
+        assert_eq!(
+            miss_body,
+            "Request body deserialize error: \
+            EOF while parsing a value at line 1 column 0"
+        );
+
+        // Wrong method
+        let wrong_method_resp = warp::test::request()
+            .method("GET")
+            .path("/auth/session-token")
+            .reply(&routes)
+            .await;
+        assert_eq!(wrong_method_resp.status(), StatusCode::METHOD_NOT_ALLOWED);
+        let wrong_method =
+            serde_json::from_slice::<String>(&*wrong_method_resp.body())
+                .unwrap();
+        assert_eq!(wrong_method, "HTTP method not allowed");
     }
 }
