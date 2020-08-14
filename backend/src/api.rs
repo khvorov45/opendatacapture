@@ -27,7 +27,7 @@ async fn handle_rejection(
         use Error::*;
         match e {
             NoSuchUser(_) | WrongPassword(_) | NoSuchToken(_)
-            | InsufficientAccess => {
+            | InsufficientAccess | TokenTooOld => {
                 status = StatusCode::UNAUTHORIZED;
                 message = format!("{:?}", e);
             }
@@ -337,6 +337,30 @@ mod tests {
             serde_json::from_slice::<String>(&*wrong_token_resp.body())
                 .unwrap();
         assert_eq!(wrong_token, "NoSuchToken(\"123\")");
+
+        // Token too old
+        admindb_ref
+            .get_con()
+            .await
+            .unwrap()
+            .execute(
+                "UPDATE \"token\" \
+                SET \"created\" = '2000-08-14 08:15:29.425665+10' \
+                WHERE \"user\" = '1'",
+                &[],
+            )
+            .await
+            .unwrap();
+        let old_token_resp = warp::test::request()
+            .method("GET")
+            .path("/get/users")
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&routes)
+            .await;
+        assert_eq!(old_token_resp.status(), StatusCode::UNAUTHORIZED);
+        let old_token =
+            serde_json::from_slice::<String>(&*old_token_resp.body()).unwrap();
+        assert_eq!(old_token, "TokenTooOld");
 
         // Insufficient access
         let ins_access_resp = warp::test::request()
