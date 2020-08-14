@@ -6,12 +6,14 @@ use warp::{http::Method, Filter, Reply};
 /// All routes
 pub fn routes(
     db: Arc<AdminDB>,
-) -> impl Filter<Extract = impl Reply, Error = Infallible> + Clone {
+) -> impl Filter<Extract = impl Reply, Error = warp::Rejection> + Clone {
+    let cors = warp::cors().allow_any_origin();
     health(db.clone())
         .or(generate_session_token(db.clone()))
         .or(get_user_by_token(db.clone()))
         .or(get_users(db))
         .recover(handle_rejection)
+        .with(cors)
 }
 
 /// Error handling
@@ -110,9 +112,7 @@ fn with_db(
 fn health(
     db: Arc<AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    let cors = warp::cors()
-        .allow_methods(&[Method::GET])
-        .allow_any_origin();
+    let cors = warp::cors().allow_methods(&[Method::GET]);
     async fn get_health(
         db: Arc<AdminDB>,
     ) -> Result<impl warp::Reply, Infallible> {
@@ -131,7 +131,6 @@ fn generate_session_token(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let cors = warp::cors()
         .allow_methods(&[Method::POST])
-        .allow_any_origin()
         .allow_header("Content-Type");
     warp::post()
         .and(warp::path!("auth" / "session-token"))
@@ -152,9 +151,7 @@ fn generate_session_token(
 fn get_user_by_token(
     db: Arc<AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    let cors = warp::cors()
-        .allow_methods(&[Method::GET])
-        .allow_any_origin();
+    let cors = warp::cors().allow_methods(&[Method::GET]);
     warp::get()
         .and(warp::path!("get" / "user" / "by" / "token" / String))
         .and(with_db(db))
@@ -171,9 +168,7 @@ fn get_user_by_token(
 pub fn get_users(
     db: Arc<AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    let cors = warp::cors()
-        .allow_methods(&[Method::GET])
-        .allow_any_origin();
+    let cors = warp::cors().allow_methods(&[Method::GET]);
     warp::get()
         .and(warp::path!("get" / "users"))
         .and(sufficient_access(db.clone(), auth::Access::Admin))
@@ -411,5 +406,36 @@ mod tests {
             serde_json::from_slice::<String>(&*wrong_method_resp.body())
                 .unwrap();
         assert_eq!(wrong_method, "HTTP method not allowed");
+
+        // CORS ---------------------------------------------------------------
+
+        // Origin header
+
+        // When request is good
+        let cors_origin_resp = warp::test::request()
+            .method("GET")
+            .path("/health")
+            .header("Origin", "test")
+            .reply(&routes)
+            .await;
+        assert_eq!(cors_origin_resp.status(), StatusCode::OK);
+        let cors_origin =
+            serde_json::from_slice::<bool>(&*cors_origin_resp.body()).unwrap();
+        assert!(cors_origin);
+        let heads = cors_origin_resp.headers();
+        let allow_origin = heads.get("access-control-allow-origin").unwrap();
+        assert_eq!(allow_origin, "test");
+
+        // When request fails
+        let cors_origin_resp = warp::test::request()
+            .method("POST")
+            .path("/health")
+            .header("Origin", "test")
+            .reply(&routes)
+            .await;
+        assert_eq!(cors_origin_resp.status(), StatusCode::METHOD_NOT_ALLOWED);
+        let heads = cors_origin_resp.headers();
+        let allow_origin = heads.get("access-control-allow-origin").unwrap();
+        assert_eq!(allow_origin, "test");
     }
 }
