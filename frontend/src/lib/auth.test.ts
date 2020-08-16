@@ -17,7 +17,7 @@ test("tokenFetcher", async () => {
   tokenFetcher(cred).catch((e) =>
     expect(e.message).toBe("unexpected response data: null")
   )
-  mockedAxios.post.mockResolvedValue({ status: 201, data: "NoSuchUser" })
+  mockedAxios.post.mockResolvedValue({ status: 201, data: "NoSuchUserEmail" })
   tokenFetcher(cred).catch((e) => expect(e.message).toBe("EmailNotFound"))
   mockedAxios.post.mockResolvedValue({ status: 201, data: "WrongPassword" })
   tokenFetcher(cred).catch((e) => expect(e.message).toBe("WrongPassword"))

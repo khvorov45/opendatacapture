@@ -1,7 +1,7 @@
 import React, { useState } from "react"
 import { TextField, Button, FormHelperText } from "@material-ui/core"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
-import { EmailPassword } from "../lib/auth"
+import { EmailPassword, LoginFailure } from "../lib/auth"
 import { useHistory } from "react-router-dom"
 
 export default function Login({
@@ -67,10 +67,10 @@ function LoginForm({
         setButtonMsg("")
         setEmailError(false)
         setEmailMsg("")
-        if (e.message === "EmailNotFound") {
+        if (e.message === LoginFailure.EmailNotFound) {
           setEmailError(true)
           setEmailMsg("Email not found")
-        } else if (e.message === "WrongPassword") {
+        } else if (e.message === LoginFailure.WrongPassword) {
           setPasswordError(true)
           setPasswordMsg("Wrong password")
         } else {

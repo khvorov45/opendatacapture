@@ -6,6 +6,11 @@ export interface EmailPassword {
   password: string
 }
 
+export enum LoginFailure {
+  EmailNotFound = "EmailNotFound",
+  WrongPassword = "WrongPassword",
+}
+
 export enum Access {
   User = "User",
   Admin = "Admin",
@@ -46,11 +51,11 @@ export async function tokenFetcher(cred: EmailPassword): Promise<string> {
     throw Error(`unexpected response data: ${JSON.stringify(res.data)}`)
   }
   if (res.status !== httpStatusCodes.OK) {
-    if (res.data.startsWith("NoSuchUser")) {
-      throw Error("EmailNotFound")
+    if (res.data.startsWith("NoSuchUserEmail")) {
+      throw Error(LoginFailure.EmailNotFound)
     }
     if (res.data.startsWith("WrongPassword")) {
-      throw Error("WrongPassword")
+      throw Error(LoginFailure.WrongPassword)
     }
     throw Error(
       `login failed with status ${res.status} and data ${JSON.stringify(
