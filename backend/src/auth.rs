@@ -1,4 +1,4 @@
-use crate::{Error, Result};
+use crate::{error::Unauthorized, Error, Result};
 
 const SALT_LENGTH: usize = 30;
 const AUTH_TOKEN_LENGTH: usize = 30;
@@ -33,7 +33,9 @@ fn gen_rand_string(len: usize) -> String {
 pub fn parse_bearer_header(raw: &str) -> Result<&str> {
     let header: Vec<&str> = raw.splitn(2, ' ').collect();
     if header[0] != "Bearer" {
-        return Err(Error::WrongAuthType(header[0].to_string()));
+        return Err(Error::Unauthorized(Unauthorized::WrongAuthType(
+            header[0].to_string(),
+        )));
     }
     Ok(header[1])
 }
@@ -140,7 +142,7 @@ mod tests {
         );
         assert!(matches!(
             parse_bearer_header("Basic u:p").unwrap_err(),
-            Error::WrongAuthType(b) if b == "Basic"
+            Error::Unauthorized(Unauthorized::WrongAuthType(b)) if b == "Basic"
         ));
     }
     #[test]

@@ -26,29 +26,17 @@ pub enum Error {
     #[error("unexpected access string: {0}")]
     UnexpectedAccessString(String),
 
-    /// User not found
-    #[error("no such user: {0}")]
-    NoSuchUser(String),
+    /// Unauthorized
+    #[error(transparent)]
+    Unauthorized(#[from] Unauthorized),
 
-    /// Token not found
-    #[error("no such token: {0}")]
-    NoSuchToken(String),
+    /// User ID not found
+    #[error("no such user id: {0}")]
+    NoSuchUserId(i32),
 
-    /// Wrong password
-    #[error("wrong password: {0}")]
-    WrongPassword(String),
-
-    /// Token too old
-    #[error("token too old")]
-    TokenTooOld,
-
-    /// Insufficient access
-    #[error("Insufficient access")]
-    InsufficientAccess,
-
-    /// Wrong authentication type
-    #[error("got auth type: {0}; while expected 'Bearer'")]
-    WrongAuthType(String),
+    /// User email not found
+    #[error("no such user email: {0}")]
+    NoSuchUserEmail(String),
 
     // Not my errors ----------------------------------------------------------
     /// Represents all cases of `tokio_postgres::Error`
@@ -89,3 +77,30 @@ pub enum Error {
 }
 
 impl warp::reject::Reject for Error {}
+
+#[derive(thiserror::Error, Debug, Clone, PartialEq)]
+pub enum Unauthorized {
+    /// User email not found
+    #[error("no such user email: {0}")]
+    NoSuchUserEmail(String),
+
+    /// Token not found
+    #[error("no such token: {0}")]
+    NoSuchToken(String),
+
+    /// Wrong password
+    #[error("wrong password: {0}")]
+    WrongPassword(String),
+
+    /// Token too old
+    #[error("token too old")]
+    TokenTooOld,
+
+    /// Insufficient access
+    #[error("insufficient access")]
+    InsufficientAccess,
+
+    /// Wrong authentication type
+    #[error("got auth type: {0}; while expected 'Bearer'")]
+    WrongAuthType(String),
+}

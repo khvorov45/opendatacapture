@@ -1,5 +1,5 @@
 use crate::db::{create_pool, DBPool, DB};
-use crate::{auth, Error, Opt, Result};
+use crate::{auth, error::Unauthorized, Error, Opt, Result};
 
 /// Administrative database
 pub struct AdminDB {
@@ -163,7 +163,7 @@ impl AdminDB {
         }
         Ok(users)
     }
-    /// Returns the user given their token
+    /// Returns the user given their id
     pub async fn get_user_by_id(&self, id: i32) -> Result<User> {
         log::debug!("getting user by id: {}", id);
         let res = self
@@ -173,7 +173,7 @@ impl AdminDB {
             .await?;
         match res {
             Some(row) => User::from_row(row),
-            None => Err(Error::NoSuchUser(id.to_string())),
+            None => Err(Error::NoSuchUserId(id)),
         }
     }
     /// Returns the user for the given email
@@ -186,7 +186,7 @@ impl AdminDB {
             .await?;
         match res {
             Some(row) => User::from_row(row),
-            None => Err(Error::NoSuchUser(email.to_string())),
+            None => Err(Error::NoSuchUserEmail(email.to_string())),
         }
     }
     /// Gets the user who the given token belongs to
@@ -195,8 +195,9 @@ impl AdminDB {
         let tok = self.get_token(tok).await?;
         log::debug!("got token: {:?}", tok);
         if tok.age_hours() > auth::AUTH_TOKEN_HOURS_TO_LIVE {
-            return Err(Error::TokenTooOld);
+            return Err(Error::Unauthorized(Unauthorized::TokenTooOld));
         }
+        // DB guarantees that there will be a user
         self.get_user_by_id(tok.user()).await
     }
 
@@ -214,7 +215,9 @@ impl AdminDB {
             .await?;
         match res {
             Some(row) => Ok(auth::Token::from_row(&row)),
-            None => Err(Error::NoSuchToken(token.to_string())),
+            None => Err(Error::Unauthorized(Unauthorized::NoSuchToken(
+                token.to_string(),
+            ))),
         }
     }
     /// Inserts a token
@@ -232,7 +235,18 @@ impl AdminDB {
         &self,
         cred: auth::EmailPassword,
     ) -> Result<auth::Token> {
-        let user = self.get_user_by_email(cred.email.as_str()).await?;
+        let user;
+        match self.get_user_by_email(cred.email.as_str()).await {
+            Ok(u) => user = u,
+            Err(e) => match e {
+                Error::NoSuchUserEmail(email) => {
+                    return Err(Error::Unauthorized(
+                        Unauthorized::NoSuchUserEmail(email),
+                    ))
+                }
+                _ => return Err(e),
+            },
+        };
         if argon2::verify_encoded(
             user.password_hash.as_str(),
             cred.password.as_bytes(),
@@ -241,7 +255,9 @@ impl AdminDB {
             self.insert_token(&tok).await?;
             Ok(tok)
         } else {
-            Err(Error::WrongPassword(cred.password))
+            Err(Error::Unauthorized(Unauthorized::WrongPassword(
+                cred.password,
+            )))
         }
     }
 }
@@ -420,20 +436,24 @@ mod tests {
             .await
             .unwrap();
         let user = test_db.get_user_by_token(user_tok.token()).await;
-        assert!(matches!(user, Err(Error::TokenTooOld)));
+        assert!(matches!(
+            user,
+            Err(Error::Unauthorized(Unauthorized::TokenTooOld))
+        ));
 
         // User 3 should not exist
         let user3 = test_db.get_user_by_id(3).await;
-        assert!(matches!(user3, Err(Error::NoSuchUser(id)) if id == "3"));
+        assert!(matches!(user3, Err(Error::NoSuchUserId(id)) if id == 3));
         let user3 = test_db.get_user_by_email("user3@email.com").await;
         assert!(matches!(
             user3,
-            Err(Error::NoSuchUser(email)) if email == "user3@email.com"
+            Err(Error::NoSuchUserEmail(email)) if email == "user3@email.com"
         ));
         let user3 = test_db.get_user_by_token("abc").await;
         assert!(matches!(
             user3,
-            Err(Error::NoSuchToken(tok)) if tok == "abc"
+            Err(Error::Unauthorized(Unauthorized::NoSuchToken(tok)))
+                if tok == "abc"
         ));
     }
 }

@@ -1,4 +1,4 @@
-use crate::{auth, db, db::admin::AdminDB, db::DB, Error};
+use crate::{auth, db, db::admin::AdminDB, db::DB, error::Unauthorized, Error};
 use std::convert::Infallible;
 use std::sync::Arc;
 use warp::{http::Method, Filter, Reply};
@@ -26,12 +26,10 @@ async fn handle_rejection(
     log::debug!("recover filter error: {:?}", err);
     // My errors
     if let Some(e) = err.find::<Error>() {
-        use Error::*;
         match e {
-            NoSuchUser(_) | WrongPassword(_) | NoSuchToken(_)
-            | InsufficientAccess | TokenTooOld => {
+            Error::Unauthorized(reason) => {
                 status = StatusCode::UNAUTHORIZED;
-                message = format!("{:?}", e);
+                message = format!("{:?}", reason);
             }
             _ => {
                 status = StatusCode::INTERNAL_SERVER_ERROR;
@@ -92,7 +90,9 @@ fn sufficient_access(
         })
         .and_then(move |u: db::admin::User| async move {
             if u.access() < req_access {
-                Err(warp::reject::custom(Error::InsufficientAccess))
+                Err(warp::reject::custom(Error::Unauthorized(
+                    Unauthorized::InsufficientAccess,
+                )))
             } else {
                 Ok(())
             }
@@ -292,7 +292,7 @@ mod tests {
         let wrong_email =
             serde_json::from_slice::<String>(&*wrong_email_resp.body())
                 .unwrap();
-        assert_eq!(wrong_email, "NoSuchUser(\"user1@example.com\")");
+        assert_eq!(wrong_email, "NoSuchUserEmail(\"user1@example.com\")");
 
         // Wrong password
         let wrong_password_resp = warp::test::request()
@@ -368,6 +368,18 @@ mod tests {
         let ins_access =
             serde_json::from_slice::<String>(&*ins_access_resp.body()).unwrap();
         assert_eq!(ins_access, "InsufficientAccess");
+
+        // Wrong authentication type
+        let ins_access_resp = warp::test::request()
+            .method("GET")
+            .path("/get/users")
+            .header("Authorization", "Basic a:a")
+            .reply(&routes)
+            .await;
+        assert_eq!(ins_access_resp.status(), StatusCode::UNAUTHORIZED);
+        let ins_access =
+            serde_json::from_slice::<String>(&*ins_access_resp.body()).unwrap();
+        assert_eq!(ins_access, "WrongAuthType(\"Basic\")");
 
         // Missing header
         let miss_head_resp = warp::test::request()
