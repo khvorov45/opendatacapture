@@ -122,8 +122,8 @@ fn health(
     ) -> Result<impl warp::Reply, Infallible> {
         Ok(warp::reply::json(&db.health().await))
     }
-    warp::get()
-        .and(warp::path("health"))
+    warp::path("health")
+        .and(warp::get())
         .and(with_db(db))
         .and_then(get_health)
 }
@@ -132,8 +132,8 @@ fn health(
 fn generate_session_token(
     db: Arc<AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::post()
-        .and(warp::path!("auth" / "session-token"))
+    warp::path!("auth" / "session-token")
+        .and(warp::post())
         .and(warp::body::json())
         .and(with_db(db))
         .and_then(
@@ -150,8 +150,8 @@ fn generate_session_token(
 fn get_user_by_token(
     db: Arc<AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::get()
-        .and(warp::path!("get" / "user" / "by" / "token" / String))
+    warp::path!("get" / "user" / "by" / "token" / String)
+        .and(warp::get())
         .and(with_db(db))
         .and_then(move |tok: String, db: Arc<AdminDB>| async move {
             match db.get_user_by_token(tok.as_str()).await {
@@ -165,8 +165,8 @@ fn get_user_by_token(
 pub fn get_users(
     db: Arc<AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::get()
-        .and(warp::path!("get" / "users"))
+    warp::path!("get" / "users")
+        .and(warp::get())
         .and(sufficient_access(db.clone(), auth::Access::Admin))
         .and(with_db(db))
         .and_then(move |(), db: Arc<AdminDB>| async move {
@@ -457,5 +457,13 @@ mod tests {
         let heads = cors_origin_resp.headers();
         let allow_origin = heads.get("access-control-allow-origin").unwrap();
         assert_eq!(allow_origin, "test");
+
+        // Not found ----------------------------------------------------------
+        let not_found_resp = warp::test::request()
+            .method("GET")
+            .path("/")
+            .reply(&routes)
+            .await;
+        assert_eq!(not_found_resp.status(), StatusCode::NOT_FOUND);
     }
 }
