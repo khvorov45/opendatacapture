@@ -88,8 +88,10 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
         working-directory: frontend
+      - name: Compile backend
+        run: cargo build
       - name: Run backend
         run: cargo run &
       - name: Run fullstack tests
-        run: npm run test-backend -- --watchAll=false
+        run: sleep 5 && npm run test-backend -- --watchAll=false
         working-directory: frontend

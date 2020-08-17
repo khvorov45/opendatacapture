@@ -12,6 +12,7 @@ on:
       - "frontend/.vscode/**"
       - ".github/workflows/backend.yml"
       - ".github/workflows/coverage.yml"
+      - ".github/workflows/fullstack.yml"
   pull_request:
     paths-ignore:
       - ".vscode/**"
@@ -25,6 +26,7 @@ on:
       - "frontend/.vscode/**"
       - ".github/workflows/backend.yml"
       - ".github/workflows/coverage.yml"
+      - ".github/workflows/fullstack.yml"
 
 name: Frontend CI
 

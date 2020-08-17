@@ -15,6 +15,7 @@ on:
       - "backend/backup-json/**"
       - ".github/workflows/backend.yml"
       - ".github/workflows/frontend.yml"
+      - ".github/workflows/fullstack.yml"
   pull_request:
     paths-ignore:
       - ".vscode/**"
@@ -31,6 +32,7 @@ on:
       - "backend/backup-json/**"
       - ".github/workflows/backend.yml"
       - ".github/workflows/frontend.yml"
+      - ".github/workflows/fullstack.yml"
 
 name: Coverage
 
@@ -172,10 +174,12 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
         working-directory: frontend
+      - name: Compile backend
+        run: cargo build
       - name: Run backend
         run: cargo run &
       - name: Generate coverage
-        run: npm run test-backend -- --watchAll=false --coverage --coverageReporters lcov
+        run: sleep 5 && npm run test-backend -- --watchAll=false --coverage --coverageReporters lcov
         working-directory: frontend
       - name: Rename report
         run: mv frontend/coverage/lcov.info fullstack.info
