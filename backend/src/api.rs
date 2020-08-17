@@ -6,43 +6,19 @@ use warp::{Filter, Reply};
 /// All routes
 pub fn routes(
     db: Arc<AdminDB>,
-) -> impl Filter<Extract = impl Reply, Error = Infallible> + Clone {
-    // Put options on every path. This means that we can't really get a
-    // "NOT FOUND", it's always gonna be "METHOD NOT ALLOWED"
-    let opts = warp::options().map(warp::reply);
+) -> impl Filter<Extract = impl Reply, Error = warp::Rejection> + Clone {
+    // Apply the same cors headers to every path. Could not get it working
+    // when cors headers were different on every path.
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_methods(vec!["GET", "POST"])
+        .allow_header("Content-Type");
     health(db.clone())
         .or(generate_session_token(db.clone()))
         .or(get_user_by_token(db.clone()))
         .or(get_users(db))
-        .or(opts)
         .recover(handle_rejection)
-        .with(access_headers())
-}
-
-/// CORS headers.
-/// `warp` has `cors` but it I didn't find a way to make it work with
-/// rejections and with normal method restrictions at the same time.
-/// That is, either rejections worked but the `options` method didn't or
-/// `options` worked but rejections didn't. I don't want to use `warp::any`
-/// on every path.
-/// Since I don't really understand how this CORS thing is supposed to make
-/// anything more secure (the client has to opt-in, essentially) I just allow
-/// everyting on every path.
-fn access_headers() -> warp::filters::reply::WithHeaders {
-    let mut headers = warp::http::header::HeaderMap::new();
-    headers.insert(
-        "Access-Control-Allow-Origin",
-        warp::http::header::HeaderValue::from_static("*"),
-    );
-    headers.insert(
-        "Access-Control-Allow-Headers",
-        warp::http::header::HeaderValue::from_static("Content-Type"),
-    );
-    headers.insert(
-        "Access-Control-Allow-Methods",
-        warp::http::header::HeaderValue::from_static("GET,POST"),
-    );
-    warp::reply::with::headers(headers)
+        .with(cors)
 }
 
 /// Error handling
@@ -455,7 +431,7 @@ mod tests {
         assert!(cors_origin);
         let heads = cors_origin_resp.headers();
         let allow_origin = heads.get("access-control-allow-origin").unwrap();
-        assert_eq!(allow_origin, "*");
+        assert_eq!(allow_origin, "test");
 
         // When request fails
         let cors_origin_resp = warp::test::request()
@@ -467,18 +443,19 @@ mod tests {
         assert_eq!(cors_origin_resp.status(), StatusCode::METHOD_NOT_ALLOWED);
         let heads = cors_origin_resp.headers();
         let allow_origin = heads.get("access-control-allow-origin").unwrap();
-        assert_eq!(allow_origin, "*");
+        assert_eq!(allow_origin, "test");
 
         // Options request
         let cors_origin_resp = warp::test::request()
             .method("OPTIONS")
             .path("/health")
             .header("Origin", "test")
+            .header("Access-Control-Request-Method", "GET")
             .reply(&routes)
             .await;
         assert_eq!(cors_origin_resp.status(), StatusCode::OK);
         let heads = cors_origin_resp.headers();
         let allow_origin = heads.get("access-control-allow-origin").unwrap();
-        assert_eq!(allow_origin, "*");
+        assert_eq!(allow_origin, "test");
     }
 }
