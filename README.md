@@ -1,7 +1,8 @@
 # opendatacapture
 
-![Backend CI](https://github.com/khvorov45/opendatacapture/workflows/Backend%20CI/badge.svg?branch=master)
-![Frontend CI](https://github.com/khvorov45/opendatacapture/workflows/Frontend%20CI/badge.svg?branch=master)
+![Backend](https://github.com/khvorov45/opendatacapture/workflows/Backend%20CI/badge.svg?branch=master)
+![Frontend](https://github.com/khvorov45/opendatacapture/workflows/Frontend%20CI/badge.svg?branch=master)
+![Fullstack](https://github.com/khvorov45/opendatacapture/workflows/Fullstack/badge.svg)
 [![codecov](https://codecov.io/gh/khvorov45/opendatacapture/branch/master/graph/badge.svg)](https://codecov.io/gh/khvorov45/opendatacapture)
 
 An open-source tool for capturing data in a relational database.
