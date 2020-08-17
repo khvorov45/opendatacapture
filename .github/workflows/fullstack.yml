@@ -1,0 +1,95 @@
+on:
+  push:
+    paths-ignore:
+      - ".vscode/**"
+      - "docs/**"
+      - ".gitignore"
+      - "LICENSE"
+      - "README.md"
+      - "frontend/.gitignore"
+      - "frontend/README.md"
+      - "frontend/.vscode/**"
+      - "backend/.gitignore"
+      - "backend/README.md"
+      - "backend/.vscode/**"
+      - "backend/backup-json/**"
+      - ".github/workflows/backend.yml"
+      - ".github/workflows/frontend.yml"
+      - ".github/workflows/coverage.yml"
+  pull_request:
+    paths-ignore:
+      - ".vscode/**"
+      - "docs/**"
+      - ".gitignore"
+      - "LICENSE"
+      - "README.md"
+      - "frontend/.gitignore"
+      - "frontend/README.md"
+      - "frontend/.vscode/**"
+      - "backend/.gitignore"
+      - "backend/README.md"
+      - "backend/.vscode/**"
+      - "backend/backup-json/**"
+      - ".github/workflows/backend.yml"
+      - ".github/workflows/frontend.yml"
+      - ".github/workflows/coverage.yml"
+
+name: Fullstack
+
+jobs:
+  fullstack:
+    name: Fullstack
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:12
+        env:
+          POSTGRES_USER: odcapi
+          POSTGRES_PASSWORD: odcapi
+          POSTGRES_DB: odcadmin
+        ports:
+          - 5432:5432
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Cache node modules
+        uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - name: Cache cargo
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+            backend/target
+          key: ${{ runner.os }}-cargo-1-42-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Setup node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14.x
+      - name: Install frontend dependencies
+        run: npm install
+        working-directory: frontend
+      - name: Run backend
+        run: cargo run &
+      - name: Run fullstack tests
+        run: npm run test-backend -- --watchAll=false
+        working-directory: frontend
