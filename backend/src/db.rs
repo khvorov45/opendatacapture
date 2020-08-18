@@ -49,7 +49,7 @@ pub trait DB {
 
     /// Drop all tables and re-create them
     async fn reset(&self) -> Result<()> {
-        log::info!("resetting \"{}\" database with no backup", self.get_name());
+        log::info!("resetting \"{}\" database", self.get_name());
         self.drop_all_tables().await?;
         self.create_all_tables().await?;
         Ok(())

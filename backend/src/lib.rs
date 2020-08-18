@@ -78,6 +78,19 @@ mod tests {
             )
             .await
             .unwrap();
+        // Drop test projects
+        odcadmin_client
+            .execute("DROP DATABASE IF EXISTS user1_test", &[])
+            .await
+            .unwrap();
+        odcadmin_client
+            .execute("DROP DATABASE IF EXISTS user1_test_api", &[])
+            .await
+            .unwrap();
+        odcadmin_client
+            .execute("DROP DATABASE IF EXISTS user2_test", &[])
+            .await
+            .unwrap();
         odcadmin_client
             .execute(format!("CREATE DATABASE {}", dbname).as_str(), &[])
             .await
@@ -90,8 +103,9 @@ mod tests {
     pub async fn create_test_admindb(
         dbname: &str,
         clean: bool,
+        setup: bool,
     ) -> db::admin::AdminDB {
-        if clean {
+        if setup {
             setup_test_db(dbname).await;
         }
         let pg_config = gen_test_config(dbname);

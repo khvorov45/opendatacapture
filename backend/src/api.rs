@@ -11,12 +11,15 @@ pub fn routes(
     // when cors headers were different on every path.
     let cors = warp::cors()
         .allow_any_origin()
-        .allow_methods(vec!["GET", "POST"])
+        .allow_methods(vec!["GET", "POST", "PUT", "DELETE"])
         .allow_header("Content-Type");
     health(db.clone())
         .or(generate_session_token(db.clone()))
         .or(get_user_by_token(db.clone()))
-        .or(get_users(db))
+        .or(get_users(db.clone()))
+        .or(create_project(db.clone()))
+        .or(get_user_projects(db.clone()))
+        .or(delete_project(db))
         .recover(handle_rejection)
         .with(cors)
 }
@@ -76,7 +79,8 @@ async fn handle_rejection(
 fn sufficient_access(
     db: Arc<AdminDB>,
     req_access: crate::auth::Access,
-) -> impl Filter<Extract = ((),), Error = warp::Rejection> + Clone {
+) -> impl Filter<Extract = (db::admin::User,), Error = warp::Rejection> + Clone
+{
     warp::header::<String>("Authorization")
         .and_then(move |tok_raw: String| async move {
             match auth::parse_bearer_header(tok_raw.as_str()) {
@@ -99,7 +103,7 @@ fn sufficient_access(
                     Unauthorized::InsufficientAccess,
                 )))
             } else {
-                Ok(())
+                Ok(u)
             }
         })
 }
@@ -169,9 +173,73 @@ pub fn get_users(
         .and(warp::get())
         .and(sufficient_access(db.clone(), auth::Access::Admin))
         .and(with_db(db))
-        .and_then(move |(), db: Arc<AdminDB>| async move {
+        .and_then(move |_user, db: Arc<AdminDB>| async move {
             match db.get_users().await {
                 Ok(users) => Ok(warp::reply::json(&users)),
+                Err(e) => Err(warp::reject::custom(e)),
+            }
+        })
+}
+
+/// Create a project
+pub fn create_project(
+    db: Arc<AdminDB>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("create" / "project" / String)
+        .and(warp::put())
+        .and(sufficient_access(db.clone(), auth::Access::User))
+        .and(with_db(db))
+        .and_then(
+            move |project_name: String,
+                  user: db::admin::User,
+                  db: Arc<AdminDB>| async move {
+                match db.create_project(user.id(), project_name.as_str()).await
+                {
+                    Ok(()) => Ok(warp::reply()),
+                    Err(e) => Err(warp::reject::custom(e)),
+                }
+            },
+        )
+}
+
+/// Delete a project
+pub fn delete_project(
+    db: Arc<AdminDB>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("delete" / "project" / String)
+        .and(warp::delete())
+        .and(sufficient_access(db.clone(), auth::Access::User))
+        .and(with_db(db))
+        .and_then(
+            move |project_name: String,
+                  user: db::admin::User,
+                  db: Arc<AdminDB>| async move {
+                let project = match db
+                    .get_project(user.id(), project_name.as_str())
+                    .await
+                {
+                    Ok(project) => project,
+                    Err(e) => return Err(warp::reject::custom(e)),
+                };
+                match db.remove_project(&project).await {
+                    Ok(()) => Ok(warp::reply()),
+                    Err(e) => Err(warp::reject::custom(e)),
+                }
+            },
+        )
+}
+
+/// Get user's projects
+pub fn get_user_projects(
+    db: Arc<AdminDB>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("get" / "projects")
+        .and(warp::get())
+        .and(sufficient_access(db.clone(), auth::Access::User))
+        .and(with_db(db))
+        .and_then(move |user: db::admin::User, db: Arc<AdminDB>| async move {
+            match db.get_user_projects(user.id()).await {
+                Ok(projects) => Ok(warp::reply::json(&projects)),
                 Err(e) => Err(warp::reject::custom(e)),
             }
         })
@@ -190,7 +258,7 @@ mod tests {
         let _ = pretty_env_logger::try_init();
 
         let admindb =
-            tests::create_test_admindb("odcadmin_test_api", true).await;
+            tests::create_test_admindb("odcadmin_test_api", true, true).await;
         tests::insert_test_user(&admindb).await;
 
         let admindb_ref = Arc::new(admindb);
@@ -268,6 +336,52 @@ mod tests {
             serde_json::from_slice::<Vec<admin::User>>(&*users_response.body())
                 .unwrap();
         assert_eq!(users_obtained.len(), 2);
+
+        // Create projects
+        let create_project_filter = create_project(admindb_ref.clone());
+        let create_project_response = warp::test::request()
+            .method("PUT")
+            .path("/create/project/test_api")
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&create_project_filter)
+            .await;
+        assert_eq!(create_project_response.status(), StatusCode::OK);
+        let get_projects_filter = get_user_projects(admindb_ref.clone());
+        let get_projects_response = warp::test::request()
+            .method("GET")
+            .path("/get/projects")
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&get_projects_filter)
+            .await;
+        assert_eq!(get_projects_response.status(), StatusCode::OK);
+        let projects_obtained = serde_json::from_slice::<Vec<admin::Project>>(
+            &*get_projects_response.body(),
+        )
+        .unwrap();
+        assert_eq!(projects_obtained.len(), 1);
+
+        // Delete projects
+        let delete_project_filter = delete_project(admindb_ref.clone());
+        let delete_project_response = warp::test::request()
+            .method("DELETE")
+            .path("/delete/project/test_api")
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&delete_project_filter)
+            .await;
+        assert_eq!(delete_project_response.status(), StatusCode::OK);
+        let get_projects_filter = get_user_projects(admindb_ref.clone());
+        let get_projects_response = warp::test::request()
+            .method("GET")
+            .path("/get/projects")
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&get_projects_filter)
+            .await;
+        assert_eq!(get_projects_response.status(), StatusCode::OK);
+        let projects_obtained = serde_json::from_slice::<Vec<admin::Project>>(
+            &*get_projects_response.body(),
+        )
+        .unwrap();
+        assert_eq!(projects_obtained.len(), 0);
 
         // Rejections ---------------------------------------------------------
 

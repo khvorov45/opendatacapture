@@ -38,6 +38,10 @@ pub enum Error {
     #[error("no such user email: {0}")]
     NoSuchUserEmail(String),
 
+    /// Project not found
+    #[error("no such project: {1} for user id: {0}")]
+    NoSuchProject(i32, String),
+
     // Not my errors ----------------------------------------------------------
     /// Represents all cases of `tokio_postgres::Error`
     #[error(transparent)]
