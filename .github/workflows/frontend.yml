@@ -28,7 +28,7 @@ on:
       - ".github/workflows/coverage.yml"
       - ".github/workflows/fullstack.yml"
 
-name: Frontend CI
+name: Frontend
 
 jobs:
   build:
