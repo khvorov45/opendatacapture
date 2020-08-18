@@ -1,10 +1,11 @@
+/* istanbul ignore file */
+
 import React from "react"
 import { render, fireEvent, waitForDomChange } from "@testing-library/react"
 import App from "./App"
 import { themeInit } from "./lib/theme"
 
 import axios from "axios"
-
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 

@@ -1,6 +1,7 @@
+/* istanbul ignore file */
 import { tokenFetcher, tokenValidator } from "./auth"
-import axios from "axios"
 
+import axios from "axios"
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 

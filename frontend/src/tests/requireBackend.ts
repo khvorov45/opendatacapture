@@ -2,6 +2,8 @@
  * started with the --clean option
  */
 
+/* istanbul ignore file */
+
 import { Access, LoginFailure, tokenFetcher, tokenValidator } from "../lib/auth"
 
 test("token fetching and validating", async () => {

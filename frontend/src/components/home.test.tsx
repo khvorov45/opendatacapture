@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import React from "react"
 import Home from "./home"
 import { render, waitForElement } from "@testing-library/react"

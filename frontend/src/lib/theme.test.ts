@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import { themeInit } from "./theme"
 
 function expectTheme(theme: "dark" | "light") {
