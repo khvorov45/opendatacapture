@@ -47,8 +47,10 @@ jobs:
             ~/.cargo/git
             target
             backend/target
-          key: ${{ runner.os }}-cargo-1-42-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-check-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
+            ${{ runner.os }}-cargo-check-${{ hashFiles('**/Cargo.lock') }}
+            ${{ runner.os }}-cargo-check-
             ${{ runner.os }}-cargo-
       - name: Install Stable
         uses: actions-rs/toolchain@v1
@@ -90,8 +92,10 @@ jobs:
             ~/.cargo/git
             target
             backend/target
-          key: ${{ runner.os }}-cargo-1-42-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
+            ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+            ${{ runner.os }}-cargo-test-
             ${{ runner.os }}-cargo-
       - name: Install stable
         uses: actions-rs/toolchain@v1

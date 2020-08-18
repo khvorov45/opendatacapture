@@ -73,8 +73,10 @@ jobs:
             ~/.cargo/git
             target
             backend/target
-          key: ${{ runner.os }}-cargo-1-42-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
+            ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+            ${{ runner.os }}-cargo-build-
             ${{ runner.os }}-cargo-
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
