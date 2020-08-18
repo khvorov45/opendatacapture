@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react"
 import Login from "./login"
 import { BrowserRouter, Switch, Route, Redirect } from "react-router-dom"
+import { LoginFailure } from "../lib/auth"
 
 test("basic functionality", async () => {
   let token: string | null = null
@@ -92,8 +93,8 @@ test("login when email is wrong", async () => {
 test("errors reset", async () => {
   let rejectIndex = 0
   let rejections = [
-    Error("EmailNotFound"),
-    Error("WrongPassword"),
+    Error(LoginFailure.EmailNotFound),
+    Error(LoginFailure.WrongPassword),
     Error("Network Error"),
   ]
   const { getByTestId } = render(
