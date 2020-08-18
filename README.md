@@ -1,7 +1,7 @@
 # opendatacapture
 
-![Backend](https://github.com/khvorov45/opendatacapture/workflows/Backend%20CI/badge.svg?branch=master)
-![Frontend](https://github.com/khvorov45/opendatacapture/workflows/Frontend%20CI/badge.svg?branch=master)
+![Backend](https://github.com/khvorov45/opendatacapture/workflows/Backend/badge.svg)
+![Frontend](https://github.com/khvorov45/opendatacapture/workflows/Frontend/badge.svg)
 ![Fullstack](https://github.com/khvorov45/opendatacapture/workflows/Fullstack/badge.svg)
 [![codecov](https://codecov.io/gh/khvorov45/opendatacapture/branch/master/graph/badge.svg)](https://codecov.io/gh/khvorov45/opendatacapture)
 
