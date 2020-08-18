@@ -49,9 +49,9 @@ jobs:
           path: |
             ~/.npm
             frontend/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-node-coverage-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+            ${{ runner.os }}-node-coverage-
             ${{ runner.os }}-node-
       - name: Setup node
         uses: actions/setup-node@v1
@@ -100,8 +100,9 @@ jobs:
             ~/.cargo/git
             target
             backend/target
-          key: ${{ runner.os }}-cargo-1-42-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-coverage-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
+            ${{ runner.os }}-cargo-coverage-
             ${{ runner.os }}-cargo-
       - name: Install toolchain
         uses: actions-rs/toolchain@v1
@@ -153,9 +154,10 @@ jobs:
           path: |
             ~/.npm
             frontend/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-node-coverage-fullstack-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+            ${{ runner.os }}-node-coverage-fullstack-
+            ${{ runner.os }}-node-coverage-
             ${{ runner.os }}-node-
       - name: Cache cargo
         uses: actions/cache@v2
@@ -165,9 +167,9 @@ jobs:
             ~/.cargo/git
             target
             backend/target
-          key: ${{ runner.os }}-cargo-coverage-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-coverage-fullstack-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-coverage-${{ hashFiles('**/Cargo.lock') }}
+            ${{ runner.os }}-cargo-coverage-fullstack
             ${{ runner.os }}-cargo-coverage-
             ${{ runner.os }}-cargo-
       - name: Install Rust toolchain
