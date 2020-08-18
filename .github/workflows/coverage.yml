@@ -49,6 +49,7 @@ jobs:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
+            ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
             ${{ runner.os }}-node-
       - name: Setup node
         uses: actions/setup-node@v1
@@ -150,6 +151,7 @@ jobs:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
+            ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
             ${{ runner.os }}-node-
       - name: Cache cargo
         uses: actions/cache@v2
