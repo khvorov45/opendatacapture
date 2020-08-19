@@ -5,3 +5,6 @@ coverage:
         # Rust's coverage reporting is inaccurate, so allow coverage to drop
         # by as much as 10%
         threshold: 10%
+    patch:
+      default:
+        threshold: 10%
