@@ -578,6 +578,17 @@ mod tests {
         let allow_origin = heads.get("access-control-allow-origin").unwrap();
         assert_eq!(allow_origin, "test");
 
+        // Disallowed header
+        let cors_origin_resp = warp::test::request()
+            .method("OPTIONS")
+            .path("/health")
+            .header("Origin", "test")
+            .header("Access-Control-Request-Method", "GET")
+            .header("Access-Control-Request-Headers", "X-Username")
+            .reply(&routes)
+            .await;
+        assert_eq!(cors_origin_resp.status(), StatusCode::FORBIDDEN);
+
         // Not found ----------------------------------------------------------
         let not_found_resp = warp::test::request()
             .method("GET")
