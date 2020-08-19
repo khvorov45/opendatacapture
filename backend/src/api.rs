@@ -214,14 +214,8 @@ pub fn delete_project(
             move |project_name: String,
                   user: db::admin::User,
                   db: Arc<AdminDB>| async move {
-                let project = match db
-                    .get_project(user.id(), project_name.as_str())
-                    .await
+                match db.remove_project(user.id(), project_name.as_str()).await
                 {
-                    Ok(project) => project,
-                    Err(e) => return Err(warp::reject::custom(e)),
-                };
-                match db.remove_project(&project).await {
                     Ok(()) => Ok(warp::reply()),
                     Err(e) => Err(warp::reject::custom(e)),
                 }
@@ -531,6 +525,23 @@ mod tests {
             serde_json::from_slice::<String>(&*create_project_response.body())
                 .unwrap(),
             "ProjectAlreadyExists(1, \"test_api\")"
+        );
+
+        // Delete a non-existent project
+        let delete_project_response = warp::test::request()
+            .method("DELETE")
+            .path("/delete/project/test_api_nonexistent")
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&routes)
+            .await;
+        assert_eq!(
+            delete_project_response.status(),
+            StatusCode::INTERNAL_SERVER_ERROR
+        );
+        assert_eq!(
+            serde_json::from_slice::<String>(&*delete_project_response.body())
+                .unwrap(),
+            "NoSuchProject(1, \"test_api_nonexistent\")"
         );
 
         // Token too old

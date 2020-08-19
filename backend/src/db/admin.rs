@@ -340,7 +340,17 @@ impl AdminDB {
         Ok(())
     }
     /// Removes the given project including dropping the database
-    pub async fn remove_project(&self, project: &Project) -> Result<()> {
+    pub async fn remove_project(
+        &self,
+        user_id: i32,
+        project_name: &str,
+    ) -> Result<()> {
+        log::debug!(
+            "removing project {} for user id {}",
+            project_name,
+            user_id
+        );
+        let project = self.get_project(user_id, project_name).await?;
         // Drop the database
         self.get_con()
             .await?
@@ -368,8 +378,14 @@ impl AdminDB {
     pub async fn remove_all_projects(&self) -> Result<()> {
         log::info!("removing all projects");
         let all_projects = self.get_all_projects().await?;
+        let con = self.get_con().await?;
         for project in &all_projects {
-            self.remove_project(project).await?;
+            con.execute(
+                format!("DROP DATABASE \"{}\"", project.name).as_str(),
+                &[],
+            )
+            .await?;
+            self.delete_project(project).await?;
         }
         Ok(())
     }
