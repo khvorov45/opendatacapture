@@ -78,19 +78,6 @@ mod tests {
             )
             .await
             .unwrap();
-        // Drop test projects
-        odcadmin_client
-            .execute("DROP DATABASE IF EXISTS user1_test", &[])
-            .await
-            .unwrap();
-        odcadmin_client
-            .execute("DROP DATABASE IF EXISTS user1_test_api", &[])
-            .await
-            .unwrap();
-        odcadmin_client
-            .execute("DROP DATABASE IF EXISTS user2_test", &[])
-            .await
-            .unwrap();
         odcadmin_client
             .execute(format!("CREATE DATABASE {}", dbname).as_str(), &[])
             .await
@@ -130,5 +117,14 @@ mod tests {
         )
         .await
         .unwrap();
+    }
+
+    /// Remove specific databases
+    pub async fn remove_dbs(db: &db::admin::AdminDB, names: &[&str]) {
+        for name in names {
+            db.execute(format!("DROP DATABASE IF EXISTS \"{}\"", name).as_str())
+                .await
+                .unwrap()
+        }
     }
 }

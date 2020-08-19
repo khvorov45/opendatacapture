@@ -130,6 +130,12 @@ impl AdminDB {
         Ok(admindb)
     }
 
+    /// Allows the execution of arbitrary SQL
+    pub async fn execute(&self, sql: &str) -> Result<()> {
+        self.get_con().await?.execute(sql, &[]).await?;
+        Ok(())
+    }
+
     // Access table -----------------------------------------------------------
 
     /// Fill the access table. Assume that it's empty.
@@ -578,6 +584,11 @@ mod tests {
             true,
         )
         .await;
+
+        // Token manipulation -------------------------------------------------
+
+        log::info!("token manipulation");
+
         // Generate token
         let user1 = extract_first_user(&test_db).await;
         let tok1 = gen_tok(&test_db).await;
@@ -673,6 +684,12 @@ mod tests {
         ));
 
         // Project creation/removal -------------------------------------------
+
+        log::info!("project manipulation");
+
+        // Make sure test projects aren't present
+        log::info!("remove test projects");
+        crate::tests::remove_dbs(&test_db, &["user1_test", "user2_test"]).await;
 
         // Verify that the database does not exist
         assert!(!project_exists(&test_db, "user1_test").await);

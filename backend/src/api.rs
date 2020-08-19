@@ -338,6 +338,12 @@ mod tests {
         assert_eq!(users_obtained.len(), 2);
 
         // Create projects
+
+        // Make sure test projects aren't present
+        log::info!("remove test projects");
+        crate::tests::remove_dbs(admindb_ref.as_ref(), &["user1_test_api"])
+            .await;
+
         let create_project_filter = create_project(admindb_ref.clone());
         let create_project_response = warp::test::request()
             .method("PUT")
