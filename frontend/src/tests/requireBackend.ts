@@ -5,6 +5,7 @@
 /* istanbul ignore file */
 
 import { Access, LoginFailure, tokenFetcher, tokenValidator } from "../lib/auth"
+import { createProject, getUserProjects, deleteProject } from "../lib/project"
 
 test("token fetching and validating", async () => {
   expect.assertions(6)
@@ -33,4 +34,19 @@ test("token fetching and validating", async () => {
   expect(admin.access).toBe(Access.Admin)
   expect(admin.email).toBe("admin@example.com")
   expect(admin.id).toBe(1)
+})
+
+test("project manipulation", async () => {
+  let token = await tokenFetcher({
+    email: "admin@example.com",
+    password: "admin",
+  })
+  await createProject(token, "test_fullstack")
+  let projects = await getUserProjects(token)
+  let projectNames = projects.map((p) => p.name)
+  expect(projectNames).toContain("user1_test_fullstack")
+  await deleteProject(token, "test_fullstack")
+  projects = await getUserProjects(token)
+  projectNames = projects.map((p) => p.name)
+  expect(projectNames).not.toContain("user1_test_fullstack")
 })

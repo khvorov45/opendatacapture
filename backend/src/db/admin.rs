@@ -43,7 +43,13 @@ impl DB for AdminDB {
     }
     async fn reset(&self) -> Result<()> {
         log::info!("resetting \"{}\" admin database", self.get_name());
-        self.remove_all_projects().await?;
+        if self
+            .get_all_table_names()
+            .await?
+            .contains(&"project".to_string())
+        {
+            self.remove_all_projects().await?;
+        }
         self.drop_all_tables().await?;
         self.create_all_tables().await?;
         Ok(())
@@ -291,6 +297,11 @@ impl AdminDB {
         user_id: i32,
         project_name: &str,
     ) -> Result<()> {
+        log::debug!(
+            "creating project {} for user id {}",
+            project_name,
+            user_id
+        );
         let project = Project::new(user_id, project_name);
         // Create the database
         self.get_con()

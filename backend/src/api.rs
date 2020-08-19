@@ -12,7 +12,7 @@ pub fn routes(
     let cors = warp::cors()
         .allow_any_origin()
         .allow_methods(vec!["GET", "POST", "PUT", "DELETE"])
-        .allow_header("Content-Type");
+        .allow_headers(vec!["Content-Type", "Authorization"]);
     health(db.clone())
         .or(generate_session_token(db.clone()))
         .or(get_user_by_token(db.clone()))

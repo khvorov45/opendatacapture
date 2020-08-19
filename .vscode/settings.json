@@ -24,6 +24,7 @@
         "initialising",
         "isready",
         "lcov",
+        "libssl",
         "llvm",
         "mobc",
         "nobackup",
