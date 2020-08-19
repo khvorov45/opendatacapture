@@ -41,7 +41,7 @@ async fn handle_rejection(
             }
             _ => {
                 status = StatusCode::INTERNAL_SERVER_ERROR;
-                message = e.to_string();
+                message = format!("{:?}", e);
             }
         }
     // Not my errors
@@ -448,30 +448,6 @@ mod tests {
                 .unwrap();
         assert_eq!(wrong_token, "NoSuchToken(\"123\")");
 
-        // Token too old
-        admindb_ref
-            .get_con()
-            .await
-            .unwrap()
-            .execute(
-                "UPDATE \"token\" \
-                SET \"created\" = '2000-08-14 08:15:29.425665+10' \
-                WHERE \"user\" = '1'",
-                &[],
-            )
-            .await
-            .unwrap();
-        let old_token_resp = warp::test::request()
-            .method("GET")
-            .path("/get/users")
-            .header("Authorization", format!("Bearer {}", admin_token))
-            .reply(&routes)
-            .await;
-        assert_eq!(old_token_resp.status(), StatusCode::UNAUTHORIZED);
-        let old_token =
-            serde_json::from_slice::<String>(&*old_token_resp.body()).unwrap();
-        assert_eq!(old_token, "TokenTooOld");
-
         // Insufficient access
         let ins_access_resp = warp::test::request()
             .method("GET")
@@ -533,6 +509,49 @@ mod tests {
             serde_json::from_slice::<String>(&*wrong_method_resp.body())
                 .unwrap();
         assert_eq!(wrong_method, "HTTP method not allowed");
+
+        // Creating the same project twice
+        warp::test::request()
+            .method("PUT")
+            .path("/create/project/test_api")
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&routes)
+            .await;
+        let create_project_response = warp::test::request()
+            .method("PUT")
+            .path("/create/project/test_api")
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&routes)
+            .await;
+        assert_eq!(
+            create_project_response.status(),
+            StatusCode::INTERNAL_SERVER_ERROR
+        );
+        assert_eq!(
+            serde_json::from_slice::<String>(&*create_project_response.body())
+                .unwrap(),
+            "ProjectAlreadyExists(1, \"test_api\")"
+        );
+
+        // Token too old
+        admindb_ref
+            .execute(
+                "UPDATE \"token\" \
+                SET \"created\" = '2000-08-14 08:15:29.425665+10' \
+                WHERE \"user\" = '1'",
+            )
+            .await
+            .unwrap();
+        let old_token_resp = warp::test::request()
+            .method("GET")
+            .path("/get/users")
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&routes)
+            .await;
+        assert_eq!(old_token_resp.status(), StatusCode::UNAUTHORIZED);
+        let old_token =
+            serde_json::from_slice::<String>(&*old_token_resp.body()).unwrap();
+        assert_eq!(old_token, "TokenTooOld");
 
         // CORS ---------------------------------------------------------------
 

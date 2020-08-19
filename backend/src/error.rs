@@ -42,6 +42,10 @@ pub enum Error {
     #[error("no such project: {1} for user id: {0}")]
     NoSuchProject(i32, String),
 
+    /// Project already exists
+    #[error("project: {1} already exists for user id: {0}")]
+    ProjectAlreadyExists(i32, String),
+
     // Not my errors ----------------------------------------------------------
     /// Represents all cases of `tokio_postgres::Error`
     #[error(transparent)]

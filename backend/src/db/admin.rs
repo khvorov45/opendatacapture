@@ -309,6 +309,12 @@ impl AdminDB {
             user_id
         );
         let project = Project::new(user_id, project_name);
+        if self.get_project(user_id, project_name).await.is_ok() {
+            return Err(Error::ProjectAlreadyExists(
+                user_id,
+                project_name.to_string(),
+            ));
+        }
         // Create the database
         self.get_con()
             .await?
