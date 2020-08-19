@@ -109,16 +109,13 @@ jobs:
         with:
           toolchain: stable
           override: true
-      - name: Install tarpaulin
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-tarpaulin
+      - name: Download tarpaulin
+        run: >-
+          sudo apt-get install libssl-dev &&
+          wget https://github.com/xd009642/tarpaulin/releases/download/0.14.2/cargo-tarpaulin-0.14.2-travis.tar.gz &&
+          tar xf cargo-tarpaulin-0.14.2-travis.tar.gz
       - name: Generate coverage report
-        uses: actions-rs/cargo@v1
-        with:
-          command: tarpaulin
-          args: --out Lcov --exclude-files **/target/** --ignore-tests
+        run: ./cargo-tarpaulin tarpaulin --out Lcov --exclude-files **/target/** --ignore-tests
       - name: Rename report
         run: mv lcov.info backend.info
       - name: Upload report as artifact

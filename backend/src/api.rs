@@ -11,12 +11,15 @@ pub fn routes(
     // when cors headers were different on every path.
     let cors = warp::cors()
         .allow_any_origin()
-        .allow_methods(vec!["GET", "POST"])
-        .allow_header("Content-Type");
+        .allow_methods(vec!["GET", "POST", "PUT", "DELETE"])
+        .allow_headers(vec!["Content-Type", "Authorization"]);
     health(db.clone())
         .or(generate_session_token(db.clone()))
         .or(get_user_by_token(db.clone()))
-        .or(get_users(db))
+        .or(get_users(db.clone()))
+        .or(create_project(db.clone()))
+        .or(get_user_projects(db.clone()))
+        .or(delete_project(db))
         .recover(handle_rejection)
         .with(cors)
 }
@@ -38,7 +41,7 @@ async fn handle_rejection(
             }
             _ => {
                 status = StatusCode::INTERNAL_SERVER_ERROR;
-                message = e.to_string();
+                message = format!("{:?}", e);
             }
         }
     // Not my errors
@@ -76,7 +79,8 @@ async fn handle_rejection(
 fn sufficient_access(
     db: Arc<AdminDB>,
     req_access: crate::auth::Access,
-) -> impl Filter<Extract = ((),), Error = warp::Rejection> + Clone {
+) -> impl Filter<Extract = (db::admin::User,), Error = warp::Rejection> + Clone
+{
     warp::header::<String>("Authorization")
         .and_then(move |tok_raw: String| async move {
             match auth::parse_bearer_header(tok_raw.as_str()) {
@@ -99,7 +103,7 @@ fn sufficient_access(
                     Unauthorized::InsufficientAccess,
                 )))
             } else {
-                Ok(())
+                Ok(u)
             }
         })
 }
@@ -169,9 +173,67 @@ pub fn get_users(
         .and(warp::get())
         .and(sufficient_access(db.clone(), auth::Access::Admin))
         .and(with_db(db))
-        .and_then(move |(), db: Arc<AdminDB>| async move {
+        .and_then(move |_user, db: Arc<AdminDB>| async move {
             match db.get_users().await {
                 Ok(users) => Ok(warp::reply::json(&users)),
+                Err(e) => Err(warp::reject::custom(e)),
+            }
+        })
+}
+
+/// Create a project
+pub fn create_project(
+    db: Arc<AdminDB>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("create" / "project" / String)
+        .and(warp::put())
+        .and(sufficient_access(db.clone(), auth::Access::User))
+        .and(with_db(db))
+        .and_then(
+            move |project_name: String,
+                  user: db::admin::User,
+                  db: Arc<AdminDB>| async move {
+                match db.create_project(user.id(), project_name.as_str()).await
+                {
+                    Ok(()) => Ok(warp::reply()),
+                    Err(e) => Err(warp::reject::custom(e)),
+                }
+            },
+        )
+}
+
+/// Delete a project
+pub fn delete_project(
+    db: Arc<AdminDB>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("delete" / "project" / String)
+        .and(warp::delete())
+        .and(sufficient_access(db.clone(), auth::Access::User))
+        .and(with_db(db))
+        .and_then(
+            move |project_name: String,
+                  user: db::admin::User,
+                  db: Arc<AdminDB>| async move {
+                match db.remove_project(user.id(), project_name.as_str()).await
+                {
+                    Ok(()) => Ok(warp::reply()),
+                    Err(e) => Err(warp::reject::custom(e)),
+                }
+            },
+        )
+}
+
+/// Get user's projects
+pub fn get_user_projects(
+    db: Arc<AdminDB>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("get" / "projects")
+        .and(warp::get())
+        .and(sufficient_access(db.clone(), auth::Access::User))
+        .and(with_db(db))
+        .and_then(move |user: db::admin::User, db: Arc<AdminDB>| async move {
+            match db.get_user_projects(user.id()).await {
+                Ok(projects) => Ok(warp::reply::json(&projects)),
                 Err(e) => Err(warp::reject::custom(e)),
             }
         })
@@ -185,12 +247,14 @@ mod tests {
     use std::sync::Arc;
     use warp::http::StatusCode;
 
+    const TEST_DB_NAME: &str = "odcadmin_test_api";
+
     #[tokio::test]
     async fn test_api() {
         let _ = pretty_env_logger::try_init();
 
         let admindb =
-            tests::create_test_admindb("odcadmin_test_api", true).await;
+            tests::create_test_admindb(TEST_DB_NAME, true, true).await;
         tests::insert_test_user(&admindb).await;
 
         let admindb_ref = Arc::new(admindb);
@@ -269,6 +333,64 @@ mod tests {
                 .unwrap();
         assert_eq!(users_obtained.len(), 2);
 
+        // Create projects
+
+        // Test projects
+        let test_project1 = db::admin::Project::new(1, "test");
+
+        // Make sure test projects aren't present
+        log::info!("remove test projects");
+        crate::tests::remove_dbs(
+            admindb_ref.as_ref(),
+            &[test_project1.get_dbname(TEST_DB_NAME).as_str()],
+        )
+        .await;
+
+        let create_project_filter = create_project(admindb_ref.clone());
+        let create_project_response = warp::test::request()
+            .method("PUT")
+            .path("/create/project/test")
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&create_project_filter)
+            .await;
+        assert_eq!(create_project_response.status(), StatusCode::OK);
+        let get_projects_filter = get_user_projects(admindb_ref.clone());
+        let get_projects_response = warp::test::request()
+            .method("GET")
+            .path("/get/projects")
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&get_projects_filter)
+            .await;
+        assert_eq!(get_projects_response.status(), StatusCode::OK);
+        let projects_obtained = serde_json::from_slice::<Vec<admin::Project>>(
+            &*get_projects_response.body(),
+        )
+        .unwrap();
+        assert_eq!(projects_obtained.len(), 1);
+
+        // Delete projects
+        let delete_project_filter = delete_project(admindb_ref.clone());
+        let delete_project_response = warp::test::request()
+            .method("DELETE")
+            .path("/delete/project/test")
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&delete_project_filter)
+            .await;
+        assert_eq!(delete_project_response.status(), StatusCode::OK);
+        let get_projects_filter = get_user_projects(admindb_ref.clone());
+        let get_projects_response = warp::test::request()
+            .method("GET")
+            .path("/get/projects")
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&get_projects_filter)
+            .await;
+        assert_eq!(get_projects_response.status(), StatusCode::OK);
+        let projects_obtained = serde_json::from_slice::<Vec<admin::Project>>(
+            &*get_projects_response.body(),
+        )
+        .unwrap();
+        assert_eq!(projects_obtained.len(), 0);
+
         // Rejections ---------------------------------------------------------
 
         let routes = routes(admindb_ref.clone());
@@ -327,30 +449,6 @@ mod tests {
             serde_json::from_slice::<String>(&*wrong_token_resp.body())
                 .unwrap();
         assert_eq!(wrong_token, "NoSuchToken(\"123\")");
-
-        // Token too old
-        admindb_ref
-            .get_con()
-            .await
-            .unwrap()
-            .execute(
-                "UPDATE \"token\" \
-                SET \"created\" = '2000-08-14 08:15:29.425665+10' \
-                WHERE \"user\" = '1'",
-                &[],
-            )
-            .await
-            .unwrap();
-        let old_token_resp = warp::test::request()
-            .method("GET")
-            .path("/get/users")
-            .header("Authorization", format!("Bearer {}", admin_token))
-            .reply(&routes)
-            .await;
-        assert_eq!(old_token_resp.status(), StatusCode::UNAUTHORIZED);
-        let old_token =
-            serde_json::from_slice::<String>(&*old_token_resp.body()).unwrap();
-        assert_eq!(old_token, "TokenTooOld");
 
         // Insufficient access
         let ins_access_resp = warp::test::request()
@@ -414,6 +512,66 @@ mod tests {
                 .unwrap();
         assert_eq!(wrong_method, "HTTP method not allowed");
 
+        // Creating the same project twice
+        warp::test::request()
+            .method("PUT")
+            .path("/create/project/test")
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&routes)
+            .await;
+        let create_project_response = warp::test::request()
+            .method("PUT")
+            .path("/create/project/test")
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&routes)
+            .await;
+        assert_eq!(
+            create_project_response.status(),
+            StatusCode::INTERNAL_SERVER_ERROR
+        );
+        assert_eq!(
+            serde_json::from_slice::<String>(&*create_project_response.body())
+                .unwrap(),
+            "ProjectAlreadyExists(1, \"test\")"
+        );
+
+        // Delete a non-existent project
+        let delete_project_response = warp::test::request()
+            .method("DELETE")
+            .path("/delete/project/test_nonexistent")
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&routes)
+            .await;
+        assert_eq!(
+            delete_project_response.status(),
+            StatusCode::INTERNAL_SERVER_ERROR
+        );
+        assert_eq!(
+            serde_json::from_slice::<String>(&*delete_project_response.body())
+                .unwrap(),
+            "NoSuchProject(1, \"test_nonexistent\")"
+        );
+
+        // Token too old
+        admindb_ref
+            .execute(
+                "UPDATE \"token\" \
+                SET \"created\" = '2000-08-14 08:15:29.425665+10' \
+                WHERE \"user\" = '1'",
+            )
+            .await
+            .unwrap();
+        let old_token_resp = warp::test::request()
+            .method("GET")
+            .path("/get/users")
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&routes)
+            .await;
+        assert_eq!(old_token_resp.status(), StatusCode::UNAUTHORIZED);
+        let old_token =
+            serde_json::from_slice::<String>(&*old_token_resp.body()).unwrap();
+        assert_eq!(old_token, "TokenTooOld");
+
         // CORS ---------------------------------------------------------------
 
         // Origin header
@@ -457,6 +615,17 @@ mod tests {
         let heads = cors_origin_resp.headers();
         let allow_origin = heads.get("access-control-allow-origin").unwrap();
         assert_eq!(allow_origin, "test");
+
+        // Disallowed header
+        let cors_origin_resp = warp::test::request()
+            .method("OPTIONS")
+            .path("/health")
+            .header("Origin", "test")
+            .header("Access-Control-Request-Method", "GET")
+            .header("Access-Control-Request-Headers", "X-Username")
+            .reply(&routes)
+            .await;
+        assert_eq!(cors_origin_resp.status(), StatusCode::FORBIDDEN);
 
         // Not found ----------------------------------------------------------
         let not_found_resp = warp::test::request()

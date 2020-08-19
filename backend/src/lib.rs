@@ -90,8 +90,9 @@ mod tests {
     pub async fn create_test_admindb(
         dbname: &str,
         clean: bool,
+        setup: bool,
     ) -> db::admin::AdminDB {
-        if clean {
+        if setup {
             setup_test_db(dbname).await;
         }
         let pg_config = gen_test_config(dbname);
@@ -116,5 +117,14 @@ mod tests {
         )
         .await
         .unwrap();
+    }
+
+    /// Remove specific databases
+    pub async fn remove_dbs(db: &db::admin::AdminDB, names: &[&str]) {
+        for name in names {
+            db.execute(format!("DROP DATABASE IF EXISTS \"{}\"", name).as_str())
+                .await
+                .unwrap()
+        }
     }
 }
