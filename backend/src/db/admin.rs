@@ -88,9 +88,10 @@ impl DB for AdminDB {
         .await?;
         con.execute(
             "CREATE TABLE \"project\" (\
-                \"user\" INTEGER NOT NULL,\
-                \"name\" TEXT PRIMARY KEY,\
+                \"user\" INTEGER,\
+                \"name\" TEXT,\
                 \"created\" TIMESTAMPTZ NOT NULL,\
+                PRIMARY KEY(\"user\", \"name\"),
                 FOREIGN KEY(\"user\") REFERENCES \
                 \"user\"(\"id\") \
                 ON UPDATE CASCADE ON DELETE CASCADE\
@@ -319,7 +320,11 @@ impl AdminDB {
         self.get_con()
             .await?
             .execute(
-                format!("CREATE DATABASE \"{}\"", project.name).as_str(),
+                format!(
+                    "CREATE DATABASE \"{}\"",
+                    project.get_dbname(self.name.as_str())
+                )
+                .as_str(),
                 &[],
             )
             .await?;
@@ -355,7 +360,11 @@ impl AdminDB {
         self.get_con()
             .await?
             .execute(
-                format!("DROP DATABASE \"{}\"", project.name).as_str(),
+                format!(
+                    "DROP DATABASE \"{}\"",
+                    project.get_dbname(self.name.as_str())
+                )
+                .as_str(),
                 &[],
             )
             .await?;
@@ -365,11 +374,12 @@ impl AdminDB {
     }
     /// Delete an entry from a project table
     async fn delete_project(&self, project: &Project) -> Result<()> {
+        log::info!("deleting project {:?}", project);
         self.get_con()
             .await?
             .execute(
-                "DELETE FROM \"project\" WHERE \"name\" = $1",
-                &[&project.name],
+                "DELETE FROM \"project\" WHERE \"name\" = $1 AND \"user\" = $2",
+                &[&project.name, &project.user],
             )
             .await?;
         Ok(())
@@ -381,7 +391,11 @@ impl AdminDB {
         let con = self.get_con().await?;
         for project in &all_projects {
             con.execute(
-                format!("DROP DATABASE \"{}\"", project.name).as_str(),
+                format!(
+                    "DROP DATABASE \"{}\"",
+                    project.get_dbname(self.name.as_str())
+                )
+                .as_str(),
                 &[],
             )
             .await?;
@@ -400,8 +414,9 @@ impl AdminDB {
             .get_con()
             .await?
             .query_opt(
-                "SELECT * FROM \"project\" WHERE \"name\" = $1",
-                &[&project.name],
+                "SELECT * FROM \"project\" \
+                WHERE \"name\" = $1 AND \"user\" = $2",
+                &[&project.name, &project.user],
             )
             .await?;
         match res {
@@ -498,10 +513,10 @@ pub struct Project {
 }
 
 impl Project {
-    pub fn new(user: i32, project_name: &str) -> Self {
+    pub fn new(user: i32, name: &str) -> Self {
         Self {
             user,
-            name: format!("user{}_{}", user, project_name),
+            name: name.to_string(),
             created: chrono::Utc::now(),
         }
     }
@@ -512,11 +527,16 @@ impl Project {
             created: row.get("created"),
         }
     }
+    pub fn get_dbname(&self, admin_db_name: &str) -> String {
+        format!("{}_user{}_{}", admin_db_name, self.user, self.name)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const TEST_DB_NAME: &str = "odcadmin_test_admin";
 
     // Extract first admin
     async fn extract_first_user(db: &AdminDB) -> User {
@@ -582,14 +602,16 @@ mod tests {
     }
 
     /// Verify that a project exists
-    async fn project_exists(db: &AdminDB, name: &str) -> bool {
-        let db_exists = get_db_list(&db).await.contains(&name.to_string());
+    async fn project_exists(db: &AdminDB, project: &Project) -> bool {
+        let db_exists = get_db_list(&db)
+            .await
+            .contains(&project.get_dbname(db.name.as_str()));
         let project_exists = db
             .get_all_projects()
             .await
             .unwrap()
             .iter()
-            .any(|p| p.name == name);
+            .any(|p| p.name == project.name && p.user == project.user);
         assert_eq!(db_exists, project_exists);
         db_exists
     }
@@ -600,12 +622,8 @@ mod tests {
 
         // Start clean
         log::info!("start clean");
-        let test_db = crate::tests::create_test_admindb(
-            "odcadmin_test_admin",
-            true,
-            true,
-        )
-        .await;
+        let test_db =
+            crate::tests::create_test_admindb(TEST_DB_NAME, true, true).await;
 
         // Token manipulation -------------------------------------------------
 
@@ -709,20 +727,34 @@ mod tests {
 
         log::info!("project manipulation");
 
+        // Test projects
+        let test_project1 = Project::new(1, "test");
+        let test_project2 = Project::new(2, "test");
+        let test_project1_dbname = test_project1.get_dbname(TEST_DB_NAME);
+        let test_project2_dbname = test_project2.get_dbname(TEST_DB_NAME);
+
+        assert_eq!(test_project1_dbname, "odcadmin_test_admin_user1_test");
+        assert_eq!(test_project2_dbname, "odcadmin_test_admin_user2_test");
+
         // Make sure test projects aren't present
         log::info!("remove test projects");
-        crate::tests::remove_dbs(&test_db, &["user1_test", "user2_test"]).await;
+        crate::tests::remove_dbs(
+            &test_db,
+            &[test_project1_dbname.as_str(), test_project2_dbname.as_str()],
+        )
+        .await;
 
         // Verify that the database does not exist
-        assert!(!project_exists(&test_db, "user1_test").await);
+        assert!(!project_exists(&test_db, &test_project1).await);
 
         // Create project
         test_db.create_project(1, "test").await.unwrap();
 
         // Verify that the database was created
-        assert!(project_exists(&test_db, "user1_test").await);
+        assert!(project_exists(&test_db, &test_project1).await);
         let project = test_db.get_project(1, "test").await.unwrap();
-        assert_eq!(project.name, "user1_test");
+        assert_eq!(project.name, test_project1.name);
+        assert_eq!(project.user, test_project1.user);
         let err = test_db.get_project(1, "test1").await.unwrap_err();
         assert!(matches!(
                 err,
@@ -730,13 +762,10 @@ mod tests {
 
         // Reconnect
         drop(test_db);
-        let test_db = crate::tests::create_test_admindb(
-            "odcadmin_test_admin",
-            false,
-            false,
-        )
-        .await;
-        assert!(project_exists(&test_db, "user1_test").await);
+        let test_db =
+            crate::tests::create_test_admindb(TEST_DB_NAME, false, false).await;
+        // Project should still exist
+        assert!(project_exists(&test_db, &test_project1).await);
 
         // Reconnect cleanly
         drop(test_db);
@@ -746,19 +775,24 @@ mod tests {
             false,
         )
         .await;
-        assert!(!project_exists(&test_db, "user1_test").await);
+        // Now the project should be removed
+        assert!(!project_exists(&test_db, &test_project1).await);
 
-        // Create a project as a different user
-        assert!(!project_exists(&test_db, "user2_test").await);
+        // Create the project again
         test_db.create_project(1, "test").await.unwrap();
-        assert!(project_exists(&test_db, "user1_test").await);
+        assert!(project_exists(&test_db, &test_project1).await);
+
+        // Now create a project as a different user
         crate::tests::insert_test_user(&test_db).await;
+        assert!(!project_exists(&test_db, &test_project2).await);
         test_db.create_project(2, "test").await.unwrap();
-        assert!(project_exists(&test_db, "user2_test").await);
+        assert!(project_exists(&test_db, &test_project2).await);
         assert_eq!(test_db.get_all_projects().await.unwrap().len(), 2);
         assert_eq!(test_db.get_user_projects(2).await.unwrap().len(), 1);
+
+        // Remove all projects
         test_db.remove_all_projects().await.unwrap();
-        assert!(!project_exists(&test_db, "user2_test").await);
-        assert!(!project_exists(&test_db, "user1_test").await);
+        assert!(!project_exists(&test_db, &test_project2).await);
+        assert!(!project_exists(&test_db, &test_project1).await);
     }
 }

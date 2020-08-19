@@ -247,12 +247,14 @@ mod tests {
     use std::sync::Arc;
     use warp::http::StatusCode;
 
+    const TEST_DB_NAME: &str = "odcadmin_test_api";
+
     #[tokio::test]
     async fn test_api() {
         let _ = pretty_env_logger::try_init();
 
         let admindb =
-            tests::create_test_admindb("odcadmin_test_api", true, true).await;
+            tests::create_test_admindb(TEST_DB_NAME, true, true).await;
         tests::insert_test_user(&admindb).await;
 
         let admindb_ref = Arc::new(admindb);
@@ -333,15 +335,21 @@ mod tests {
 
         // Create projects
 
+        // Test projects
+        let test_project1 = db::admin::Project::new(1, "test");
+
         // Make sure test projects aren't present
         log::info!("remove test projects");
-        crate::tests::remove_dbs(admindb_ref.as_ref(), &["user1_test_api"])
-            .await;
+        crate::tests::remove_dbs(
+            admindb_ref.as_ref(),
+            &[test_project1.get_dbname(TEST_DB_NAME).as_str()],
+        )
+        .await;
 
         let create_project_filter = create_project(admindb_ref.clone());
         let create_project_response = warp::test::request()
             .method("PUT")
-            .path("/create/project/test_api")
+            .path("/create/project/test")
             .header("Authorization", format!("Bearer {}", admin_token))
             .reply(&create_project_filter)
             .await;
@@ -364,7 +372,7 @@ mod tests {
         let delete_project_filter = delete_project(admindb_ref.clone());
         let delete_project_response = warp::test::request()
             .method("DELETE")
-            .path("/delete/project/test_api")
+            .path("/delete/project/test")
             .header("Authorization", format!("Bearer {}", admin_token))
             .reply(&delete_project_filter)
             .await;
@@ -507,13 +515,13 @@ mod tests {
         // Creating the same project twice
         warp::test::request()
             .method("PUT")
-            .path("/create/project/test_api")
+            .path("/create/project/test")
             .header("Authorization", format!("Bearer {}", admin_token))
             .reply(&routes)
             .await;
         let create_project_response = warp::test::request()
             .method("PUT")
-            .path("/create/project/test_api")
+            .path("/create/project/test")
             .header("Authorization", format!("Bearer {}", admin_token))
             .reply(&routes)
             .await;
@@ -524,13 +532,13 @@ mod tests {
         assert_eq!(
             serde_json::from_slice::<String>(&*create_project_response.body())
                 .unwrap(),
-            "ProjectAlreadyExists(1, \"test_api\")"
+            "ProjectAlreadyExists(1, \"test\")"
         );
 
         // Delete a non-existent project
         let delete_project_response = warp::test::request()
             .method("DELETE")
-            .path("/delete/project/test_api_nonexistent")
+            .path("/delete/project/test_nonexistent")
             .header("Authorization", format!("Bearer {}", admin_token))
             .reply(&routes)
             .await;
@@ -541,7 +549,7 @@ mod tests {
         assert_eq!(
             serde_json::from_slice::<String>(&*delete_project_response.body())
                 .unwrap(),
-            "NoSuchProject(1, \"test_api_nonexistent\")"
+            "NoSuchProject(1, \"test_nonexistent\")"
         );
 
         // Token too old
