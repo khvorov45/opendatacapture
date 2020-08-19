@@ -41,12 +41,12 @@ test("project manipulation", async () => {
     email: "admin@example.com",
     password: "admin",
   })
-  await createProject(token, "test_fullstack")
+  await createProject(token, "test")
   let projects = await getUserProjects(token)
-  let projectNames = projects.map((p) => p.name)
-  expect(projectNames).toContain("user1_test_fullstack")
-  await deleteProject(token, "test_fullstack")
+  let projectIds = projects.map((p) => `${p.user}${p.name}`)
+  expect(projectIds).toContain("1test")
+  await deleteProject(token, "test")
   projects = await getUserProjects(token)
-  projectNames = projects.map((p) => p.name)
-  expect(projectNames).not.toContain("user1_test_fullstack")
+  projectIds = projects.map((p) => `${p.user}${p.name}`)
+  expect(projectIds).not.toContain("1test")
 })
