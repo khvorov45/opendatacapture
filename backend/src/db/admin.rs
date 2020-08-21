@@ -556,6 +556,7 @@ mod tests {
         log::info!("start clean");
         let test_db =
             crate::tests::create_test_admindb(TEST_DB_NAME, true, true).await;
+        assert_eq!(test_db.get_name(), TEST_DB_NAME);
 
         // Token manipulation -------------------------------------------------
 
