@@ -1,36 +1,10 @@
-use crate::db::{create_pool, DBPool, DB};
-use crate::{auth, error::Unauthorized, Error, Opt, Result};
+use crate::db::{create_pool, ConnectionConfig, Database, FromOpt, Pool, DB};
+use crate::{auth, error::Unauthorized, Error, Result};
 
 /// Administrative database
 pub struct AdminDB {
     name: String,
-    pool: DBPool,
-}
-
-/// Administrative database config
-pub struct Config {
-    pub config: tokio_postgres::Config,
-    pub clean: bool,
-    pub admin_email: String,
-    pub admin_password: String,
-}
-
-impl Config {
-    pub fn from_opts(opt: &Opt) -> Self {
-        let mut config = tokio_postgres::config::Config::new();
-        config
-            .host(opt.dbhost.as_str())
-            .port(opt.dbport)
-            .dbname(opt.admindbname.as_str())
-            .user(opt.apiusername.as_str())
-            .password(opt.apiuserpassword.as_str());
-        Self {
-            config,
-            clean: opt.clean,
-            admin_email: opt.admin_email.to_string(),
-            admin_password: opt.admin_password.to_string(),
-        }
-    }
+    pool: Pool,
 }
 
 #[async_trait::async_trait]
@@ -38,7 +12,7 @@ impl DB for AdminDB {
     fn get_name(&self) -> &str {
         self.name.as_str()
     }
-    fn get_pool(&self) -> &DBPool {
+    fn get_pool(&self) -> &Pool {
         &self.pool
     }
     async fn reset(&self) -> Result<()> {
@@ -55,26 +29,32 @@ impl DB for AdminDB {
         Ok(())
     }
     async fn create_all_tables(&self) -> Result<()> {
-        let con = self.get_con().await?;
-        con.execute(
-            "CREATE TABLE \"access\" (\"access_type\" TEXT PRIMARY KEY)",
-            &[],
+        sqlx::query("DROP TYPE IF EXISTS odc_user_access")
+            .execute(self.get_pool())
+            .await?;
+        sqlx::query("CREATE TYPE odc_user_access AS ENUM ('User', 'Admin')")
+            .execute(self.get_pool())
+            .await?;
+        sqlx::query(
+            "CREATE TABLE \"access\" \
+            (\"access_type\" odc_user_access PRIMARY KEY)",
         )
+        .execute(self.get_pool())
         .await?;
-        con.execute(
+        sqlx::query(
             "CREATE TABLE \"user\" (\
                 \"id\" SERIAL PRIMARY KEY,\
                 \"email\" TEXT NOT NULL UNIQUE,\
-                \"access\" TEXT NOT NULL,\
+                \"access\" odc_user_access NOT NULL,\
                 \"password_hash\" TEXT NOT NULL,\
                 FOREIGN KEY(\"access\") REFERENCES \
                 \"access\"(\"access_type\") \
                 ON UPDATE CASCADE ON DELETE CASCADE\
             )",
-            &[],
         )
+        .execute(self.get_pool())
         .await?;
-        con.execute(
+        sqlx::query(
             "CREATE TABLE \"token\" (\
                 \"user\" INTEGER NOT NULL,\
                 \"token\" TEXT PRIMARY KEY,\
@@ -83,10 +63,10 @@ impl DB for AdminDB {
                 \"user\"(\"id\") \
                 ON UPDATE CASCADE ON DELETE CASCADE\
             )",
-            &[],
         )
+        .execute(self.get_pool())
         .await?;
-        con.execute(
+        sqlx::query(
             "CREATE TABLE \"project\" (\
                 \"user\" INTEGER,\
                 \"name\" TEXT,\
@@ -96,35 +76,36 @@ impl DB for AdminDB {
                 \"user\"(\"id\") \
                 ON UPDATE CASCADE ON DELETE CASCADE\
             )",
-            &[],
         )
+        .execute(self.get_pool())
         .await?;
         Ok(())
     }
 }
 
 impl AdminDB {
-    pub async fn new(conf: Config) -> Result<Self> {
+    pub async fn new(opt: &crate::Opt) -> Result<Self> {
+        // Connection config
+        let config = ConnectionConfig::from_opt(&opt);
         // Connect to the admin database as the default api user
         let admindb = Self {
-            name: conf.config.get_dbname().unwrap().to_string(),
-            pool: create_pool(conf.config)?,
+            name: opt.admindbname.clone(),
+            pool: create_pool(config).await?,
         };
         // Reset if required
         let connected_to_empty = admindb.is_empty().await?;
         if connected_to_empty {
             admindb.create_all_tables().await?;
-        } else if conf.clean {
+        } else if opt.clean {
             admindb.reset().await?;
         }
         // Fill access types and the one admin if required.
-        // Also drop all extra databases
-        if conf.clean || connected_to_empty {
+        if opt.clean || connected_to_empty {
             admindb.fill_access().await?;
             admindb
                 .insert_admin(
-                    conf.admin_email.as_str(),
-                    conf.admin_password.as_str(),
+                    opt.admin_email.as_str(),
+                    opt.admin_password.as_str(),
                 )
                 .await?;
         }
@@ -133,7 +114,7 @@ impl AdminDB {
 
     /// Allows the execution of arbitrary SQL
     pub async fn execute(&self, sql: &str) -> Result<()> {
-        self.get_con().await?.execute(sql, &[]).await?;
+        sqlx::query(sql).execute(self.get_pool()).await?;
         Ok(())
     }
 
@@ -142,17 +123,13 @@ impl AdminDB {
     /// Fill the access table. Assume that it's empty.
     async fn fill_access(&self) -> Result<()> {
         log::info!("filling presumably empty access table");
-        self.get_con()
-            .await?
-            .execute(
-                "INSERT INTO \"access\" (\"access_type\") \
-                VALUES ($1), ($2)",
-                &[
-                    &auth::Access::Admin.to_string(),
-                    &auth::Access::User.to_string(),
-                ],
-            )
-            .await?;
+        sqlx::query(
+            "INSERT INTO \"access\" (\"access_type\") VALUES ($1), ($2)",
+        )
+        .bind(auth::Access::Admin)
+        .bind(auth::Access::User)
+        .execute(self.get_pool())
+        .await?;
         Ok(())
     }
 
@@ -177,50 +154,50 @@ impl AdminDB {
     /// Insert a user
     pub async fn insert_user(&self, user: &User) -> Result<()> {
         log::info!("inserting user {:?}", user);
-        self.get_con().await?.execute(
+        sqlx::query(
             "INSERT INTO \"user\" (\"email\", \"access\", \"password_hash\")
             VALUES ($1, $2, $3)",
-            &[&user.email, &user.access.to_string(), &user.password_hash],
-        ).await?;
+        )
+        .bind(user.email.as_str())
+        .bind(user.access)
+        .bind(user.password_hash.as_str())
+        .execute(self.get_pool())
+        .await?;
         Ok(())
     }
     /// Get all users
     pub async fn get_users(&self) -> Result<Vec<User>> {
         log::debug!("get all users");
-        let res = self
-            .get_con()
-            .await?
-            .query("SELECT * FROM \"user\"", &[])
+        let users = sqlx::query_as::<Database, User>("SELECT * FROM \"user\"")
+            .fetch_all(self.get_pool())
             .await?;
-        let mut users = Vec::with_capacity(res.len());
-        for row in res {
-            users.push(User::from_row(row)?);
-        }
         Ok(users)
     }
     /// Returns the user given their id
     pub async fn get_user_by_id(&self, id: i32) -> Result<User> {
         log::debug!("getting user by id: {}", id);
-        let res = self
-            .get_con()
-            .await?
-            .query_opt("SELECT * FROM \"user\" WHERE \"id\" = $1", &[&id])
-            .await?;
+        let res = sqlx::query_as::<Database, User>(
+            "SELECT * FROM \"user\" WHERE \"id\" = $1",
+        )
+        .bind(id)
+        .fetch_optional(self.get_pool())
+        .await?;
         match res {
-            Some(row) => User::from_row(row),
+            Some(user) => Ok(user),
             None => Err(Error::NoSuchUserId(id)),
         }
     }
     /// Returns the user for the given email
     async fn get_user_by_email(&self, email: &str) -> Result<User> {
         log::debug!("getting user by email: {}", email);
-        let res = self
-            .get_con()
-            .await?
-            .query_opt("SELECT * FROM \"user\" WHERE \"email\" = $1", &[&email])
-            .await?;
+        let res = sqlx::query_as::<Database, User>(
+            "SELECT * FROM \"user\" WHERE \"email\" = $1",
+        )
+        .bind(email)
+        .fetch_optional(self.get_pool())
+        .await?;
         match res {
-            Some(row) => User::from_row(row),
+            Some(user) => Ok(user),
             None => Err(Error::NoSuchUserEmail(email.to_string())),
         }
     }
@@ -240,16 +217,14 @@ impl AdminDB {
 
     /// Get token by the unique string
     async fn get_token(&self, token: &str) -> Result<auth::Token> {
-        let res = self
-            .get_con()
-            .await?
-            .query_opt(
-                "SELECT * FROM \"token\" WHERE \"token\" = $1",
-                &[&token],
-            )
-            .await?;
+        let res = sqlx::query_as::<Database, auth::Token>(
+            "SELECT * FROM \"token\" WHERE \"token\" = $1",
+        )
+        .bind(token)
+        .fetch_optional(self.get_pool())
+        .await?;
         match res {
-            Some(row) => Ok(auth::Token::from_row(&row)),
+            Some(tok) => Ok(tok),
             None => Err(Error::Unauthorized(Unauthorized::NoSuchToken(
                 token.to_string(),
             ))),
@@ -258,11 +233,15 @@ impl AdminDB {
     /// Inserts a token
     async fn insert_token(&self, tok: &auth::Token) -> Result<()> {
         log::info!("inserting token {:?}", tok);
-        self.get_con().await?.execute(
+        sqlx::query(
             "INSERT INTO \"token\" (\"user\", \"token\", \"created\") VALUES \
             ($1, $2, $3)",
-            &[&tok.user(), &tok.token(), tok.created()],
-        ).await?;
+        )
+        .bind(tok.user())
+        .bind(tok.token())
+        .bind(tok.created())
+        .execute(self.get_pool())
+        .await?;
         Ok(())
     }
     /// Generate a token from email/password combination
@@ -317,31 +296,31 @@ impl AdminDB {
             ));
         }
         // Create the database
-        self.get_con()
-            .await?
-            .execute(
-                format!(
-                    "CREATE DATABASE \"{}\"",
-                    project.get_dbname(self.name.as_str())
-                )
-                .as_str(),
-                &[],
+        sqlx::query(
+            format!(
+                "CREATE DATABASE \"{}\"",
+                project.get_dbname(self.name.as_str())
             )
-            .await?;
+            .as_str(),
+        )
+        .execute(self.get_pool())
+        .await?;
+
         // Insert a record of it into the project table
         self.insert_project(&project).await?;
         Ok(())
     }
     /// Insert an entry into the project table
     async fn insert_project(&self, project: &Project) -> Result<()> {
-        self.get_con()
-            .await?
-            .execute(
-                "INSERT INTO \"project\" (\"user\", \"name\", \"created\") \
-                VALUES ($1, $2, $3)",
-                &[&project.user, &project.name, &project.created],
-            )
-            .await?;
+        sqlx::query(
+            "INSERT INTO \"project\" (\"user\", \"name\", \"created\") \
+            VALUES ($1, $2, $3)",
+        )
+        .bind(project.user)
+        .bind(project.name.as_str())
+        .bind(project.created)
+        .execute(self.get_pool())
+        .await?;
         Ok(())
     }
     /// Removes the given project including dropping the database
@@ -357,17 +336,15 @@ impl AdminDB {
         );
         let project = self.get_project(user_id, project_name).await?;
         // Drop the database
-        self.get_con()
-            .await?
-            .execute(
-                format!(
-                    "DROP DATABASE \"{}\"",
-                    project.get_dbname(self.name.as_str())
-                )
-                .as_str(),
-                &[],
+        sqlx::query(
+            format!(
+                "DROP DATABASE \"{}\"",
+                project.get_dbname(self.name.as_str())
             )
-            .await?;
+            .as_str(),
+        )
+        .execute(self.get_pool())
+        .await?;
         // Delete the record
         self.delete_project(&project).await?;
         Ok(())
@@ -375,31 +352,22 @@ impl AdminDB {
     /// Delete an entry from a project table
     async fn delete_project(&self, project: &Project) -> Result<()> {
         log::info!("deleting project {:?}", project);
-        self.get_con()
-            .await?
-            .execute(
-                "DELETE FROM \"project\" WHERE \"name\" = $1 AND \"user\" = $2",
-                &[&project.name, &project.user],
-            )
-            .await?;
+        sqlx::query(
+            "DELETE FROM \"project\" WHERE \"name\" = $1 AND \"user\" = $2",
+        )
+        .bind(project.name.as_str())
+        .bind(project.user)
+        .execute(self.get_pool())
+        .await?;
         Ok(())
     }
     /// Removes all projects
     pub async fn remove_all_projects(&self) -> Result<()> {
         log::info!("removing all projects");
         let all_projects = self.get_all_projects().await?;
-        let con = self.get_con().await?;
         for project in &all_projects {
-            con.execute(
-                format!(
-                    "DROP DATABASE \"{}\"",
-                    project.get_dbname(self.name.as_str())
-                )
-                .as_str(),
-                &[],
-            )
-            .await?;
-            self.delete_project(project).await?;
+            self.remove_project(project.user, project.name.as_str())
+                .await?;
         }
         Ok(())
     }
@@ -410,33 +378,26 @@ impl AdminDB {
         project_name: &str,
     ) -> Result<Project> {
         let project = Project::new(user_id, project_name);
-        let res = self
-            .get_con()
-            .await?
-            .query_opt(
-                "SELECT * FROM \"project\" \
-                WHERE \"name\" = $1 AND \"user\" = $2",
-                &[&project.name, &project.user],
-            )
-            .await?;
+        let res = sqlx::query_as::<Database, Project>(
+            "SELECT * FROM \"project\" WHERE \"name\" = $1 AND \"user\" = $2",
+        )
+        .bind(project.name)
+        .bind(project.user)
+        .fetch_optional(self.get_pool())
+        .await?;
         match res {
             None => {
                 Err(Error::NoSuchProject(user_id, project_name.to_string()))
             }
-            Some(row) => Ok(Project::from_row(row)),
+            Some(project) => Ok(project),
         }
     }
     /// Returns all projects
     pub async fn get_all_projects(&self) -> Result<Vec<Project>> {
-        let res = self
-            .get_con()
-            .await?
-            .query("SELECT * FROM \"project\"", &[])
-            .await?;
-        let mut projects = Vec::<Project>::with_capacity(res.len());
-        for row in res {
-            projects.push(Project::from_row(row))
-        }
+        let projects =
+            sqlx::query_as::<Database, Project>("SELECT * FROM \"project\"")
+                .fetch_all(self.get_pool())
+                .await?;
         Ok(projects)
     }
     /// Returns user's projects
@@ -444,22 +405,21 @@ impl AdminDB {
         &self,
         user_id: i32,
     ) -> Result<Vec<Project>> {
-        log::debug!("getting user projects");
-        let res = self
-            .get_con()
-            .await?
-            .query("SELECT * FROM \"project\" WHERE \"user\" = $1", &[&user_id])
-            .await?;
-        let mut projects = Vec::<Project>::with_capacity(res.len());
-        for row in res {
-            projects.push(Project::from_row(row))
-        }
+        log::debug!("getting user id {} projects", user_id);
+        let projects = sqlx::query_as::<Database, Project>(
+            "SELECT * FROM \"project\" WHERE \"user\" = $1",
+        )
+        .bind(user_id)
+        .fetch_all(self.get_pool())
+        .await?;
         log::debug!("got projects: {:?}", projects);
         Ok(projects)
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
+#[derive(
+    serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq, sqlx::FromRow,
+)]
 pub struct User {
     id: i32,
     email: String,
@@ -481,16 +441,6 @@ impl User {
         };
         Ok(u)
     }
-    pub fn from_row(row: tokio_postgres::Row) -> Result<Self> {
-        use std::str::FromStr;
-        let u = Self {
-            id: row.get("id"),
-            email: row.get("email"),
-            access: auth::Access::from_str(row.get("access"))?,
-            password_hash: row.get("password_hash"),
-        };
-        Ok(u)
-    }
     pub fn id(&self) -> i32 {
         self.id
     }
@@ -505,7 +455,9 @@ impl User {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
+#[derive(
+    serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq, sqlx::FromRow,
+)]
 pub struct Project {
     user: i32,
     name: String,
@@ -520,13 +472,6 @@ impl Project {
             created: chrono::Utc::now(),
         }
     }
-    pub fn from_row(row: tokio_postgres::Row) -> Self {
-        Self {
-            user: row.get("user"),
-            name: row.get("name"),
-            created: row.get("created"),
-        }
-    }
     pub fn get_dbname(&self, admin_db_name: &str) -> String {
         format!("{}_user{}_{}", admin_db_name, self.user, self.name)
     }
@@ -535,44 +480,34 @@ impl Project {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sqlx::Row;
 
     const TEST_DB_NAME: &str = "odcadmin_test_admin";
 
     // Extract first admin
     async fn extract_first_user(db: &AdminDB) -> User {
-        let res = db
-            .get_con()
-            .await
-            .unwrap()
-            .query_one(
-                "SELECT \"id\", \"email\", \"password_hash\", \"access\"\
-                FROM \"user\" \
-                WHERE \"id\" = '1'",
-                &[],
-            )
-            .await
-            .unwrap();
-        let user = User::from_row(res).unwrap();
+        let user = sqlx::query_as::<Database, User>(
+            "SELECT \"id\", \"email\", \"password_hash\", \"access\"\
+            FROM \"user\" WHERE \"id\" = '1'",
+        )
+        .fetch_one(db.get_pool())
+        .await
+        .unwrap();
         log::info!("first user is {:?}", user);
         user
     }
 
     // Extract first admin's token
     async fn extract_first_user_token(db: &AdminDB) -> auth::Token {
-        let res = db
-            .get_con()
-            .await
-            .unwrap()
-            .query_one(
-                "SELECT \"user\", \"token\", \"created\" FROM \"token\" \
-                WHERE \"user\" = '1'",
-                &[],
-            )
-            .await
-            .unwrap();
-        let tok = auth::Token::from_row(&res);
-        log::info!("first user token is {:?}", tok);
-        tok
+        let token = sqlx::query_as::<Database, auth::Token>(
+            "SELECT \"user\", \"token\", \"created\" FROM \"token\" \
+            WHERE \"user\" = '1'",
+        )
+        .fetch_one(db.get_pool())
+        .await
+        .unwrap();
+        log::info!("first user token is {:?}", token);
+        token
     }
 
     // Verify the default password
@@ -587,16 +522,13 @@ mod tests {
 
     /// Get a list of all database names
     async fn get_db_list(db: &AdminDB) -> Vec<String> {
-        let db_list_query = db
-            .get_con()
-            .await
-            .unwrap()
-            .query("SELECT datname FROM pg_database;", &[])
+        let rows = sqlx::query("SELECT datname FROM pg_database")
+            .fetch_all(db.get_pool())
             .await
             .unwrap();
-        let mut db_list = Vec::<String>::with_capacity(db_list_query.len());
-        for db_list_query_row in db_list_query {
-            db_list.push(db_list_query_row.get(0));
+        let mut db_list = Vec::<String>::with_capacity(rows.len());
+        for row in rows {
+            db_list.push(row.get(0))
         }
         db_list
     }
@@ -667,14 +599,12 @@ mod tests {
         assert_ne!(user1.password_hash, user3.password_hash); // Different salt
 
         // Token should be absent
-        let res = test_db
-            .get_con()
-            .await
-            .unwrap()
-            .query_opt("SELECT * FROM \"token\"", &[])
-            .await
-            .unwrap();
-        assert!(res.is_none());
+        let res =
+            sqlx::query_as::<Database, auth::Token>("SELECT * FROM \"token\"")
+                .fetch_all(test_db.get_pool())
+                .await
+                .unwrap();
+        assert!(res.is_empty());
 
         // Insert a regular user
         crate::tests::insert_test_user(&test_db).await;
@@ -690,18 +620,14 @@ mod tests {
         assert_eq!(user.id, user_tok.user());
 
         // Make that token appear older
-        test_db
-            .get_con()
-            .await
-            .unwrap()
-            .execute(
-                "UPDATE \"token\" \
-                SET \"created\" = '2000-08-14 08:15:29.425665+10' \
-                WHERE \"user\" = '2'",
-                &[],
-            )
-            .await
-            .unwrap();
+        sqlx::query(
+            "UPDATE \"token\" \
+            SET \"created\" = '2000-08-14 08:15:29.425665+10' \
+            WHERE \"user\" = '2'",
+        )
+        .execute(test_db.get_pool())
+        .await
+        .unwrap();
         let user = test_db.get_user_by_token(user_tok.token()).await;
         assert!(matches!(
             user,

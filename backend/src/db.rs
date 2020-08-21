@@ -1,27 +1,42 @@
 use crate::Result;
+use sqlx::Row;
 
 pub mod admin;
 pub mod user;
 
-pub type DBPool =
-    mobc::Pool<mobc_postgres::PgConnectionManager<tokio_postgres::NoTls>>;
-pub type DBCon =
-    mobc::Connection<mobc_postgres::PgConnectionManager<tokio_postgres::NoTls>>;
-
-const DB_POOL_MAX_OPEN: u64 = 32;
-const DB_POOL_MAX_IDLE: u64 = 8;
+const DB_POOL_MAX_OPEN: u32 = 32;
+const DB_POOL_MAX_IDLE: u32 = 8;
 const DB_POOL_TIMEOUT_SECONDS: u64 = 15;
 
-pub fn create_pool(config: tokio_postgres::Config) -> Result<DBPool> {
-    let manager =
-        mobc_postgres::PgConnectionManager::new(config, tokio_postgres::NoTls);
-    Ok(mobc::Pool::builder()
-        .max_open(DB_POOL_MAX_OPEN)
-        .max_idle(DB_POOL_MAX_IDLE)
-        .get_timeout(Some(std::time::Duration::from_secs(
-            DB_POOL_TIMEOUT_SECONDS,
-        )))
-        .build(manager))
+pub type Database = sqlx::postgres::Postgres;
+pub type DBRow = sqlx::postgres::PgRow;
+pub type Pool = sqlx::postgres::PgPool;
+pub type Connection = sqlx::pool::PoolConnection<Database>;
+pub type ConnectionConfig = sqlx::postgres::PgConnectOptions;
+
+pub trait FromOpt {
+    fn from_opt(opt: &crate::Opt) -> Self;
+}
+
+impl FromOpt for ConnectionConfig {
+    fn from_opt(opt: &crate::Opt) -> Self {
+        Self::new()
+            .host(opt.dbhost.as_str())
+            .port(opt.dbport)
+            .database(opt.admindbname.as_str())
+            .username(opt.apiusername.as_str())
+            .password(opt.apiuserpassword.as_str())
+    }
+}
+
+async fn create_pool(config: ConnectionConfig) -> Result<Pool> {
+    let pool = sqlx::postgres::PgPoolOptions::new()
+        .max_connections(DB_POOL_MAX_OPEN)
+        .min_connections(DB_POOL_MAX_IDLE)
+        .max_lifetime(std::time::Duration::from_secs(DB_POOL_TIMEOUT_SECONDS))
+        .connect_with(config)
+        .await?;
+    Ok(pool)
 }
 
 /// Common database methods
@@ -31,20 +46,14 @@ pub trait DB {
     fn get_name(&self) -> &str;
 
     /// Client object
-    fn get_pool(&self) -> &DBPool;
+    fn get_pool(&self) -> &Pool;
 
     /// Create all tables
     async fn create_all_tables(&self) -> Result<()>;
 
     /// Health check
     async fn health(&self) -> bool {
-        self.get_con().await.is_ok()
-    }
-
-    /// Get a connection
-    async fn get_con(&self) -> Result<DBCon> {
-        let con = self.get_pool().get().await?;
-        Ok(con)
+        self.get_pool().acquire().await.is_ok()
     }
 
     /// Drop all tables and re-create them
@@ -77,33 +86,26 @@ pub trait DB {
             .collect::<Vec<String>>()
             // Join into a comma-separated string
             .join(",");
-        self.get_con()
-            .await?
-            .execute(
-                format!("DROP TABLE IF EXISTS {} CASCADE;", all_tables)
-                    .as_str(),
-                &[],
-            )
-            .await?;
+        sqlx::query(
+            format!("DROP TABLE IF EXISTS {} CASCADE;", all_tables).as_str(),
+        )
+        .execute(self.get_pool())
+        .await?;
         Ok(())
     }
 
     /// Returns all found table names
     async fn get_all_table_names(&self) -> Result<Vec<String>> {
         // Vector of rows
-        let all_tables = self
-            .get_con()
-            .await?
-            .query(
-                "SELECT tablename FROM pg_catalog.pg_tables \
-                    WHERE schemaname = 'public';",
-                &[],
-            )
-            .await?;
-        // Transform into vector of strings
-        let mut table_names: Vec<String> = Vec::with_capacity(all_tables.len());
-        for row in all_tables {
-            table_names.push(row.get::<usize, String>(0));
+        let res = sqlx::query(
+            "SELECT tablename FROM pg_catalog.pg_tables \
+            WHERE schemaname = 'public';",
+        )
+        .fetch_all(self.get_pool())
+        .await?;
+        let mut table_names = Vec::<String>::with_capacity(res.len());
+        for row in res {
+            table_names.push(row.get(0));
         }
         log::debug!(
             "found table names: {:?} in database {}",
@@ -125,7 +127,7 @@ mod tests {
     use super::*;
 
     struct TestDB {
-        pool: DBPool,
+        pool: Pool,
     }
 
     #[async_trait::async_trait]
@@ -133,23 +135,21 @@ mod tests {
         fn get_name(&self) -> &str {
             "test"
         }
-        fn get_pool(&self) -> &DBPool {
+        fn get_pool(&self) -> &Pool {
             &self.pool
         }
         async fn create_all_tables(&self) -> Result<()> {
-            let con = self.pool.get().await.unwrap();
-            con.execute(
-                "CREATE TABLE \"test_table\" \
-                (\"test_field\" TEXT PRIMARY KEY)",
-                &[],
+            sqlx::query(
+                "CREATE TABLE \"test_table\" (\"test_field\" TEXT PRIMARY KEY)",
             )
+            .execute(self.get_pool())
             .await
             .unwrap();
-            con.execute(
+            sqlx::query(
                 "CREATE TABLE \"test_table_2\" \
                 (\"test_field\" TEXT PRIMARY KEY)",
-                &[],
             )
+            .execute(self.get_pool())
             .await
             .unwrap();
             Ok(())
@@ -158,11 +158,13 @@ mod tests {
 
     #[tokio::test]
     pub async fn test_db() {
+        let _ = pretty_env_logger::try_init();
         crate::tests::setup_test_db("odcadmin_test_db").await;
         let test_db = TestDB {
             pool: create_pool(crate::tests::gen_test_config(
                 "odcadmin_test_db",
             ))
+            .await
             .unwrap(),
         };
         assert!(test_db.health().await);
@@ -177,21 +179,21 @@ mod tests {
         assert!(!test_db.is_empty().await.unwrap());
 
         // Test reset
-        let con = test_db.pool.get().await.unwrap();
-        con.execute("INSERT INTO test_table VALUES ('test')", &[])
+        sqlx::query("INSERT INTO test_table VALUES ('test')")
+            .execute(test_db.get_pool())
             .await
             .unwrap();
-        let test_table_content = con
-            .query_opt("SELECT * FROM test_table", &[])
+        let test_table_content = sqlx::query("SELECT * FROM test_table")
+            .fetch_all(test_db.get_pool())
             .await
             .unwrap();
-        assert!(test_table_content.is_some());
+        assert_eq!(test_table_content.len(), 1);
         test_db.reset().await.unwrap();
-        let test_table_content = con
-            .query_opt("SELECT * FROM test_table", &[])
+        let test_table_content = sqlx::query("SELECT * FROM test_table")
+            .fetch_all(test_db.get_pool())
             .await
             .unwrap();
-        assert!(test_table_content.is_none());
+        assert!(test_table_content.is_empty());
 
         // Drop tables
         test_db.drop_all_tables().await.unwrap();

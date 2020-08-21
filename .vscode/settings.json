@@ -33,6 +33,7 @@
         "odctest",
         "postgres",
         "splitn",
+        "sqlx",
         "structopt",
         "testdb",
         "testid"
