@@ -47,17 +47,13 @@ pub enum Error {
     ProjectAlreadyExists(i32, String),
 
     // Not my errors ----------------------------------------------------------
-    /// Represents all cases of `tokio_postgres::Error`
+    /// Represents all cases of `sqlx::Error`
     #[error(transparent)]
-    TokioPostgres(#[from] tokio_postgres::Error),
+    Sqlx(#[from] sqlx::Error),
 
     /// Represents all cases of `argon2::Error`
     #[error(transparent)]
     Argon2(#[from] argon2::Error),
-
-    /// `mobc` pool error
-    #[error("error getting connection from DB pool")]
-    DBPool(#[from] mobc::Error<tokio_postgres::Error>),
 
     /// Represents all cases of `std::io::Error`
     #[error(transparent)]
@@ -78,10 +74,6 @@ pub enum Error {
     /// All cases of parse int error
     #[error(transparent)]
     ParseInt(#[from] std::num::ParseIntError),
-
-    /// All cases of `strum::ParseError`
-    #[error(transparent)]
-    Strum(#[from] strum::ParseError),
 }
 
 impl warp::reject::Reject for Error {}

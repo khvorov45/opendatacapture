@@ -58,7 +58,9 @@ pub enum TokenOutcome {
 }
 
 /// Auth token
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
+#[derive(
+    serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq, sqlx::FromRow,
+)]
 pub struct Token {
     user: i32,
     token: String,
@@ -82,13 +84,6 @@ impl Token {
     }
     pub fn created(&self) -> &chrono::DateTime<chrono::Utc> {
         &self.created
-    }
-    pub fn from_row(row: &tokio_postgres::Row) -> Self {
-        Self {
-            user: row.get("user"),
-            token: row.get("token"),
-            created: row.get("created"),
-        }
     }
     pub fn age_hours(&self) -> i64 {
         chrono::Utc::now()
@@ -117,9 +112,10 @@ pub struct EmailPassword {
     Copy,
     PartialEq,
     PartialOrd,
-    strum_macros::Display,
-    strum_macros::EnumString,
+    sqlx::Type,
 )]
+#[sqlx(rename = "odc_user_access")]
+// Need to modify the postgres type declaration in `admin` on any changes
 pub enum Access {
     User,
     Admin,

@@ -309,8 +309,8 @@ mod tests {
         let rows = vec![row1, row2];
         assert_eq!(
             table.construct_insert_query(&rows).unwrap(),
-            "INSERT INTO \"table\" (\"id\",\"name\") VALUES \
-            ('1','alice'),('2','bob')"
+            "INSERT INTO \"table\" (\"name\",\"id\") VALUES \
+            ('alice','1'),('bob','2')"
         );
     }
 }

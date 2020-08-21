@@ -50,36 +50,28 @@ mod tests {
     use super::*;
 
     /// Test database config
-    pub fn gen_test_config(dbname: &str) -> tokio_postgres::Config {
-        let mut pg_config = tokio_postgres::Config::new();
-        pg_config
+    pub fn gen_test_config(dbname: &str) -> db::ConnectionConfig {
+        db::ConnectionConfig::new()
             .host("localhost")
             .port(5432)
-            .dbname(dbname)
-            .user("odcapi")
-            .password("odcapi");
-        pg_config
+            .database(dbname)
+            .username("odcapi")
+            .password("odcapi")
     }
 
-    /// Makes sure odcadmin_test database exists.
-    /// Assumes odcadmin database exists
+    /// Makes sure the test database database exists.
+    /// Assumes the odcadmin database exists
     pub async fn setup_test_db(dbname: &str) {
-        let mut config = gen_test_config(dbname);
-        config.dbname("odcadmin");
-        let (odcadmin_client, con) =
-            config.connect(tokio_postgres::NoTls).await.unwrap();
-        tokio::spawn(async move {
-            con.await.unwrap();
-        });
-        odcadmin_client
-            .execute(
-                format!("DROP DATABASE IF EXISTS {}", dbname).as_str(),
-                &[],
-            )
+        use sqlx::ConnectOptions;
+        log::info!("setting up database {}", dbname);
+        let config = gen_test_config(dbname).database("odcadmin");
+        let mut con = config.connect().await.unwrap();
+        sqlx::query(format!("DROP DATABASE IF EXISTS {0}", dbname).as_str())
+            .execute(&mut con)
             .await
             .unwrap();
-        odcadmin_client
-            .execute(format!("CREATE DATABASE {}", dbname).as_str(), &[])
+        sqlx::query(format!("CREATE DATABASE {0}", dbname).as_str())
+            .execute(&mut con)
             .await
             .unwrap();
     }
@@ -95,14 +87,10 @@ mod tests {
         if setup {
             setup_test_db(dbname).await;
         }
-        let pg_config = gen_test_config(dbname);
-        let admin_conf = db::admin::Config {
-            config: pg_config,
-            clean,
-            admin_email: "admin@example.com".to_string(),
-            admin_password: "admin".to_string(),
-        };
-        db::admin::AdminDB::new(admin_conf).await.unwrap()
+        let mut opt = crate::Opt::from_iter(vec!["appname"]);
+        opt.admindbname = dbname.to_string();
+        opt.clean = clean;
+        db::admin::AdminDB::new(&opt).await.unwrap()
     }
 
     /// Insert a test user

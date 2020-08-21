@@ -258,6 +258,7 @@ mod tests {
         tests::insert_test_user(&admindb).await;
 
         let admindb_ref = Arc::new(admindb);
+        assert_eq!(admindb_ref.get_name(), TEST_DB_NAME);
 
         // Individual filters given good input --------------------------------
 

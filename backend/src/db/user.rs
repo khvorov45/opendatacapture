@@ -1,4 +1,4 @@
-use crate::db::{create_pool, DBPool, DB};
+use crate::db::{create_pool, ConnectionConfig, DBRow, FromOpt, Pool, DB};
 use crate::{Error, Result};
 
 pub mod table;
@@ -8,7 +8,7 @@ use table::{DBJson, RowJson, TableJson, TableMeta, TableSpec};
 /// Database
 pub struct UserDB {
     name: String,
-    pool: DBPool,
+    pool: Pool,
     tables: TableSpec,
 }
 
@@ -17,7 +17,7 @@ impl DB for UserDB {
     fn get_name(&self) -> &str {
         self.name.as_str()
     }
-    fn get_pool(&self) -> &DBPool {
+    fn get_pool(&self) -> &Pool {
         &self.pool
     }
     /// Creates all stored tables
@@ -34,15 +34,17 @@ impl UserDB {
     /// correct.
     /// If empty, will create tables.
     pub async fn new(
-        config: tokio_postgres::Config,
+        opt: &crate::Opt,
+        name: &str,
         tables: TableSpec,
     ) -> Result<Self> {
+        // Connection config
+        let config = ConnectionConfig::from_opt(&opt).database(name);
         // Connect
-        let name = config.get_dbname().unwrap().to_string();
-        let pool = create_pool(config)?;
+        let pool = create_pool(config).await?;
         // The database object
         let db = Self {
-            name: name.clone(),
+            name: name.to_string(),
             pool,
             tables,
         };
@@ -67,9 +69,8 @@ impl UserDB {
     }
     /// Creates the given table
     async fn create_table(&self, table: &TableMeta) -> Result<()> {
-        self.get_con()
-            .await?
-            .execute(table.construct_create_query().as_str(), &[])
+        sqlx::query(table.construct_create_query().as_str())
+            .execute(self.get_pool())
             .await?;
         Ok(())
     }
@@ -92,17 +93,14 @@ impl UserDB {
     /// This way every table has only one column of the same type.
     async fn get_rows_json(&self, table_name: &str) -> Result<Vec<RowJson>> {
         log::debug!("get json rows of table \"{}\"", table_name);
-        let all_rows_json = self
-            .get_con()
-            .await?
-            .query(
-                self.find_table(table_name)?
-                    .construct_select_json_query(&[], "")?
-                    .as_str(),
-                &[],
-            )
-            .await?;
-        rows_to_json(all_rows_json)
+        let rows = sqlx::query(
+            self.find_table(table_name)?
+                .construct_select_json_query(&[], "")?
+                .as_str(),
+        )
+        .fetch_all(self.get_pool())
+        .await?;
+        rows_to_json(rows)
     }
     /// Get one table's data
     pub async fn get_table_json(&self, table_name: &str) -> Result<TableJson> {
@@ -120,15 +118,13 @@ impl UserDB {
     }
     /// Insert data into a table
     pub async fn insert(&self, json: &TableJson) -> Result<()> {
-        self.get_con()
-            .await?
-            .execute(
-                self.find_table(json.name.as_str())?
-                    .construct_insert_query(&json.rows)?
-                    .as_str(),
-                &[],
-            )
-            .await?;
+        sqlx::query(
+            self.find_table(json.name.as_str())?
+                .construct_insert_query(&json.rows)?
+                .as_str(),
+        )
+        .execute(self.get_pool())
+        .await?;
         Ok(())
     }
     /// Select rows from a table
@@ -137,25 +133,22 @@ impl UserDB {
         name: &str,
         cols: &[&str],
         custom_post: &str,
-        params: &[&(dyn tokio_postgres::types::ToSql + Sync)],
     ) -> Result<Vec<RowJson>> {
         log::debug!("select from table \"{}\"", name);
-        let all_rows_json = self
-            .get_con()
-            .await?
-            .query(
-                self.find_table(name)?
-                    .construct_select_json_query(cols, custom_post)?
-                    .as_str(),
-                params,
-            )
-            .await?;
-        rows_to_json(all_rows_json)
+        let rows = sqlx::query(
+            self.find_table(name)?
+                .construct_select_json_query(cols, custom_post)?
+                .as_str(),
+        )
+        .fetch_all(self.get_pool())
+        .await?;
+        rows_to_json(rows)
     }
 }
 
-/// Converts tokio_postgres rows to json rows
-fn rows_to_json(rows: Vec<tokio_postgres::Row>) -> Result<Vec<RowJson>> {
+/// Converts database rows to json rows
+fn rows_to_json(rows: Vec<DBRow>) -> Result<Vec<RowJson>> {
+    use sqlx::Row;
     let mut values: Vec<RowJson> = Vec::with_capacity(rows.len());
     if rows.is_empty() {
         return Ok(values);
@@ -174,6 +167,9 @@ fn rows_to_json(rows: Vec<tokio_postgres::Row>) -> Result<Vec<RowJson>> {
 mod tests {
     use super::table::{ColMeta, ColSpec};
     use super::*;
+    use structopt::StructOpt;
+
+    const TEST_DB_NAME: &str = "odcadmin_test_user";
 
     // Test primary table
     fn get_test_primary_table() -> TableMeta {
@@ -274,12 +270,10 @@ mod tests {
     async fn test_user() {
         let _ = pretty_env_logger::try_init();
         crate::tests::setup_test_db("odcadmin_test_user").await;
-        let db = UserDB::new(
-            crate::tests::gen_test_config("odcadmin_test_user"),
-            get_testdb_spec(),
-        )
-        .await
-        .unwrap();
+        let opt = crate::Opt::from_iter(vec!["appname"]);
+        let db = UserDB::new(&opt, TEST_DB_NAME, get_testdb_spec())
+            .await
+            .unwrap();
 
         // Make sure tables were created
         assert!(!db.is_empty().await.unwrap());
@@ -293,7 +287,7 @@ mod tests {
         // Select query
         log::info!("test select query");
         let query_res = db
-            .select("primary", &["email"], "WHERE \"id\" = $1", &[&1])
+            .select("primary", &["email"], "WHERE \"id\" = '1'")
             .await
             .unwrap();
         assert_eq!(query_res.len(), 1);
@@ -311,12 +305,9 @@ mod tests {
         // This can happen only if the database was modified by something other
         // than this backend.
         log::info!("test connection to changed");
-        let new_db = UserDB::new(
-            crate::tests::gen_test_config("odcadmin_test_user"),
-            get_testdb_spec_alt(),
-        )
-        .await
-        .unwrap();
+        let new_db = UserDB::new(&opt, TEST_DB_NAME, get_testdb_spec_alt())
+            .await
+            .unwrap();
         // The database is the same but we now think that secondary doesn't exist
         assert!(matches!(
             new_db.get_rows_json("secondary").await.unwrap_err(),
