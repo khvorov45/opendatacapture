@@ -76,6 +76,7 @@ async fn handle_rejection(
 }
 
 /// Rejects if the access (as per the Authorization header) is not high enough
+/// Returns the user who the token belongs to otherwise.
 fn sufficient_access(
     db: Arc<AdminDB>,
     req_access: crate::auth::Access,
@@ -150,7 +151,8 @@ fn generate_session_token(
         )
 }
 
-/// Get user by token
+/// Get user by token. If the token is wrong (not found), say unauthorized
+/// (instead of not found).
 fn get_user_by_token(
     db: Arc<AdminDB>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
