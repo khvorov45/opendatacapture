@@ -7,25 +7,43 @@
 import { Access, LoginFailure, tokenFetcher, tokenValidator } from "../lib/auth"
 import { createProject, getUserProjects, deleteProject } from "../lib/project"
 
-test("token fetching and validating", async () => {
-  expect.assertions(6)
-  // Wrong token
-  tokenValidator("123").catch((e) =>
+test("wrong token", async () => {
+  expect.assertions(1)
+  try {
+    let res = await tokenValidator("123")
+    console.log(`wrong token response: ${res}`)
+  } catch (e) {
     expect(e.message).toBe("Request failed with status code 401")
-  )
-  // Wrong password
-  tokenFetcher({
-    email: "admin@example.com",
-    password: "123",
-  }).catch((e) => expect(e.message).toBe(LoginFailure.WrongPassword))
+  }
+})
 
-  // Wrong email
-  tokenFetcher({
-    email: "user@example.com",
-    password: "admin",
-  }).catch((e) => expect(e.message).toBe(LoginFailure.EmailNotFound))
+test("wrong password", async () => {
+  expect.assertions(1)
+  try {
+    let res = await tokenFetcher({
+      email: "admin@example.com",
+      password: "123",
+    })
+    console.log(`wrong password response: ${res}`)
+  } catch (e) {
+    expect(e.message).toBe(LoginFailure.WrongPassword)
+  }
+})
 
-  // Correct credentials
+test("wrong email", async () => {
+  expect.assertions(1)
+  try {
+    let res = await tokenFetcher({
+      email: "user@example.com",
+      password: "admin",
+    })
+    console.log(`wrong email response: ${res}`)
+  } catch (e) {
+    expect(e.message).toBe(LoginFailure.EmailNotFound)
+  }
+})
+
+test("correct credentials", async () => {
   let token = await tokenFetcher({
     email: "admin@example.com",
     password: "admin",
