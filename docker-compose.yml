@@ -1,4 +1,5 @@
 version: "3"
+
 services:
   postgres:
     image: postgres:12
@@ -12,3 +13,9 @@ services:
     build: ./backend
     ports:
       - 4321:4321
+  frontend:
+    depends_on:
+      - backend
+    build: ./frontend
+    ports:
+      - 4322:5000
