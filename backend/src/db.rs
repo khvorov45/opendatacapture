@@ -20,6 +20,15 @@ pub trait FromOpt {
 
 impl FromOpt for ConnectionConfig {
     fn from_opt(opt: &crate::Opt) -> Self {
+        if let Ok(url) = std::env::var("DATABASE_URL") {
+            match url.parse() {
+                Ok(o) => return o,
+                Err(e) => log::error!(
+                    "error parsing DATABASE_URL, fall back to args: {}",
+                    e
+                ),
+            }
+        }
         Self::new()
             .host(opt.dbhost.as_str())
             .port(opt.dbport)
