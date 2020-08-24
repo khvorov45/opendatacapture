@@ -14,6 +14,6 @@ async fn main() -> Result<()> {
     // API routes
     let routes = api::routes(std::sync::Arc::new(admin_database));
     // Start server
-    warp::serve(routes).run(([127, 0, 0, 1], opt.apiport)).await;
+    warp::serve(routes).run(([0, 0, 0, 0], opt.apiport)).await;
     Ok(())
 }

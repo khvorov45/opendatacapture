@@ -16,6 +16,8 @@ on:
       - ".github/workflows/backend.yml"
       - ".github/workflows/frontend.yml"
       - ".github/workflows/fullstack.yml"
+      - "docker-compose.yml"
+      - "**/Dockerfile"
   pull_request:
     paths-ignore:
       - ".vscode/**"
@@ -33,6 +35,8 @@ on:
       - ".github/workflows/backend.yml"
       - ".github/workflows/frontend.yml"
       - ".github/workflows/fullstack.yml"
+      - "docker-compose.yml"
+      - "**/Dockerfile"
 
 name: Coverage
 

@@ -1,0 +1,14 @@
+version: "3"
+services:
+  postgres:
+    image: postgres:12
+    environment:
+      POSTGRES_USER: odcapi
+      POSTGRES_PASSWORD: odcapi
+      POSTGRES_DB: odcadmin
+  backend:
+    depends_on:
+      - postgres
+    build: ./backend
+    ports:
+      - 4321:4321
