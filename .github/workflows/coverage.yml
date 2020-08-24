@@ -16,6 +16,7 @@ on:
       - ".github/workflows/backend.yml"
       - ".github/workflows/frontend.yml"
       - ".github/workflows/fullstack.yml"
+      - ".github/workflows/docker.yml"
       - "docker-compose.yml"
       - "**/Dockerfile"
   pull_request:
@@ -35,6 +36,7 @@ on:
       - ".github/workflows/backend.yml"
       - ".github/workflows/frontend.yml"
       - ".github/workflows/fullstack.yml"
+      - ".github/workflows/docker.yml"
       - "docker-compose.yml"
       - "**/Dockerfile"
 
