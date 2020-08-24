@@ -1,5 +1,7 @@
 on:
   push:
+    branches-ignore:
+      - deploy
     paths-ignore:
       - ".vscode/**"
       - "docs/**"
@@ -19,6 +21,8 @@ on:
       - "docker-compose.yml"
       - "**/Dockerfile"
   pull_request:
+    branches-ignore:
+      - deploy
     paths-ignore:
       - ".vscode/**"
       - "docs/**"
