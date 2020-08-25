@@ -12,9 +12,11 @@ COPY --from=0 /usr/src/opendatacapture/target/release/opendatacapture .
 
 RUN apt-get update && apt-get install -y libssl-dev
 
-EXPOSE 4321
+ARG API_PORT=4321
+EXPOSE ${API_PORT}
+
 ENV RUST_LOG ${RUST_LOG}
 ENV DATABASE_URL ${DATABASE_URL}
-ENV ODC_API_PORT ${ODC_API_PORT}
-ENV ODC_API_PREFIX ${ODC_API_PREFIX}
+ENV ODC_API_PORT ${API_PORT}
+ENV ODC_API_PREFIX ${API_PREFIX}
 CMD ./opendatacapture

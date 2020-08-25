@@ -12,18 +12,22 @@ services:
   backend:
     depends_on:
       - postgres
-    build: ./backend
+    build:
+      context: ./backend
+      args:
+        API_PORT: 4321
     environment:
       DATABASE_URL: postgres://odcapi:odcapi@postgres:5432/odcadmin
       RUST_LOG: info
-      API_PORT: 4321
+      API_PREFIX: ""
     ports:
       - 6001:4321
   frontend:
     depends_on:
       - backend
-    build: ./frontend
-    args:
-      API_ROOT: http://localhost:6001
+    build:
+      context: ./frontend
+      args:
+        API_ROOT: http://localhost:6001
     ports:
       - 6002:5000
