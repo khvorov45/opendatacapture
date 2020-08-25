@@ -3,6 +3,8 @@
 import axios from "axios"
 import httpStatusCodes from "http-status-codes"
 
+import { API_ROOT } from "./config"
+
 export interface Project {
   user: number
   name: string
@@ -11,7 +13,7 @@ export interface Project {
 
 export async function createProject(tok: string, name: string): Promise<void> {
   await axios.put(
-    `http://localhost:4321/create/project/${name}`,
+    `${API_ROOT}/create/project/${name}`,
     {},
     {
       validateStatus: (s) => s === httpStatusCodes.OK,
@@ -21,14 +23,14 @@ export async function createProject(tok: string, name: string): Promise<void> {
 }
 
 export async function deleteProject(tok: string, name: string): Promise<void> {
-  await axios.delete(`http://localhost:4321/delete/project/${name}`, {
+  await axios.delete(`${API_ROOT}/delete/project/${name}`, {
     validateStatus: (s) => s === httpStatusCodes.OK,
     headers: { Authorization: `Bearer ${tok}` },
   })
 }
 
 export async function getUserProjects(tok: string): Promise<Project[]> {
-  let res = await axios.get(`http://localhost:4321/get/projects`, {
+  let res = await axios.get(`${API_ROOT}/get/projects`, {
     validateStatus: (s) => s === httpStatusCodes.OK,
     headers: { Authorization: `Bearer ${tok}` },
   })

@@ -7,17 +7,23 @@ services:
       POSTGRES_USER: odcapi
       POSTGRES_PASSWORD: odcapi
       POSTGRES_DB: odcadmin
+    ports:
+      - 6000:5432
   backend:
     depends_on:
       - postgres
     build: ./backend
-    ports:
-      - 4321:4321
     environment:
       DATABASE_URL: postgres://odcapi:odcapi@postgres:5432/odcadmin
+      RUST_LOG: info
+      API_PORT: 4321
+    ports:
+      - 6001:4321
   frontend:
     depends_on:
       - backend
     build: ./frontend
+    args:
+      API_ROOT: http://localhost:6001
     ports:
-      - 4322:5000
+      - 6002:5000

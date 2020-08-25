@@ -1,5 +1,6 @@
 import axios from "axios"
 import httpStatusCodes from "http-status-codes"
+import { API_ROOT } from "./config"
 
 export interface EmailPassword {
   email: string
@@ -35,18 +36,14 @@ function validateUser(u: any): boolean {
 }
 
 export async function tokenFetcher(cred: EmailPassword): Promise<string> {
-  const res = await axios.post(
-    "http://localhost:4321/auth/session-token",
-    cred,
-    {
-      validateStatus: (s: number) =>
-        [
-          httpStatusCodes.OK,
-          httpStatusCodes.UNAUTHORIZED,
-          httpStatusCodes.INTERNAL_SERVER_ERROR,
-        ].includes(s),
-    }
-  )
+  const res = await axios.post(`${API_ROOT}/auth/session-token`, cred, {
+    validateStatus: (s: number) =>
+      [
+        httpStatusCodes.OK,
+        httpStatusCodes.UNAUTHORIZED,
+        httpStatusCodes.INTERNAL_SERVER_ERROR,
+      ].includes(s),
+  })
   if (typeof res.data !== "string") {
     throw Error(`unexpected response data: ${JSON.stringify(res.data)}`)
   }
@@ -67,10 +64,9 @@ export async function tokenFetcher(cred: EmailPassword): Promise<string> {
 }
 
 export async function tokenValidator(tok: string): Promise<User> {
-  const res = await axios.get(
-    `http://localhost:4321/get/user/by/token/${tok}`,
-    { validateStatus: (s) => s === httpStatusCodes.OK }
-  )
+  const res = await axios.get(`${API_ROOT}/get/user/by/token/${tok}`, {
+    validateStatus: (s) => s === httpStatusCodes.OK,
+  })
   if (!validateUser(res.data)) {
     throw Error("unexpected response data: " + JSON.stringify(res.data))
   }
