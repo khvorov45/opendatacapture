@@ -15,4 +15,5 @@ RUN apt-get update && apt-get install -y libssl-dev
 EXPOSE 4321
 ENV RUST_LOG ${RUST_LOG}
 ENV DATABASE_URL ${DATABASE_URL}
+ENV ODC_API_PORT ${ODC_API_PORT}
 CMD ./opendatacapture
