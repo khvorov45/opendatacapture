@@ -43,6 +43,9 @@ pub struct Opt {
     /// Password for the first admin user
     #[structopt(long, default_value = "admin")]
     pub admin_password: String,
+    /// Prefix for all paths. No prefix is used when this is an empty string.
+    #[structopt(long, env = "ODC_API_PREFIX", default_value = "")]
+    pub prefix: String,
 }
 
 #[cfg(test)]

@@ -6,6 +6,7 @@ use warp::{Filter, Reply};
 /// All routes
 pub fn routes(
     db: Arc<AdminDB>,
+    prefix: &str,
 ) -> impl Filter<Extract = impl Reply, Error = warp::Rejection> + Clone {
     // Apply the same cors headers to every path. Could not get it working
     // when cors headers were different on every path.
@@ -13,7 +14,7 @@ pub fn routes(
         .allow_any_origin()
         .allow_methods(vec!["GET", "POST", "PUT", "DELETE"])
         .allow_headers(vec!["Content-Type", "Authorization"]);
-    health(db.clone())
+    let routes = health(db.clone())
         .or(generate_session_token(db.clone()))
         .or(get_user_by_token(db.clone()))
         .or(get_users(db.clone()))
@@ -22,6 +23,11 @@ pub fn routes(
         .or(delete_project(db))
         .recover(handle_rejection)
         .with(cors)
+        .boxed();
+    if prefix.is_empty() {
+        return routes;
+    }
+    warp::path(prefix.to_string()).and(routes).boxed()
 }
 
 /// Error handling
@@ -417,7 +423,7 @@ mod tests {
 
         // Rejections ---------------------------------------------------------
 
-        let routes = routes(admindb_ref.clone());
+        let routes = routes(admindb_ref.clone(), "");
 
         // Wrong email
         {

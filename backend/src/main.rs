@@ -12,7 +12,8 @@ async fn main() -> Result<()> {
         .await
         .context("failed to connect to administrative database")?;
     // API routes
-    let routes = api::routes(std::sync::Arc::new(admin_database));
+    let routes =
+        api::routes(std::sync::Arc::new(admin_database), opt.prefix.as_str());
     // Start server
     warp::serve(routes).run(([0, 0, 0, 0], opt.apiport)).await;
     Ok(())
