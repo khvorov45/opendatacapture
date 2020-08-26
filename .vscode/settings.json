@@ -37,5 +37,6 @@
         "structopt",
         "testdb",
         "testid"
-    ]
+    ],
+    "liveServer.settings.root": "/frontend/build"
 }

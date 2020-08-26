@@ -1,0 +1,28 @@
+version: "3"
+
+services:
+  postgres:
+    image: postgres:12
+    environment:
+      POSTGRES_USER: odcapi
+      POSTGRES_PASSWORD: odcapi
+      POSTGRES_DB: odcadmin
+    ports:
+      - 6000:5432
+  backend:
+    depends_on:
+      - postgres
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://odcapi:odcapi@postgres:5432/odcadmin
+    ports:
+      - 6001:4321
+  frontend:
+    depends_on:
+      - backend
+    build: ./frontend
+    environment:
+      # This variable HAS to change in production since JS runs in browser
+      REACT_APP_ODC_API_ROOT: http://localhost:6001
+    ports:
+      - 6002:5000

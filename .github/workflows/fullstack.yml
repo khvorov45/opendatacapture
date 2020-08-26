@@ -1,5 +1,7 @@
 on:
   push:
+    branches-ignore:
+      - deploy
     paths-ignore:
       - ".vscode/**"
       - "docs/**"
@@ -16,7 +18,11 @@ on:
       - ".github/workflows/backend.yml"
       - ".github/workflows/frontend.yml"
       - ".github/workflows/coverage.yml"
+      - "docker-compose.yml"
+      - "**/Dockerfile"
   pull_request:
+    branches-ignore:
+      - deploy
     paths-ignore:
       - ".vscode/**"
       - "docs/**"
@@ -33,6 +39,8 @@ on:
       - ".github/workflows/backend.yml"
       - ".github/workflows/frontend.yml"
       - ".github/workflows/coverage.yml"
+      - "docker-compose.yml"
+      - "**/Dockerfile"
 
 name: Fullstack
 

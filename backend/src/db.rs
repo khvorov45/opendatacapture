@@ -20,6 +20,16 @@ pub trait FromOpt {
 
 impl FromOpt for ConnectionConfig {
     fn from_opt(opt: &crate::Opt) -> Self {
+        if let Ok(url) = std::env::var("DATABASE_URL") {
+            log::debug!("parsing DATABASE_URL: {}", url);
+            match url.parse() {
+                Ok(o) => return o,
+                Err(e) => log::error!(
+                    "error parsing DATABASE_URL, fall back to args: {}",
+                    e
+                ),
+            }
+        }
         Self::new()
             .host(opt.dbhost.as_str())
             .port(opt.dbport)
@@ -30,6 +40,7 @@ impl FromOpt for ConnectionConfig {
 }
 
 async fn create_pool(config: ConnectionConfig) -> Result<Pool> {
+    log::debug!("creating pool with {:#?}", config);
     let pool = sqlx::postgres::PgPoolOptions::new()
         .max_connections(DB_POOL_MAX_OPEN)
         .min_connections(DB_POOL_MAX_IDLE)

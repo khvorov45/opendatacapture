@@ -1,5 +1,7 @@
 on:
   push:
+    branches-ignore:
+      - deploy
     paths-ignore:
       - ".vscode/**"
       - "docs/**"
@@ -14,7 +16,11 @@ on:
       - ".github/workflows/frontend.yml"
       - ".github/workflows/coverage.yml"
       - ".github/workflows/fullstack.yml"
+      - "docker-compose.yml"
+      - "**/Dockerfile"
   pull_request:
+    branches-ignore:
+      - deploy
     paths-ignore:
       - ".vscode/**"
       - "docs/**"
@@ -29,6 +35,8 @@ on:
       - ".github/workflows/frontend.yml"
       - ".github/workflows/coverage.yml"
       - ".github/workflows/fullstack.yml"
+      - "docker-compose.yml"
+      - "**/Dockerfile"
 
 name: Backend
 

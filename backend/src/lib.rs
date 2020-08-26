@@ -31,7 +31,7 @@ pub struct Opt {
     #[structopt(long, default_value = "odcapi")]
     pub apiuserpassword: String,
     /// Port for the api to listen to
-    #[structopt(long, default_value = "4321")]
+    #[structopt(long, env = "ODC_API_PORT", default_value = "4321")]
     pub apiport: u16,
     /// Do not backup and restore the data even if the admin database
     /// has tables.
@@ -43,6 +43,9 @@ pub struct Opt {
     /// Password for the first admin user
     #[structopt(long, default_value = "admin")]
     pub admin_password: String,
+    /// Prefix for all paths. No prefix is used when this is an empty string.
+    #[structopt(long, env = "ODC_API_PREFIX", default_value = "")]
+    pub prefix: String,
 }
 
 #[cfg(test)]
