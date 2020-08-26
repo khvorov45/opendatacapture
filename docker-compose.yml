@@ -12,22 +12,17 @@ services:
   backend:
     depends_on:
       - postgres
-    build:
-      context: ./backend
-      args:
-        API_PORT: 4321
+    build: ./backend
     environment:
       DATABASE_URL: postgres://odcapi:odcapi@postgres:5432/odcadmin
-      RUST_LOG: info
-      API_PREFIX: ""
     ports:
       - 6001:4321
   frontend:
     depends_on:
       - backend
-    build:
-      context: ./frontend
-      args:
-        API_ROOT: http://localhost:6001
+    build: ./frontend
+    environment:
+      # This variable HAS to change in production since JS runs in browser
+      REACT_APP_ODC_API_ROOT: http://localhost:6001
     ports:
       - 6002:5000
