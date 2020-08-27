@@ -36,7 +36,7 @@ pub struct Opt {
     #[structopt(long, env = "ODC_API_PORT", default_value = "4321")]
     pub apiport: u16,
     /// Reset the administrative database upon connection.
-    #[structopt(long, env = "ODC_CLEAN")]
+    #[structopt(long)]
     pub clean: bool,
     /// Email for the first admin user.
     #[structopt(
@@ -52,7 +52,7 @@ pub struct Opt {
     #[structopt(long, env = "ODC_API_PREFIX", default_value = "")]
     pub prefix: String,
     /// Disable CORS headers
-    #[structopt(long, env = "ODC_DISABLE_CORS")]
+    #[structopt(long)]
     pub disable_cors: bool,
 }
 
