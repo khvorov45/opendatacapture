@@ -13,39 +13,47 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// opendatacapture
 #[derive(StructOpt, Debug)]
 pub struct Opt {
-    /// Database host name
+    /// Database host name. Ignored if DATABASE_URL is defined.
     #[structopt(long, default_value = "localhost")]
     pub dbhost: String,
-    /// Database host port
+    /// Database host port. Ignored if DATABASE_URL is defined.
     #[structopt(long, default_value = "5432")]
     pub dbport: u16,
     /// Admin database name.
-    /// Will be used as an administrative database
-    /// for keeping track of users.
+    /// Will be used as an administrative database for keeping track of users.
+    /// Ignored if DATABASE_URL is defined.
     #[structopt(long, default_value = "odcadmin")]
     pub admindbname: String,
     /// API user name. Will be used to perform all database actions.
+    /// Ignored if DATABASE_URL is defined.
     #[structopt(long, default_value = "odcapi")]
     pub apiusername: String,
-    /// API user password
+    /// API user password.
+    /// Ignored if DATABASE_URL is defined.
     #[structopt(long, default_value = "odcapi")]
     pub apiuserpassword: String,
-    /// Port for the api to listen to
+    /// Port for the api to listen to.
     #[structopt(long, env = "ODC_API_PORT", default_value = "4321")]
     pub apiport: u16,
-    /// Do not backup and restore the data even if the admin database
-    /// has tables.
-    #[structopt(long)]
+    /// Reset the administrative database upon connection.
+    #[structopt(long, env = "ODC_CLEAN")]
     pub clean: bool,
-    /// Email for the first admin user
-    #[structopt(long, default_value = "admin@example.com")]
+    /// Email for the first admin user.
+    #[structopt(
+        long,
+        env = "ODC_ADMIN_EMAIL",
+        default_value = "admin@example.com"
+    )]
     pub admin_email: String,
-    /// Password for the first admin user
-    #[structopt(long, default_value = "admin")]
+    /// Password for the first admin user.
+    #[structopt(long, env = "ODC_ADMIN_PASSWORD", default_value = "admin")]
     pub admin_password: String,
     /// Prefix for all paths. No prefix is used when this is an empty string.
     #[structopt(long, env = "ODC_API_PREFIX", default_value = "")]
     pub prefix: String,
+    /// Disable CORS headers
+    #[structopt(long, env = "ODC_DISABLE_CORS")]
+    pub disable_cors: bool,
 }
 
 #[cfg(test)]
