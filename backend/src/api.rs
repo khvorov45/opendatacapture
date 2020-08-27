@@ -8,12 +8,6 @@ pub fn routes(
     db: Arc<AdminDB>,
     prefix: &str,
 ) -> impl Filter<Extract = impl Reply, Error = warp::Rejection> + Clone {
-    // Apply the same cors headers to every path. Could not get it working
-    // when cors headers were different on every path.
-    let cors = warp::cors()
-        .allow_any_origin()
-        .allow_methods(vec!["GET", "POST", "PUT", "DELETE"])
-        .allow_headers(vec!["Content-Type", "Authorization"]);
     let routes = health(db.clone())
         .or(generate_session_token(db.clone()))
         .or(get_user_by_token(db.clone()))
@@ -22,12 +16,21 @@ pub fn routes(
         .or(get_user_projects(db.clone()))
         .or(delete_project(db))
         .recover(handle_rejection)
-        .with(cors)
         .boxed();
     if prefix.is_empty() {
         return routes;
     }
     warp::path(prefix.to_string()).and(routes).boxed()
+}
+
+/// All CORS headers.
+/// Allowes to apply the same cors headers to every path.
+/// Could not get it working when cors headers were different on every path.
+pub fn get_cors() -> warp::cors::Builder {
+    warp::cors()
+        .allow_any_origin()
+        .allow_methods(vec!["GET", "POST", "PUT", "DELETE"])
+        .allow_headers(vec!["Content-Type", "Authorization"])
 }
 
 /// Error handling
@@ -627,13 +630,30 @@ mod tests {
 
         // CORS ---------------------------------------------------------------
 
-        // When request is good
+        // When not attached
         {
             let resp = warp::test::request()
                 .method("GET")
                 .path("/health")
                 .header("Origin", "test")
                 .reply(&routes)
+                .await;
+            assert_eq!(resp.status(), StatusCode::OK);
+            let body = serde_json::from_slice::<bool>(&*resp.body()).unwrap();
+            assert!(body);
+            let heads = resp.headers();
+            assert!(heads.get("access-control-allow-origin").is_none());
+        }
+
+        let routes_cors = routes.clone().with(get_cors());
+
+        // When request is good
+        {
+            let resp = warp::test::request()
+                .method("GET")
+                .path("/health")
+                .header("Origin", "test")
+                .reply(&routes_cors)
                 .await;
             assert_eq!(resp.status(), StatusCode::OK);
             let body = serde_json::from_slice::<bool>(&*resp.body()).unwrap();
@@ -650,7 +670,7 @@ mod tests {
                 .method("POST")
                 .path("/health")
                 .header("Origin", "test")
-                .reply(&routes)
+                .reply(&routes_cors)
                 .await;
             assert_eq!(resp.status(), StatusCode::METHOD_NOT_ALLOWED);
             let heads = resp.headers();
@@ -666,7 +686,7 @@ mod tests {
                 .path("/health")
                 .header("Origin", "test")
                 .header("Access-Control-Request-Method", "GET")
-                .reply(&routes)
+                .reply(&routes_cors)
                 .await;
             assert_eq!(resp.status(), StatusCode::OK);
             let heads = resp.headers();
@@ -683,7 +703,7 @@ mod tests {
                 .header("Origin", "test")
                 .header("Access-Control-Request-Method", "GET")
                 .header("Access-Control-Request-Headers", "X-Username")
-                .reply(&routes)
+                .reply(&routes_cors)
                 .await;
             assert_eq!(resp.status(), StatusCode::FORBIDDEN);
         }

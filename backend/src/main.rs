@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use opendatacapture::{api, db, Opt};
 use structopt::StructOpt;
+use warp::Filter;
 
 #[cfg(not(tarpaulin_include))]
 #[tokio::main]
@@ -11,10 +12,14 @@ async fn main() -> Result<()> {
     let admin_database = db::admin::AdminDB::new(&opt)
         .await
         .context("failed to connect to administrative database")?;
-    // API routes
-    let routes =
-        api::routes(std::sync::Arc::new(admin_database), opt.prefix.as_str());
-    // Start server
-    warp::serve(routes).run(([0, 0, 0, 0], opt.apiport)).await;
+    let admin_database_ref = std::sync::Arc::new(admin_database);
+    if opt.disable_cors {
+        let routes = api::routes(admin_database_ref, opt.prefix.as_str());
+        warp::serve(routes).run(([0, 0, 0, 0], opt.apiport)).await;
+    } else {
+        let routes = api::routes(admin_database_ref, opt.prefix.as_str())
+            .with(api::get_cors());
+        warp::serve(routes).run(([0, 0, 0, 0], opt.apiport)).await;
+    }
     Ok(())
 }
