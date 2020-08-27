@@ -13,10 +13,9 @@ services:
     depends_on:
       - postgres
     build: ./backend
-    environment:
-      DATABASE_URL: postgres://odcapi:odcapi@postgres:5432/odcadmin
     ports:
       - 6001:4321
+    command: --dbhost postgres
   frontend:
     depends_on:
       - backend
