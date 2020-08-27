@@ -18,6 +18,7 @@ on:
       - ".github/workflows/backend.yml"
       - ".github/workflows/frontend.yml"
       - ".github/workflows/coverage.yml"
+      - ".github/workflows/deploy.yml"
       - "docker-compose.yml"
       - "**/Dockerfile"
   pull_request:
@@ -39,6 +40,7 @@ on:
       - ".github/workflows/backend.yml"
       - ".github/workflows/frontend.yml"
       - ".github/workflows/coverage.yml"
+      - ".github/workflows/deploy.yml"
       - "docker-compose.yml"
       - "**/Dockerfile"
 
