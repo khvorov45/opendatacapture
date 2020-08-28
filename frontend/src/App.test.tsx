@@ -4,8 +4,8 @@ import React from "react"
 import { render, fireEvent, waitForDomChange } from "@testing-library/react"
 import App from "./App"
 import { themeInit } from "./lib/theme"
-
 import axios from "axios"
+
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
@@ -27,16 +27,10 @@ test("theme switching", () => {
   expectTheme("dark")
 })
 
-test("reroute to login", () => {
-  const { getByTestId } = render(<App initPalette="dark" initToken={null} />)
-  let loginForm = getByTestId("login-form")
-  expect(loginForm).toBeInTheDocument()
-})
-
 test("token update", async () => {
   localStorage.removeItem("token")
   // Login response
-  mockedAxios.post.mockResolvedValue({ status: 200, data: "123" })
+  mockedAxios.post.mockResolvedValueOnce({ status: 200, data: "123" })
   let user = {
     id: 1,
     email: "test@example.com",
@@ -44,9 +38,19 @@ test("token update", async () => {
     access: "Admin",
   }
   // Token validation response
-  mockedAxios.get.mockResolvedValue({ data: user })
+  mockedAxios.get.mockResolvedValueOnce({ data: user })
   const { getByTestId } = render(<App initPalette="dark" initToken={null} />)
+  // Will only work if successfully redirected to login
   fireEvent.click(getByTestId("login-submit"))
   await waitForDomChange()
   expect(localStorage.getItem("token")).toBe("123")
+  // I'd like to test that successfull login redirects to homepage but
+  // I can't because DOM doesn't update properly here
+})
+
+test("reroute to login when token is wrong", async () => {
+  mockedAxios.get.mockRejectedValueOnce(Error(""))
+  const { getByTestId } = render(<App initPalette="dark" initToken="123" />)
+  await waitForDomChange()
+  expect(getByTestId("login-form")).toBeInTheDocument()
 })

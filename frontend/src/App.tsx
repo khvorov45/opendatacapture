@@ -1,11 +1,17 @@
-import React, { useState } from "react"
+import React, { ReactNode, useState } from "react"
 import { createMuiTheme, ThemeProvider, Theme } from "@material-ui/core/styles"
 import Nav from "./components/nav"
 import Login from "./components/login"
 import { tokenFetcher, tokenValidator } from "./lib/auth"
 import CssBaseline from "@material-ui/core/CssBaseline"
-import { BrowserRouter as Router, Switch, Route } from "react-router-dom"
+import {
+  BrowserRouter as Router,
+  Switch,
+  Route,
+  Redirect,
+} from "react-router-dom"
 import Home from "./components/home"
+import { AuthStatus, useToken } from "./lib/hooks"
 
 function createThemeFromPalette(palette: "dark" | "light"): Theme {
   return createMuiTheme({
@@ -37,6 +43,7 @@ export default function App({
     setToken(tok)
     localStorage.setItem("token", tok)
   }
+  const { user, auth } = useToken(token, tokenValidator)
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -46,11 +53,33 @@ export default function App({
           <Route path="/login">
             <Login updateToken={updateToken} tokenFetcher={tokenFetcher} />
           </Route>
-          <Route path="/">
-            <Home token={token} tokenValidator={tokenValidator} />
-          </Route>
+          <AuthRoute path="/" auth={auth}>
+            <Home token={token} />
+          </AuthRoute>
         </Switch>
       </Router>
     </ThemeProvider>
+  )
+}
+
+function AuthRoute({
+  path,
+  auth,
+  children,
+}: {
+  path: string
+  auth: AuthStatus
+  children: ReactNode
+}) {
+  return (
+    <Route path={path}>
+      {auth === AuthStatus.Err ? (
+        <Redirect to="/login" />
+      ) : auth === AuthStatus.InProgress ? (
+        <></>
+      ) : (
+        children
+      )}
+    </Route>
   )
 }
