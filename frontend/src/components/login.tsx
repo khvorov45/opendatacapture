@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { TextField, Button, FormHelperText } from "@material-ui/core"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 import { EmailPassword, LoginFailure } from "../lib/auth"
-import { useHistory } from "react-router-dom"
+import { Redirect } from "react-router-dom"
 
 export default function Login({
   updateToken,
@@ -54,12 +54,12 @@ function LoginForm({
   let [passwordMsg, setPasswordMsg] = useState("")
   let [password, setPassword] = useState("")
   let [buttonMsg, setButtonMsg] = useState("")
-  const history = useHistory()
+  let [success, setSuccess] = useState(false)
   function handleSubmit() {
     tokenFetcher({ email: email, password: password })
       .then((tok) => {
         updateToken(tok)
-        history.push("/")
+        setSuccess(true)
       })
       .catch((e) => {
         setPasswordError(false)
@@ -77,6 +77,9 @@ function LoginForm({
           setButtonMsg(e.message)
         }
       })
+  }
+  if (success) {
+    return <Redirect to="/" />
   }
   return (
     <form className={classes.loginForm} data-testid="login-form">
