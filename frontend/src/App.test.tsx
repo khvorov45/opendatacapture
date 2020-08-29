@@ -39,13 +39,14 @@ test("token update", async () => {
   }
   // Token validation response
   mockedAxios.get.mockResolvedValueOnce({ data: user })
+  // Attempt to render the homepage
   const { getByTestId } = render(<App initPalette="dark" initToken={null} />)
   // Will only work if successfully redirected to login
   fireEvent.click(getByTestId("login-submit"))
   await waitForDomChange()
   expect(localStorage.getItem("token")).toBe("123")
-  // I'd like to test that successfull login redirects to homepage but
-  // I can't because DOM doesn't update properly here
+  // Check that successful login redirects to homepage
+  expect(getByTestId("homepage")).toBeInTheDocument()
 })
 
 test("reroute to login when token is wrong", async () => {
