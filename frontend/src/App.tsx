@@ -51,7 +51,11 @@ export default function App({
       <Router>
         <Switch>
           <Route path="/login">
-            <Login updateToken={updateToken} tokenFetcher={tokenFetcher} />
+            {auth === AuthStatus.Ok ? (
+              <Redirect to="/" />
+            ) : (
+              <Login updateToken={updateToken} tokenFetcher={tokenFetcher} />
+            )}
           </Route>
           <AuthRoute path="/" auth={auth}>
             <Home token={token} />

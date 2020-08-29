@@ -54,12 +54,10 @@ function LoginForm({
   let [passwordMsg, setPasswordMsg] = useState("")
   let [password, setPassword] = useState("")
   let [buttonMsg, setButtonMsg] = useState("")
-  let [success, setSuccess] = useState(false)
   function handleSubmit() {
     tokenFetcher({ email: email, password: password })
       .then((tok) => {
         updateToken(tok)
-        setSuccess(true)
       })
       .catch((e) => {
         setPasswordError(false)
@@ -77,9 +75,6 @@ function LoginForm({
           setButtonMsg(e.message)
         }
       })
-  }
-  if (success) {
-    return <Redirect to="/" />
   }
   return (
     <form className={classes.loginForm} data-testid="login-form">
