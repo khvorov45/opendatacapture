@@ -2,7 +2,6 @@ import React, { useState } from "react"
 import { TextField, Button, FormHelperText } from "@material-ui/core"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 import { EmailPassword, LoginFailure } from "../lib/auth"
-import { Redirect } from "react-router-dom"
 
 export default function Login({
   updateToken,
