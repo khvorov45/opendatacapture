@@ -39,6 +39,8 @@ test("token update", async () => {
   }
   // Token validation response
   mockedAxios.get.mockResolvedValueOnce({ data: user })
+  // Project list response
+  mockedAxios.get.mockResolvedValueOnce({ data: [] })
   // Attempt to render the homepage
   const { getByTestId } = render(<App initPalette="dark" initToken={null} />)
   // Will only work if successfully redirected to login

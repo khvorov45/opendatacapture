@@ -8,6 +8,6 @@ function renderHome(token: string | null) {
 }
 
 test("homepage", () => {
-  const { getByText } = renderHome("123")
-  expect(getByText((s) => s.includes("123"))).toBeInTheDocument()
+  const { getByTestId } = renderHome("123")
+  expect(getByTestId("project-list")).toBeInTheDocument()
 })
