@@ -43,7 +43,7 @@ export default function App({
     setToken(tok)
     localStorage.setItem("token", tok)
   }
-  const { user, auth } = useToken(token, tokenValidator)
+  const { auth } = useToken(token, tokenValidator)
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
