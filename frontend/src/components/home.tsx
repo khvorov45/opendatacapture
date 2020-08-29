@@ -1,10 +1,5 @@
 import React, { useEffect, useState } from "react"
-import {
-  createStyles,
-  makeStyles,
-  Theme,
-  useTheme,
-} from "@material-ui/core/styles"
+import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 import Add from "@material-ui/icons/Add"
 import { getUserProjects, Project } from "../lib/project"
 
