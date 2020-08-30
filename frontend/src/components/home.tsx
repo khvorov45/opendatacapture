@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 import Add from "@material-ui/icons/Add"
 import { getUserProjects, Project } from "../lib/project"
-import { IconButton } from "@material-ui/core"
+import { IconButton, useTheme } from "@material-ui/core"
 
 export default function Home({ token }: { token: string | null }) {
   const useStyles = makeStyles((theme: Theme) =>
@@ -106,6 +106,7 @@ function NoProjects({ token }: { token: string }) {
 }
 
 function ProjectCreate({ token }: { token: string }) {
+  const theme = useTheme()
   const useStyles = makeStyles((theme: Theme) =>
     createStyles({
       create: {
@@ -116,7 +117,7 @@ function ProjectCreate({ token }: { token: string }) {
   const classes = useStyles()
   return (
     <IconButton className={classes.create} onClick={() => console.log("click")}>
-      <Add />
+      <Add htmlColor={theme.palette.success.main} />
     </IconButton>
   )
 }
