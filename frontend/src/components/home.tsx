@@ -45,7 +45,7 @@ function ProjectWidget({ token }: { token: string }) {
     })
   )
   const classes = useStyles()
-  const [projects, setProjects] = useState<Project[]>([])
+  const [projects, setProjects] = useState<Project[] | null>(null)
   const [errorMsg, setErrorMsg] = useState("")
   const refreshProjectList = useCallback(
     () =>
@@ -60,11 +60,16 @@ function ProjectWidget({ token }: { token: string }) {
   return (
     <div className={classes.projectWidget} data-testid="projectWidget">
       <ProjectControl token={token} refreshProjectList={refreshProjectList} />
-      <ProjectList
-        token={token}
-        projects={projects}
-        onRemove={refreshProjectList}
-      />
+      {projects ? (
+        <ProjectList
+          token={token}
+          projects={projects}
+          onRemove={refreshProjectList}
+        />
+      ) : (
+        "Loading"
+      )}
+
       <FormHelperText error={true} data-testid="get-projects-error">
         {errorMsg}
       </FormHelperText>
