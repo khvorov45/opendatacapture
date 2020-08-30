@@ -8,6 +8,12 @@ import {
   useTheme,
   TextField,
   FormHelperText,
+  TableContainer,
+  Table,
+  TableHead,
+  TableCell,
+  TableRow,
+  TableBody,
 } from "@material-ui/core"
 import { createProject } from "../lib/project"
 
@@ -139,9 +145,20 @@ function ProjectList({
   return (
     <div className={classes.projectList} data-testid="project-list">
       {projects.length ? (
-        projects.map((p) => (
-          <ProjectEntry key={p.user + p.name} project={p} token={token} />
-        ))
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Name</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {projects.map((p) => (
+                <ProjectEntry key={p.user + p.name} project={p} token={token} />
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       ) : (
         <NoProjects token={token} />
       )}
@@ -150,7 +167,11 @@ function ProjectList({
 }
 
 function ProjectEntry({ project, token }: { project: Project; token: string }) {
-  return <div>Project entry {JSON.stringify(project)}</div>
+  return (
+    <TableRow>
+      <TableCell>{project.name}</TableCell>
+    </TableRow>
+  )
 }
 
 function NoProjects({ token }: { token: string }) {
