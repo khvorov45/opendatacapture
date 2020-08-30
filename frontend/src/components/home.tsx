@@ -13,6 +13,7 @@ import {
   TableCell,
   TableRow,
   TableBody,
+  CircularProgress,
 } from "@material-ui/core"
 import { createProject } from "../lib/project"
 
@@ -28,7 +29,7 @@ export default function Home({ token }: { token: string | null }) {
   const classes = useStyles()
   return (
     <div className={classes.homePage} data-testid="homepage">
-      {token ? <ProjectWidget token={token} /> : "Loading"}
+      {token ? <ProjectWidget token={token} /> : <CircularProgress />}
     </div>
   )
 }
@@ -67,7 +68,7 @@ function ProjectWidget({ token }: { token: string }) {
           onRemove={refreshProjectList}
         />
       ) : (
-        "Loading"
+        <CircularProgress />
       )}
 
       <FormHelperText error={true} data-testid="get-projects-error">
