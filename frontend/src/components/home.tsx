@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
-import Add from "@material-ui/icons/Add"
-import Send from "@material-ui/icons/Send"
-import { getUserProjects, Project } from "../lib/project"
+import { Add, Send, DeleteForever } from "@material-ui/icons"
+import { getUserProjects, Project, deleteProject } from "../lib/project"
 import {
   IconButton,
   useTheme,
@@ -61,7 +60,11 @@ function ProjectWidget({ token }: { token: string }) {
   return (
     <div className={classes.projectWidget} data-testid="projectWidget">
       <ProjectControl token={token} refreshProjectList={refreshProjectList} />
-      <ProjectList token={token} projects={projects} />
+      <ProjectList
+        token={token}
+        projects={projects}
+        onRemove={refreshProjectList}
+      />
       <FormHelperText error={true} data-testid="get-projects-error">
         {errorMsg}
       </FormHelperText>
@@ -128,9 +131,13 @@ function ProjectControlButtons({ onCreate }: { onCreate?: () => void }) {
 function ProjectList({
   token,
   projects,
+  projectRemover,
+  onRemove,
 }: {
   token: string
   projects: Project[]
+  projectRemover?: (tok: string, name: string) => Promise<void>
+  onRemove?: () => void
 }) {
   const useStyles = makeStyles((theme: Theme) =>
     createStyles({
@@ -142,6 +149,12 @@ function ProjectList({
     })
   )
   const classes = useStyles()
+
+  // Functionality
+  const projectRemoverResolved = projectRemover ?? deleteProject
+  function removeProject(token: string, name: string) {
+    projectRemoverResolved(token, name).then(() => onRemove?.())
+  }
   return (
     <div className={classes.projectList} data-testid="project-list">
       {projects.length ? (
@@ -150,11 +163,17 @@ function ProjectList({
             <TableHead>
               <TableRow>
                 <TableCell>Name</TableCell>
+                <TableCell></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {projects.map((p) => (
-                <ProjectEntry key={p.user + p.name} project={p} token={token} />
+                <ProjectEntry
+                  key={p.user + p.name}
+                  token={token}
+                  project={p}
+                  remover={removeProject}
+                />
               ))}
             </TableBody>
           </Table>
@@ -166,10 +185,21 @@ function ProjectList({
   )
 }
 
-function ProjectEntry({ project, token }: { project: Project; token: string }) {
+function ProjectEntry({
+  token,
+  project,
+  remover,
+}: {
+  token: string
+  project: Project
+  remover: (tok: string, name: string) => void
+}) {
   return (
     <TableRow>
-      <TableCell>{project.name}</TableCell>
+      <TableCell align="center">{project.name}</TableCell>
+      <TableCell>
+        <ProjectRemoveButton onClick={() => remover(token, project.name)} />
+      </TableCell>
     </TableRow>
   )
 }
@@ -193,17 +223,18 @@ function NoProjects({ token }: { token: string }) {
 
 function ProjectCreateButton({ onClick }: { onClick?: () => void }) {
   const theme = useTheme()
-  const useStyles = makeStyles((theme: Theme) =>
-    createStyles({
-      create: {
-        cursor: "pointer",
-      },
-    })
-  )
-  const classes = useStyles()
   return (
-    <IconButton className={classes.create} onClick={onClick}>
+    <IconButton onClick={onClick}>
       <Add htmlColor={theme.palette.success.main} />
+    </IconButton>
+  )
+}
+
+function ProjectRemoveButton({ onClick }: { onClick?: () => void }) {
+  const theme = useTheme()
+  return (
+    <IconButton onClick={onClick}>
+      <DeleteForever htmlColor={theme.palette.error.main} />
     </IconButton>
   )
 }
