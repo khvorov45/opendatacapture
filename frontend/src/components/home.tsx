@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 import Add from "@material-ui/icons/Add"
 import { getUserProjects, Project } from "../lib/project"
+import { IconButton } from "@material-ui/core"
 
 export default function Home({ token }: { token: string | null }) {
   const useStyles = makeStyles((theme: Theme) =>
@@ -113,5 +114,9 @@ function ProjectCreate({ token }: { token: string }) {
     })
   )
   const classes = useStyles()
-  return <Add className={classes.create} />
+  return (
+    <IconButton className={classes.create} onClick={() => console.log("click")}>
+      <Add />
+    </IconButton>
+  )
 }
