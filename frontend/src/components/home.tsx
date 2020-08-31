@@ -44,6 +44,11 @@ function ProjectWidget({ token }: { token: string }) {
         justifyContent: "center",
         flexDirection: "column",
         marginTop: "20px",
+        border: `1px solid ${
+          theme.palette.type === "dark"
+            ? theme.palette.grey[800]
+            : theme.palette.grey[200]
+        }`,
       },
     })
   )
@@ -287,11 +292,12 @@ function ProjectCreateForm({
     createStyles({
       createForm: {
         overflow: "hidden",
-        maxHeight: open ? "50px" : "0px",
+        maxHeight: open ? "100px" : "0px",
         display: "flex",
         alignItems: "center",
         flexDirection: "column",
-        transition: "max-height 0.05s",
+        transition: "max-height 0.1s",
+        paddingLeft: "5px",
       },
     })
   )
