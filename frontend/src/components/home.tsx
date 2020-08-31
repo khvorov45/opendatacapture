@@ -276,7 +276,9 @@ function ProjectCreateForm({
   const useStyles = makeStyles((theme: Theme) =>
     createStyles({
       createForm: {
-        display: open ? "flex" : "none",
+        visibility: open ? "visible" : "hidden",
+        height: open ? "auto" : "0px",
+        display: "flex",
         alignItems: "center",
         flexDirection: "column",
       },
