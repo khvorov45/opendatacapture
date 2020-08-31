@@ -9,8 +9,6 @@ import {
   TableContainer,
   Table,
   TableHead,
-  TableCell,
-  TableRow,
   TableBody,
   CircularProgress,
   Typography,
@@ -18,6 +16,7 @@ import {
 import { usePromiseTracker, trackPromise } from "react-promise-tracker"
 import { getUserProjects, Project, deleteProject } from "../lib/project"
 import { createProject } from "../lib/project"
+import { StyledTableRow, StyledTableCell } from "./table"
 
 export default function Home({ token }: { token: string | null }) {
   const useStyles = makeStyles((theme: Theme) =>
@@ -47,7 +46,7 @@ function ProjectWidget({ token }: { token: string }) {
         border: `1px solid ${
           theme.palette.type === "dark"
             ? theme.palette.grey[800]
-            : theme.palette.grey[200]
+            : theme.palette.grey[300]
         }`,
       },
     })
@@ -187,10 +186,10 @@ function ProjectList({
         <TableContainer>
           <Table>
             <TableHead>
-              <TableRow>
-                <TableCell align="center">Name</TableCell>
-                <TableCell></TableCell>
-              </TableRow>
+              <StyledTableRow>
+                <StyledTableCell align="center">Name</StyledTableCell>
+                <StyledTableCell></StyledTableCell>
+              </StyledTableRow>
             </TableHead>
             <TableBody>
               {projects.map((p) => (
@@ -224,16 +223,16 @@ function ProjectEntry({
     area: `remove-project-${project.name}`,
   })
   return (
-    <TableRow>
-      <TableCell align="center">{project.name}</TableCell>
-      <TableCell>
+    <StyledTableRow>
+      <StyledTableCell align="center">{project.name}</StyledTableCell>
+      <StyledTableCell>
         {promiseInProgress ? (
           <CircularProgress />
         ) : (
           <ProjectRemoveButton onClick={() => remover(token, project.name)} />
         )}
-      </TableCell>
-    </TableRow>
+      </StyledTableCell>
+    </StyledTableRow>
   )
 }
 
@@ -291,6 +290,7 @@ function ProjectCreateForm({
   const useStyles = makeStyles((theme: Theme) =>
     createStyles({
       createForm: {
+        visibility: open ? "visible" : "hidden",
         overflow: "hidden",
         maxHeight: open ? "100px" : "0px",
         display: "flex",
