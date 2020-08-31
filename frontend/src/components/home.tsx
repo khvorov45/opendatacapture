@@ -172,14 +172,6 @@ function ProjectList({
   )
   const classes = useStyles()
 
-  // Functionality
-  const projectRemoverResolved = projectRemover ?? deleteProject
-  function removeProject(token: string, name: string) {
-    trackPromise(
-      projectRemoverResolved(token, name),
-      `remove-project-${name}`
-    ).then(() => onRemove?.())
-  }
   return (
     <div className={classes.projectList} data-testid="project-list">
       {projects.length ? (
@@ -197,7 +189,8 @@ function ProjectList({
                   key={p.user + p.name}
                   token={token}
                   project={p}
-                  remover={removeProject}
+                  remover={projectRemover}
+                  onRemove={onRemove}
                 />
               ))}
             </TableBody>
@@ -214,22 +207,43 @@ function ProjectEntry({
   token,
   project,
   remover,
+  onRemove,
 }: {
   token: string
   project: Project
-  remover: (tok: string, name: string) => void
+  remover?: (tok: string, name: string) => Promise<void>
+  onRemove?: () => void
 }) {
+  const removerResolved = remover ?? deleteProject
   const { promiseInProgress } = usePromiseTracker({
     area: `remove-project-${project.name}`,
   })
+  const [hideSelf, setHideSelf] = useState(false)
+  const useStyles = makeStyles((theme: Theme) =>
+    createStyles({
+      project: {
+        display: hideSelf ? "none" : "auto",
+      },
+    })
+  )
+  const classes = useStyles()
+  function handleClick() {
+    trackPromise(
+      removerResolved(token, project.name),
+      `remove-project-${project.name}`
+    ).then(() => {
+      setHideSelf(true)
+      onRemove?.()
+    })
+  }
   return (
-    <StyledTableRow>
+    <StyledTableRow className={classes.project}>
       <StyledTableCell align="center">{project.name}</StyledTableCell>
       <StyledTableCell>
         {promiseInProgress ? (
           <CircularProgress />
         ) : (
-          <ProjectRemoveButton onClick={() => remover(token, project.name)} />
+          <ProjectRemoveButton onClick={handleClick} />
         )}
       </StyledTableCell>
     </StyledTableRow>
