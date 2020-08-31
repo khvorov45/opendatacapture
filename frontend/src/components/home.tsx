@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 import { Add, Send, DeleteForever } from "@material-ui/icons"
-import { getUserProjects, Project, deleteProject } from "../lib/project"
 import {
   IconButton,
   useTheme,
@@ -15,6 +14,8 @@ import {
   TableBody,
   CircularProgress,
 } from "@material-ui/core"
+import { usePromiseTracker, trackPromise } from "react-promise-tracker"
+import { getUserProjects, Project, deleteProject } from "../lib/project"
 import { createProject } from "../lib/project"
 
 export default function Home({ token }: { token: string | null }) {
@@ -100,7 +101,8 @@ function ProjectControl({
     setFormOpen(!formOpen)
   }
   function handleProjectSubmit() {
-    refreshProjectList().then(() => setFormOpen(false))
+    setFormOpen(false)
+    refreshProjectList()
   }
   return (
     <div className={classes.projectControl} data-testid="projectControl">
@@ -108,7 +110,7 @@ function ProjectControl({
       <ProjectCreateForm
         token={token}
         open={formOpen}
-        onSubmit={handleProjectSubmit}
+        onSuccess={handleProjectSubmit}
       />
     </div>
   )
@@ -249,12 +251,12 @@ function ProjectCreateForm({
   token,
   open,
   projectCreator,
-  onSubmit,
+  onSuccess,
 }: {
   token: string
   open: boolean
   projectCreator?: (token: string, name: string) => Promise<void>
-  onSubmit?: () => void
+  onSuccess?: () => void
 }) {
   // Appearance
   const useStyles = makeStyles((theme: Theme) =>
@@ -270,14 +272,15 @@ function ProjectCreateForm({
   // Functionality
   const [name, setName] = useState("")
   const [errorMsg, setErrorMsg] = useState("")
+  const { promiseInProgress } = usePromiseTracker({ area: "create-project" })
 
   const projectCreatorResolved = projectCreator ?? createProject
   function handleSubmit() {
-    projectCreatorResolved(token, name)
+    trackPromise(projectCreatorResolved(token, name), "create-project")
       .then(() => {
+        onSuccess?.()
         setName("")
         setErrorMsg("")
-        onSubmit?.()
       })
       .catch((e) => {
         if (e.message.startsWith("ProjectAlreadyExists")) {
@@ -295,16 +298,20 @@ function ProjectCreateForm({
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
-      <IconButton
-        onClick={(e) => {
-          e.preventDefault()
-          handleSubmit()
-        }}
-        data-testid="login-submit"
-        type="submit"
-      >
-        <Send />
-      </IconButton>
+      {promiseInProgress ? (
+        <CircularProgress />
+      ) : (
+        <IconButton
+          onClick={(e) => {
+            e.preventDefault()
+            handleSubmit()
+          }}
+          data-testid="login-submit"
+          type="submit"
+        >
+          <Send />
+        </IconButton>
+      )}
       <FormHelperText error={true} data-testid="create-project-error">
         {errorMsg}
       </FormHelperText>
