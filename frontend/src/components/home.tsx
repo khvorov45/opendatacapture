@@ -171,7 +171,10 @@ function ProjectList({
   // Functionality
   const projectRemoverResolved = projectRemover ?? deleteProject
   function removeProject(token: string, name: string) {
-    projectRemoverResolved(token, name).then(() => onRemove?.())
+    trackPromise(
+      projectRemoverResolved(token, name),
+      `remove-project-${name}`
+    ).then(() => onRemove?.())
   }
   return (
     <div className={classes.projectList} data-testid="project-list">
@@ -212,11 +215,18 @@ function ProjectEntry({
   project: Project
   remover: (tok: string, name: string) => void
 }) {
+  const { promiseInProgress } = usePromiseTracker({
+    area: `remove-project-${project.name}`,
+  })
   return (
     <TableRow>
       <TableCell align="center">{project.name}</TableCell>
       <TableCell>
-        <ProjectRemoveButton onClick={() => remover(token, project.name)} />
+        {promiseInProgress ? (
+          <CircularProgress />
+        ) : (
+          <ProjectRemoveButton onClick={() => remover(token, project.name)} />
+        )}
       </TableCell>
     </TableRow>
   )
