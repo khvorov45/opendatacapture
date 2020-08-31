@@ -322,6 +322,7 @@ function ProjectCreateForm({
           }}
           data-testid="login-submit"
           type="submit"
+          disabled={name.length === 0}
         >
           <Send />
         </IconButton>
