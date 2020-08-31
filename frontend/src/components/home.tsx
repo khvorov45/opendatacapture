@@ -66,7 +66,7 @@ function ProjectWidget({ token }: { token: string }) {
           <ProjectControl
             token={token}
             refreshProjectList={refreshProjectList}
-            initCreateProjectFormOpen={projects.length === 0}
+            noProjects={projects.length === 0}
           />
           <ProjectList
             token={token}
@@ -87,11 +87,11 @@ function ProjectWidget({ token }: { token: string }) {
 function ProjectControl({
   token,
   refreshProjectList,
-  initCreateProjectFormOpen,
+  noProjects,
 }: {
   token: string
   refreshProjectList: () => void
-  initCreateProjectFormOpen?: boolean
+  noProjects?: boolean
 }) {
   const useStyles = makeStyles((theme: Theme) =>
     createStyles({
@@ -103,7 +103,7 @@ function ProjectControl({
     })
   )
   const classes = useStyles()
-  const [formOpen, setFormOpen] = useState(initCreateProjectFormOpen ?? false)
+  const [formOpen, setFormOpen] = useState(noProjects ?? false)
   function handleCreate() {
     setFormOpen(!formOpen)
   }
@@ -111,6 +111,9 @@ function ProjectControl({
     setFormOpen(false)
     refreshProjectList()
   }
+  useEffect(() => {
+    noProjects && setFormOpen(true)
+  }, [noProjects])
   return (
     <div className={classes.projectControl} data-testid="projectControl">
       <ProjectControlButtons onCreate={handleCreate} />
