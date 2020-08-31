@@ -13,6 +13,7 @@ import {
   TableRow,
   TableBody,
   CircularProgress,
+  Typography,
 } from "@material-ui/core"
 import { usePromiseTracker, trackPromise } from "react-promise-tracker"
 import { getUserProjects, Project, deleteProject } from "../lib/project"
@@ -49,29 +50,33 @@ function ProjectWidget({ token }: { token: string }) {
   const classes = useStyles()
   const [projects, setProjects] = useState<Project[] | null>(null)
   const [errorMsg, setErrorMsg] = useState("")
-  const refreshProjectList = useCallback(
-    () =>
-      getUserProjects(token)
-        .then((ps) => setProjects(ps))
-        .catch((e) => setErrorMsg(e.message)),
-    [token]
-  )
+  const refreshProjectList = useCallback(() => {
+    setErrorMsg("")
+    getUserProjects(token)
+      .then((ps) => setProjects(ps))
+      .catch((e) => setErrorMsg(e.message))
+  }, [token])
   useEffect(() => {
     refreshProjectList()
   }, [refreshProjectList])
   return (
     <div className={classes.projectWidget} data-testid="projectWidget">
-      <ProjectControl token={token} refreshProjectList={refreshProjectList} />
       {projects ? (
-        <ProjectList
-          token={token}
-          projects={projects}
-          onRemove={refreshProjectList}
-        />
+        <>
+          <ProjectControl
+            token={token}
+            refreshProjectList={refreshProjectList}
+            initCreateProjectFormOpen={projects.length === 0}
+          />
+          <ProjectList
+            token={token}
+            projects={projects}
+            onRemove={refreshProjectList}
+          />
+        </>
       ) : (
         <CircularProgress />
       )}
-
       <FormHelperText error={true} data-testid="get-projects-error">
         {errorMsg}
       </FormHelperText>
@@ -82,9 +87,11 @@ function ProjectWidget({ token }: { token: string }) {
 function ProjectControl({
   token,
   refreshProjectList,
+  initCreateProjectFormOpen,
 }: {
   token: string
-  refreshProjectList: () => Promise<void>
+  refreshProjectList: () => void
+  initCreateProjectFormOpen?: boolean
 }) {
   const useStyles = makeStyles((theme: Theme) =>
     createStyles({
@@ -96,7 +103,7 @@ function ProjectControl({
     })
   )
   const classes = useStyles()
-  const [formOpen, setFormOpen] = useState(false)
+  const [formOpen, setFormOpen] = useState(initCreateProjectFormOpen ?? false)
   function handleCreate() {
     setFormOpen(!formOpen)
   }
@@ -218,13 +225,17 @@ function NoProjects({ token }: { token: string }) {
       noProjects: {
         display: "flex",
         alignItems: "center",
+        justifyContent: "center",
+        marginTop: "20px",
       },
     })
   )
   const classes = useStyles()
   return (
     <div className={classes.noProjects} data-testid="no-projects">
-      <p>Click</p> <ProjectCreateButton /> <p>to create a project</p>
+      <Typography color="textSecondary" variant="subtitle1">
+        No projects found
+      </Typography>
     </div>
   )
 }
@@ -294,7 +305,7 @@ function ProjectCreateForm({
     <form className={classes.createForm} data-testid="project-create-form">
       <TextField
         data-testid="project-name-field"
-        label="Name"
+        label="New project name..."
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
