@@ -180,7 +180,7 @@ function ProjectList({
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Name</TableCell>
+                <TableCell align="center">Name</TableCell>
                 <TableCell></TableCell>
               </TableRow>
             </TableHead>
