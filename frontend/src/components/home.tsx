@@ -278,6 +278,7 @@ function ProjectCreateForm({
       createForm: {
         display: open ? "flex" : "none",
         alignItems: "center",
+        flexDirection: "column",
       },
     })
   )
@@ -306,27 +307,29 @@ function ProjectCreateForm({
   }
   return (
     <form className={classes.createForm} data-testid="project-create-form">
-      <TextField
-        data-testid="project-name-field"
-        label="New project name..."
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      {promiseInProgress ? (
-        <CircularProgress />
-      ) : (
-        <IconButton
-          onClick={(e) => {
-            e.preventDefault()
-            handleSubmit()
-          }}
-          data-testid="login-submit"
-          type="submit"
-          disabled={name.length === 0}
-        >
-          <Send />
-        </IconButton>
-      )}
+      <div>
+        <TextField
+          data-testid="project-name-field"
+          label="New project name..."
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        {promiseInProgress ? (
+          <CircularProgress />
+        ) : (
+          <IconButton
+            onClick={(e) => {
+              e.preventDefault()
+              handleSubmit()
+            }}
+            data-testid="login-submit"
+            type="submit"
+            disabled={name.length === 0}
+          >
+            <Send />
+          </IconButton>
+        )}
+      </div>
       <FormHelperText error={true} data-testid="create-project-error">
         {errorMsg}
       </FormHelperText>
