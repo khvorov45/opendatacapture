@@ -286,11 +286,12 @@ function ProjectCreateForm({
   const useStyles = makeStyles((theme: Theme) =>
     createStyles({
       createForm: {
-        visibility: open ? "visible" : "hidden",
-        height: open ? "auto" : "0px",
+        overflow: "hidden",
+        maxHeight: open ? "50px" : "0px",
         display: "flex",
         alignItems: "center",
         flexDirection: "column",
+        transition: "max-height 0.05s",
       },
     })
   )
