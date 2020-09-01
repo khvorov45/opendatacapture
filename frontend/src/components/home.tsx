@@ -41,7 +41,7 @@ export default function Home({ token }: { token: string | null }) {
   )
 }
 
-function ProjectWidget({ token }: { token: string }) {
+export function ProjectWidget({ token }: { token: string }) {
   const useStyles = makeStyles((theme: Theme) =>
     createStyles({
       projectWidget: {
@@ -61,9 +61,11 @@ function ProjectWidget({ token }: { token: string }) {
   const [projects, setProjects] = useState<Project[] | null>(null)
   const [errorMsg, setErrorMsg] = useState("")
   const refreshProjectList = useCallback(() => {
-    setErrorMsg("")
     getUserProjects(token)
-      .then((ps) => setProjects(ps))
+      .then((ps) => {
+        setErrorMsg("")
+        setProjects(ps)
+      })
       .catch((e) => setErrorMsg(e.message))
   }, [token])
   useEffect(() => {
@@ -224,8 +226,8 @@ function ProjectEntry({
   const [hideSelf, setHideSelf] = useState(false)
   const useStyles = makeStyles((theme: Theme) =>
     createStyles({
-      project: {
-        display: hideSelf ? "none" : "auto",
+      hidden: {
+        display: "none",
       },
     })
   )
@@ -240,13 +242,19 @@ function ProjectEntry({
     })
   }
   return (
-    <StyledTableRow className={classes.project}>
+    <StyledTableRow
+      data-testid={`project-entry-${project.name}`}
+      className={hideSelf ? classes.hidden : ""}
+    >
       <StyledTableCell align="center">{project.name}</StyledTableCell>
       <StyledTableCell>
         {promiseInProgress ? (
           <CircularProgress />
         ) : (
-          <ProjectRemoveButton onClick={handleClick} />
+          <ProjectRemoveButton
+            dataTestId={`project-remove-${project.name}`}
+            onClick={handleClick}
+          />
         )}
       </StyledTableCell>
     </StyledTableRow>
@@ -277,16 +285,22 @@ function NoProjects({ token }: { token: string }) {
 function ProjectCreateButton({ onClick }: { onClick?: () => void }) {
   const theme = useTheme()
   return (
-    <IconButton onClick={onClick}>
+    <IconButton onClick={onClick} data-testid="project-create-button">
       <Add htmlColor={theme.palette.success.main} />
     </IconButton>
   )
 }
 
-function ProjectRemoveButton({ onClick }: { onClick?: () => void }) {
+function ProjectRemoveButton({
+  onClick,
+  dataTestId,
+}: {
+  onClick?: () => void
+  dataTestId?: string
+}) {
   const theme = useTheme()
   return (
-    <IconButton onClick={onClick}>
+    <IconButton data-testid={dataTestId} onClick={onClick}>
       <DeleteForever htmlColor={theme.palette.error.main} />
     </IconButton>
   )
@@ -352,7 +366,7 @@ function ProjectCreateForm({
     >
       <div>
         <TextField
-          data-testid="project-name-field"
+          inputProps={{ "data-testid": "project-name-field" }}
           label="New project name..."
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -365,7 +379,7 @@ function ProjectCreateForm({
               e.preventDefault()
               handleSubmit()
             }}
-            data-testid="login-submit"
+            data-testid="create-project-submit"
             type="submit"
             disabled={name.length === 0}
           >
