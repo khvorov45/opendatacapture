@@ -3,7 +3,6 @@ import React from "react"
 import axios from "axios"
 import Home from "./home"
 import { render, waitForDomChange } from "@testing-library/react"
-import { debug } from "console"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
