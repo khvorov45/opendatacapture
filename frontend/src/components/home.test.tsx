@@ -1,55 +1,141 @@
 /* istanbul ignore file */
 import React from "react"
-import Home from "./home"
-import { render, waitForElement } from "@testing-library/react"
-import { MemoryRouter, Switch, Route } from "react-router-dom"
-import { Access, User } from "../lib/auth"
+import axios from "axios"
+import httpStatusCodes from "http-status-codes"
+import Home, { ProjectWidget } from "./home"
+import { render, waitForDomChange, fireEvent } from "@testing-library/react"
 
-async function tokenValidatorGood() {
-  return {
-    id: 1,
-    email: "email@example.com",
-    password_hash: "123",
-    access: Access.Admin,
-  } as User
+jest.mock("axios")
+const mockedAxios = axios as jest.Mocked<typeof axios>
+
+function renderHome(token: string | null) {
+  return render(<Home token={token} />)
 }
 
-async function tokenValidatorBad(): Promise<User> {
-  throw Error()
-}
+test("homepage with no token", () => {
+  const { queryByTestId } = renderHome(null)
+  expect(queryByTestId("project-widget")).not.toBeInTheDocument()
+})
 
-function renderHome(
-  token: string | null,
-  tokenValidator: (s: string) => Promise<User>
-) {
-  return render(
-    <MemoryRouter initialEntries={["/"]}>
-      <Switch>
-        <Route exact path="/">
-          <Home token={token} tokenValidator={tokenValidator} />
-        </Route>
-        <Route exact path="/login">
-          <div data-testid="login-form" />
-        </Route>
-      </Switch>
-    </MemoryRouter>
+test("homepage with token and no projects", async () => {
+  // Get projects
+  mockedAxios.get.mockResolvedValueOnce({ data: [] })
+  const { getByTestId } = renderHome("123")
+  await waitForDomChange()
+  expect(getByTestId("homepage")).toBeInTheDocument()
+  expect(getByTestId("project-widget")).toBeInTheDocument()
+  // Check that the new project from is visible
+  expect(getByTestId("project-create-form")).not.toHaveClass("hidden")
+})
+
+test("homepage with token and some projects", async () => {
+  // Get projects
+  mockedAxios.get.mockResolvedValueOnce({
+    data: [{ user: 1, name: 2, created: new Date() }],
+  })
+  const { getByTestId } = renderHome("123")
+  await waitForDomChange()
+  expect(getByTestId("homepage")).toBeInTheDocument()
+  expect(getByTestId("project-widget")).toBeInTheDocument()
+  // Check that the new project form is hidden
+  expect(getByTestId("project-create-form")).toHaveClass("hidden")
+})
+
+test("project widget - click on project create", async () => {
+  // Project list
+  mockedAxios.get.mockResolvedValueOnce({
+    data: [{ user: 1, name: 2, created: new Date() }],
+  })
+  const { getByTestId } = render(<ProjectWidget token="123" />)
+  await waitForDomChange()
+  expect(getByTestId("project-control")).toBeInTheDocument()
+  expect(getByTestId("project-list")).toBeInTheDocument()
+  // Click the create project button
+  expect(getByTestId("project-create-form")).toHaveClass("hidden")
+  fireEvent.click(getByTestId("project-create-button"))
+  expect(getByTestId("project-create-form")).not.toHaveClass("hidden")
+})
+
+test("project widget - create project", async () => {
+  mockedAxios.put.mockResolvedValueOnce({ status: httpStatusCodes.OK })
+  mockedAxios.get
+    .mockResolvedValueOnce({
+      data: [],
+    })
+    .mockResolvedValueOnce({
+      data: [{ user: 1, name: "newproject", created: new Date() }],
+    })
+  const { getByTestId, getByText } = render(<ProjectWidget token="123" />)
+  await waitForDomChange()
+  expect(getByTestId("project-create-form")).not.toHaveClass("hidden")
+  // Fill in the form
+  fireEvent.change(getByTestId("project-name-field") as HTMLInputElement, {
+    target: { value: "newproject" },
+  })
+  fireEvent.click(getByTestId("create-project-submit"))
+  await waitForDomChange()
+  expect(getByText("newproject")).toBeInTheDocument()
+  // Create form should hide
+  expect(getByTestId("project-create-form")).toHaveClass("hidden")
+})
+
+test("project widget - remove projects", async () => {
+  mockedAxios.delete.mockResolvedValue({ status: httpStatusCodes.OK })
+  mockedAxios.get
+    .mockResolvedValueOnce({
+      data: [{ user: 1, name: 2, created: new Date() }],
+    })
+    .mockResolvedValueOnce({
+      data: [],
+    })
+  const { getByTestId, queryByTestId } = render(<ProjectWidget token="123" />)
+  await waitForDomChange()
+  expect(getByTestId("project-entry-2")).toBeInTheDocument()
+  // Create form should be hidden
+  expect(getByTestId("project-create-form")).toHaveClass("hidden")
+  fireEvent.click(getByTestId("project-remove-2"))
+  await waitForDomChange()
+  expect(queryByTestId("project-entry-2")).not.toBeInTheDocument()
+  // Create form should appear
+  expect(getByTestId("project-create-form")).not.toHaveClass("hidden")
+})
+
+test("project widget - fail to get projects", async () => {
+  mockedAxios.get
+    .mockRejectedValueOnce(Error("failed to get projects"))
+    .mockResolvedValueOnce([])
+  const { getByTestId } = render(<ProjectWidget token="123" />)
+  await waitForDomChange()
+  expect(getByTestId("get-projects-error")).toHaveTextContent(
+    "failed to get projects"
   )
-}
-
-test("reroute to login with no token", async () => {
-  const { getByTestId } = renderHome(null, tokenValidatorGood)
-  const login = await waitForElement(() => getByTestId("login-form"))
-  expect(login).toBeInTheDocument()
+  fireEvent.click(getByTestId("project-refresh-button"))
+  await waitForDomChange()
+  expect(getByTestId("get-projects-error")).toHaveTextContent("")
 })
 
-test("reroute to login with invalid token", async () => {
-  const { getByTestId } = renderHome("123", tokenValidatorBad)
-  const login = await waitForElement(() => getByTestId("login-form"))
-  expect(login).toBeInTheDocument()
-})
-
-test("stay home when token is given and user is returned", async () => {
-  const { getByTestId } = renderHome("123", tokenValidatorGood)
-  const homepage = await waitForElement(() => getByTestId("homepage"))
-  expect(homepage).toBeInTheDocument()
+test("project widget - project already exists", async () => {
+  mockedAxios.get.mockResolvedValueOnce([])
+  mockedAxios.put
+    .mockRejectedValueOnce(Error("ProjectAlreadyExists"))
+    .mockRejectedValueOnce(Error("some other error"))
+    .mockResolvedValueOnce({ status: httpStatusCodes.OK })
+  const { getByTestId } = render(<ProjectWidget token="123" />)
+  await waitForDomChange()
+  fireEvent.change(getByTestId("project-name-field") as HTMLInputElement, {
+    target: { value: "newproject" },
+  })
+  fireEvent.click(getByTestId("create-project-submit"))
+  await waitForDomChange()
+  expect(getByTestId("create-project-error")).toHaveTextContent(
+    "Name 'newproject' already in use"
+  )
+  fireEvent.click(getByTestId("create-project-submit"))
+  await waitForDomChange()
+  expect(getByTestId("create-project-error")).toHaveTextContent(
+    "some other error"
+  )
+  fireEvent.click(getByTestId("create-project-submit"))
+  await waitForDomChange()
+  expect(getByTestId("create-project-error")).toHaveTextContent("")
 })

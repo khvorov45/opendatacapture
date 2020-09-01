@@ -48,6 +48,10 @@ async fn handle_rejection(
                 status = StatusCode::UNAUTHORIZED;
                 message = format!("{:?}", reason);
             }
+            Error::ProjectAlreadyExists(_, _) => {
+                status = StatusCode::CONFLICT;
+                message = format!("{:?}", e)
+            }
             _ => {
                 status = StatusCode::INTERNAL_SERVER_ERROR;
                 message = format!("{:?}", e);
@@ -563,7 +567,7 @@ mod tests {
                 .header("Authorization", format!("Bearer {}", admin_token))
                 .reply(&routes)
                 .await;
-            assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+            assert_eq!(resp.status(), StatusCode::CONFLICT);
             assert_eq!(
                 serde_json::from_slice::<String>(&*resp.body()).unwrap(),
                 "ProjectAlreadyExists(1, \"test\")"

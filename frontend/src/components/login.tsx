@@ -2,7 +2,6 @@ import React, { useState } from "react"
 import { TextField, Button, FormHelperText } from "@material-ui/core"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 import { EmailPassword, LoginFailure } from "../lib/auth"
-import { useHistory } from "react-router-dom"
 
 export default function Login({
   updateToken,
@@ -54,12 +53,10 @@ function LoginForm({
   let [passwordMsg, setPasswordMsg] = useState("")
   let [password, setPassword] = useState("")
   let [buttonMsg, setButtonMsg] = useState("")
-  const history = useHistory()
   function handleSubmit() {
     tokenFetcher({ email: email, password: password })
       .then((tok) => {
         updateToken(tok)
-        history.push("/")
       })
       .catch((e) => {
         setPasswordError(false)

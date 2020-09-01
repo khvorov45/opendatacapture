@@ -12,14 +12,18 @@ export interface Project {
 }
 
 export async function createProject(tok: string, name: string): Promise<void> {
-  await axios.put(
+  const res = await axios.put(
     `${API_ROOT}/create/project/${name}`,
     {},
     {
-      validateStatus: (s) => s === httpStatusCodes.OK,
+      validateStatus: (s) =>
+        [httpStatusCodes.OK, httpStatusCodes.CONFLICT].includes(s),
       headers: { Authorization: `Bearer ${tok}` },
     }
   )
+  if (res.status !== httpStatusCodes.OK) {
+    throw Error(res.data)
+  }
 }
 
 export async function deleteProject(tok: string, name: string): Promise<void> {

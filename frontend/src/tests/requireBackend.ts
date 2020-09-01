@@ -68,3 +68,18 @@ test("project manipulation", async () => {
   projectIds = projects.map((p) => `${p.user}${p.name}`)
   expect(projectIds).not.toContain("1test")
 })
+
+test("create the same project twice", async () => {
+  expect.assertions(1)
+  let token = await tokenFetcher({
+    email: "admin@example.com",
+    password: "admin",
+  })
+  await createProject(token, "test")
+  try {
+    await createProject(token, "test")
+  } catch (e) {
+    expect(e.message).toBe('ProjectAlreadyExists(1, "test")')
+  }
+  await deleteProject(token, "test")
+})
