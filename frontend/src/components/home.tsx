@@ -3,6 +3,7 @@ import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 import Add from "@material-ui/icons/Add"
 import Send from "@material-ui/icons/Send"
 import DeleteForever from "@material-ui/icons/DeleteForever"
+import Refresh from "@material-ui/icons/Refresh"
 import {
   IconButton,
   useTheme,
@@ -80,6 +81,10 @@ const useStyles = makeStyles((theme: Theme) =>
         maxHeight: "0px",
       },
     },
+    centered: {
+      display: "flex",
+      justifyContent: "center",
+    },
   })
 )
 
@@ -97,7 +102,7 @@ export function ProjectWidget({ token }: { token: string }) {
   const [projects, setProjects] = useState<Project[] | null>(null)
   const [errorMsg, setErrorMsg] = useState("")
   const refreshProjectList = useCallback(() => {
-    getUserProjects(token)
+    trackPromise(getUserProjects(token), "get-projects")
       .then((ps) => {
         setErrorMsg("")
         setProjects(ps)
@@ -109,21 +114,23 @@ export function ProjectWidget({ token }: { token: string }) {
   }, [refreshProjectList])
   return (
     <div className={classes.projectWidget} data-testid="project-widget">
+      <ProjectControl
+        token={token}
+        refreshProjectList={refreshProjectList}
+        noProjects={projects ? projects.length === 0 : false}
+      />
       {projects ? (
-        <>
-          <ProjectControl
-            token={token}
-            refreshProjectList={refreshProjectList}
-            noProjects={projects.length === 0}
-          />
-          <ProjectList
-            token={token}
-            projects={projects}
-            onRemove={refreshProjectList}
-          />
-        </>
+        <ProjectList
+          token={token}
+          projects={projects}
+          onRemove={refreshProjectList}
+        />
+      ) : errorMsg ? (
+        <></>
       ) : (
-        <CircularProgress />
+        <div className={classes.centered}>
+          <CircularProgress />
+        </div>
       )}
       <FormHelperText error={true} data-testid="get-projects-error">
         {errorMsg}
@@ -152,7 +159,10 @@ function ProjectControl({
   }, [noProjects])
   return (
     <div className={classes.projectControl} data-testid="project-control">
-      <ProjectControlButtons onCreate={() => setFormOpen(!formOpen)} />
+      <ProjectControlButtons
+        onCreate={() => setFormOpen(!formOpen)}
+        onRefresh={() => refreshProjectList()}
+      />
       <ProjectCreateForm
         token={token}
         open={formOpen}
@@ -162,14 +172,26 @@ function ProjectControl({
   )
 }
 
-function ProjectControlButtons({ onCreate }: { onCreate?: () => void }) {
+function ProjectControlButtons({
+  onCreate,
+  onRefresh,
+}: {
+  onCreate: () => void
+  onRefresh: () => void
+}) {
   const classes = useStyles()
+  const { promiseInProgress } = usePromiseTracker({ area: "get-projects" })
   return (
     <div
       className={classes.projectControlButtons}
       data-testid="project-control-buttons"
     >
       <ProjectCreateButton onClick={onCreate} />
+      {promiseInProgress ? (
+        <CircularProgress />
+      ) : (
+        <ProjectRefreshButton onClick={onRefresh} />
+      )}
     </div>
   )
 }
@@ -273,6 +295,14 @@ function ProjectCreateButton({ onClick }: { onClick?: () => void }) {
   return (
     <IconButton onClick={onClick} data-testid="project-create-button">
       <Add htmlColor={theme.palette.success.main} />
+    </IconButton>
+  )
+}
+
+function ProjectRefreshButton({ onClick }: { onClick?: () => void }) {
+  return (
+    <IconButton onClick={onClick} data-testid="project-refresh-button">
+      <Refresh />
     </IconButton>
   )
 }

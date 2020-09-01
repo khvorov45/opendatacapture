@@ -99,3 +99,17 @@ test("project widget - remove projects", async () => {
   // Create form should appear
   expect(getByTestId("project-create-form")).not.toHaveClass("hidden")
 })
+
+test("project widget - fail to get projects", async () => {
+  mockedAxios.get
+    .mockRejectedValueOnce(Error("failed to get projects"))
+    .mockResolvedValueOnce([])
+  const { getByTestId } = render(<ProjectWidget token="123" />)
+  await waitForDomChange()
+  expect(getByTestId("get-projects-error")).toHaveTextContent(
+    "failed to get projects"
+  )
+  fireEvent.click(getByTestId("project-refresh-button"))
+  await waitForDomChange()
+  expect(getByTestId("get-projects-error")).toHaveTextContent("")
+})
