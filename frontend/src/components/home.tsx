@@ -114,9 +114,6 @@ function ProjectControl({
   )
   const classes = useStyles()
   const [formOpen, setFormOpen] = useState(noProjects ?? false)
-  function handleCreate() {
-    setFormOpen(!formOpen)
-  }
   function handleProjectSubmit() {
     setFormOpen(false)
     refreshProjectList()
@@ -126,7 +123,7 @@ function ProjectControl({
   }, [noProjects])
   return (
     <div className={classes.projectControl} data-testid="project-control">
-      <ProjectControlButtons onCreate={handleCreate} />
+      <ProjectControlButtons onCreate={() => setFormOpen(!formOpen)} />
       <ProjectCreateForm
         token={token}
         open={formOpen}
