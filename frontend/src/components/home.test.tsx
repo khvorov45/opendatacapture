@@ -48,9 +48,7 @@ test("project widget - click on project create", async () => {
   mockedAxios.get.mockResolvedValueOnce({
     data: [{ user: 1, name: 2, created: new Date() }],
   })
-  const { getByTestId, getByText, queryByTestId } = render(
-    <ProjectWidget token="123" />
-  )
+  const { getByTestId } = render(<ProjectWidget token="123" />)
   await waitForDomChange()
   expect(getByTestId("project-control")).toBeInTheDocument()
   expect(getByTestId("project-list")).toBeInTheDocument()
