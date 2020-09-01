@@ -139,10 +139,10 @@ function ProjectControl({
 }: {
   token: string
   refreshProjectList: () => void
-  noProjects?: boolean
+  noProjects: boolean
 }) {
   const classes = useStyles()
-  const [formOpen, setFormOpen] = useState(noProjects ?? false)
+  const [formOpen, setFormOpen] = useState(noProjects)
   function handleProjectSubmit() {
     setFormOpen(false)
     refreshProjectList()
@@ -177,12 +177,10 @@ function ProjectControlButtons({ onCreate }: { onCreate?: () => void }) {
 function ProjectList({
   token,
   projects,
-  projectRemover,
   onRemove,
 }: {
   token: string
   projects: Project[]
-  projectRemover?: (tok: string, name: string) => Promise<void>
   onRemove?: () => void
 }) {
   const classes = useStyles()
@@ -203,7 +201,6 @@ function ProjectList({
                   key={p.user + p.name}
                   token={token}
                   project={p}
-                  remover={projectRemover}
                   onRemove={onRemove}
                 />
               ))}
@@ -211,7 +208,7 @@ function ProjectList({
           </Table>
         </TableContainer>
       ) : (
-        <NoProjects token={token} />
+        <NoProjects />
       )}
     </div>
   )
@@ -220,15 +217,12 @@ function ProjectList({
 function ProjectEntry({
   token,
   project,
-  remover,
   onRemove,
 }: {
   token: string
   project: Project
-  remover?: (tok: string, name: string) => Promise<void>
   onRemove?: () => void
 }) {
-  const removerResolved = remover ?? deleteProject
   const { promiseInProgress } = usePromiseTracker({
     area: `remove-project-${project.name}`,
   })
@@ -236,7 +230,7 @@ function ProjectEntry({
   const classes = useStyles()
   function handleClick() {
     trackPromise(
-      removerResolved(token, project.name),
+      deleteProject(token, project.name),
       `remove-project-${project.name}`
     ).then(() => {
       setHideSelf(true)
@@ -263,7 +257,7 @@ function ProjectEntry({
   )
 }
 
-function NoProjects({ token }: { token: string }) {
+function NoProjects() {
   const classes = useStyles()
   return (
     <div className={classes.noProjects} data-testid="no-projects">
@@ -301,12 +295,10 @@ function ProjectRemoveButton({
 function ProjectCreateForm({
   token,
   open,
-  projectCreator,
   onSuccess,
 }: {
   token: string
   open: boolean
-  projectCreator?: (token: string, name: string) => Promise<void>
   onSuccess?: () => void
 }) {
   const classes = useStyles()
@@ -314,9 +306,8 @@ function ProjectCreateForm({
   const [errorMsg, setErrorMsg] = useState("")
   const { promiseInProgress } = usePromiseTracker({ area: "create-project" })
 
-  const projectCreatorResolved = projectCreator ?? createProject
   function handleSubmit() {
-    trackPromise(projectCreatorResolved(token, name), "create-project")
+    trackPromise(createProject(token, name), "create-project")
       .then(() => {
         onSuccess?.()
         setName("")
