@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
-import { Add, Send, DeleteForever } from "@material-ui/icons"
+import Add from "@material-ui/icons/Add"
+import Send from "@material-ui/icons/Send"
+import DeleteForever from "@material-ui/icons/DeleteForever"
 import {
   IconButton,
   useTheme,
