@@ -14,8 +14,12 @@ import {
   Typography,
 } from "@material-ui/core"
 import { usePromiseTracker, trackPromise } from "react-promise-tracker"
-import { getUserProjects, Project, deleteProject } from "../lib/project"
-import { createProject } from "../lib/project"
+import {
+  getUserProjects,
+  Project,
+  deleteProject,
+  createProject,
+} from "../lib/project"
 import { StyledTableRow, StyledTableCell } from "./table"
 
 export default function Home({ token }: { token: string | null }) {
@@ -64,7 +68,7 @@ function ProjectWidget({ token }: { token: string }) {
     refreshProjectList()
   }, [refreshProjectList])
   return (
-    <div className={classes.projectWidget} data-testid="projectWidget">
+    <div className={classes.projectWidget} data-testid="project-widget">
       {projects ? (
         <>
           <ProjectControl
@@ -119,7 +123,7 @@ function ProjectControl({
     noProjects && setFormOpen(true)
   }, [noProjects])
   return (
-    <div className={classes.projectControl} data-testid="projectControl">
+    <div className={classes.projectControl} data-testid="project-control">
       <ProjectControlButtons onCreate={handleCreate} />
       <ProjectCreateForm
         token={token}
@@ -304,14 +308,18 @@ function ProjectCreateForm({
   const useStyles = makeStyles((theme: Theme) =>
     createStyles({
       createForm: {
-        visibility: open ? "visible" : "hidden",
+        visibility: "visible",
         overflow: "hidden",
-        maxHeight: open ? "100px" : "0px",
+        maxHeight: "100px",
         display: "flex",
         alignItems: "center",
         flexDirection: "column",
         transition: "max-height 0.1s",
         paddingLeft: "5px",
+      },
+      hidden: {
+        visibility: "hidden",
+        maxHeight: "0px",
       },
     })
   )
@@ -339,7 +347,10 @@ function ProjectCreateForm({
       })
   }
   return (
-    <form className={classes.createForm} data-testid="project-create-form">
+    <form
+      className={`${classes.createForm} ${open ? "" : classes.hidden}`}
+      data-testid="project-create-form"
+    >
       <div>
         <TextField
           data-testid="project-name-field"
