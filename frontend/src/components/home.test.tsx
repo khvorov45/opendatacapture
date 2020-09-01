@@ -113,3 +113,29 @@ test("project widget - fail to get projects", async () => {
   await waitForDomChange()
   expect(getByTestId("get-projects-error")).toHaveTextContent("")
 })
+
+test("project widget - project already exists", async () => {
+  mockedAxios.get.mockResolvedValueOnce([])
+  mockedAxios.put
+    .mockRejectedValueOnce(Error("ProjectAlreadyExists"))
+    .mockRejectedValueOnce(Error("some other error"))
+    .mockResolvedValueOnce({ status: httpStatusCodes.OK })
+  const { getByTestId } = render(<ProjectWidget token="123" />)
+  await waitForDomChange()
+  fireEvent.change(getByTestId("project-name-field") as HTMLInputElement, {
+    target: { value: "newproject" },
+  })
+  fireEvent.click(getByTestId("create-project-submit"))
+  await waitForDomChange()
+  expect(getByTestId("create-project-error")).toHaveTextContent(
+    "Name 'newproject' already in use"
+  )
+  fireEvent.click(getByTestId("create-project-submit"))
+  await waitForDomChange()
+  expect(getByTestId("create-project-error")).toHaveTextContent(
+    "some other error"
+  )
+  fireEvent.click(getByTestId("create-project-submit"))
+  await waitForDomChange()
+  expect(getByTestId("create-project-error")).toHaveTextContent("")
+})
