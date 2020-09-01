@@ -27,10 +27,53 @@
 
 # API
 
-All request bodies and responses are in the `json` format.
+All request bodies and responses are in the `json` format. All paths can have
+a prefix added to them by passing the `--prefix` option at launch
+(e.g. pass `--prefix api` to turn `get/users` into `api/get/users` )
 
-|            Path            |  Type  |                Body                 |             Headers             |
-| :------------------------: | :----: | :---------------------------------: | :-----------------------------: |
-|    `auth/session-token`    | `POST` | `{email: String, password: String}` |                                 |
-| `get/user/by/token/:token` | `GET`  |                                     | `Authorization: Bearer <token>` |
-|          `users`           | `GET`  |                                     | `Authorization: Bearer <token>` |
+## GET health
+
+Returns `true` if able to successfully create a database connection
+and `false` otherwise.
+
+## POST auth/session-token
+
+Body: `{email: String, password: String}`
+
+Returns the authentication token.
+
+## GET get/user/by/token/{token}
+
+Return the user who the token belongs to.
+
+## GET get/users
+
+Header: `Authorization: Bearer <token>`
+
+Authorization level: Admin
+
+Returns all users.
+
+## PUT create/project/{name}
+
+Header: `Authorization: Bearer <token>`
+
+Authorization level: User
+
+Creates the user's project with the given name. User identified by token.
+
+## DELETE delete/project/{name}
+
+Header: `Authorization: Bearer <token>`
+
+Authorization level: User
+
+Deletes the user's project with the given name. User identified by token.
+
+## GET get/projects
+
+Header: `Authorization: Bearer <token>`
+
+Authorization level: User
+
+Returns all projects for the user who the token belongs to.
