@@ -25,9 +25,7 @@ test("homepage with token and no projects", async () => {
   expect(getByTestId("homepage")).toBeInTheDocument()
   expect(getByTestId("project-widget")).toBeInTheDocument()
   // Check that the new project from is visible
-  expect(getByTestId("project-create-form")).not.toHaveClass(
-    "makeStyles-hidden-8"
-  )
+  expect(getByTestId("project-create-form")).not.toHaveClass("hidden")
 })
 
 test("homepage with token and some projects", async () => {
@@ -40,7 +38,7 @@ test("homepage with token and some projects", async () => {
   expect(getByTestId("homepage")).toBeInTheDocument()
   expect(getByTestId("project-widget")).toBeInTheDocument()
   // Check that the new project form is hidden
-  expect(getByTestId("project-create-form")).toHaveClass("makeStyles-hidden-17")
+  expect(getByTestId("project-create-form")).toHaveClass("hidden")
 })
 
 test("project widget - click on project create", async () => {
@@ -53,11 +51,9 @@ test("project widget - click on project create", async () => {
   expect(getByTestId("project-control")).toBeInTheDocument()
   expect(getByTestId("project-list")).toBeInTheDocument()
   // Click the create project button
-  expect(getByTestId("project-create-form")).toHaveClass("makeStyles-hidden-28")
+  expect(getByTestId("project-create-form")).toHaveClass("hidden")
   fireEvent.click(getByTestId("project-create-button"))
-  expect(getByTestId("project-create-form")).not.toHaveClass(
-    "makeStyles-hidden-28"
-  )
+  expect(getByTestId("project-create-form")).not.toHaveClass("hidden")
 })
 
 test("project widget - create project", async () => {
@@ -71,9 +67,7 @@ test("project widget - create project", async () => {
     })
   const { getByTestId, getByText } = render(<ProjectWidget token="123" />)
   await waitForDomChange()
-  expect(getByTestId("project-create-form")).not.toHaveClass(
-    "makeStyles-hidden-64"
-  )
+  expect(getByTestId("project-create-form")).not.toHaveClass("hidden")
   // Fill in the form
   fireEvent.change(getByTestId("project-name-field") as HTMLInputElement, {
     target: { value: "newproject" },
@@ -82,7 +76,7 @@ test("project widget - create project", async () => {
   await waitForDomChange()
   expect(getByText("newproject")).toBeInTheDocument()
   // Create form should hide
-  expect(getByTestId("project-create-form")).toHaveClass("makeStyles-hidden-64")
+  expect(getByTestId("project-create-form")).toHaveClass("hidden")
 })
 
 test("project widget - remove projects", async () => {
@@ -98,12 +92,10 @@ test("project widget - remove projects", async () => {
   await waitForDomChange()
   expect(getByTestId("project-entry-2")).toBeInTheDocument()
   // Create form should be hidden
-  expect(getByTestId("project-create-form")).toHaveClass("makeStyles-hidden-75")
+  expect(getByTestId("project-create-form")).toHaveClass("hidden")
   fireEvent.click(getByTestId("project-remove-2"))
   await waitForDomChange()
   expect(queryByTestId("project-entry-2")).not.toBeInTheDocument()
   // Create form should appear
-  expect(getByTestId("project-create-form")).not.toHaveClass(
-    "makeStyles-hidden-95"
-  )
+  expect(getByTestId("project-create-form")).not.toHaveClass("hidden")
 })

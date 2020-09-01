@@ -24,15 +24,66 @@ import {
 } from "../lib/project"
 import { StyledTableRow, StyledTableCell } from "./table"
 
-export default function Home({ token }: { token: string | null }) {
-  const useStyles = makeStyles((theme: Theme) =>
-    createStyles({
-      homePage: {
-        display: "flex",
-        justifyContent: "center",
+const useStyles = makeStyles((theme: Theme) =>
+  createStyles({
+    homePage: {
+      display: "flex",
+      justifyContent: "center",
+    },
+    projectWidget: {
+      display: "flex",
+      justifyContent: "center",
+      flexDirection: "column",
+      marginTop: "20px",
+      border: `1px solid ${
+        theme.palette.type === "dark"
+          ? theme.palette.grey[800]
+          : theme.palette.grey[300]
+      }`,
+    },
+    projectControl: {
+      display: "flex",
+      alignItems: "flex-start",
+      flexDirection: "column",
+    },
+    projectControlButtons: {
+      display: "flex",
+      alignItems: "flex-start",
+    },
+    projectList: {
+      display: "flex",
+      justifyContent: "center",
+      flexDirection: "column",
+    },
+    noProjects: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: "20px",
+    },
+    projectEntry: {
+      "&.hidden": {
+        display: "none",
       },
-    })
-  )
+    },
+    createForm: {
+      visibility: "visible",
+      overflow: "hidden",
+      maxHeight: "100px",
+      display: "flex",
+      alignItems: "center",
+      flexDirection: "column",
+      transition: "max-height 0.1s",
+      paddingLeft: "5px",
+      "&.hidden": {
+        visibility: "hidden",
+        maxHeight: "0px",
+      },
+    },
+  })
+)
+
+export default function Home({ token }: { token: string | null }) {
   const classes = useStyles()
   return (
     <div className={classes.homePage} data-testid="homepage">
@@ -42,21 +93,6 @@ export default function Home({ token }: { token: string | null }) {
 }
 
 export function ProjectWidget({ token }: { token: string }) {
-  const useStyles = makeStyles((theme: Theme) =>
-    createStyles({
-      projectWidget: {
-        display: "flex",
-        justifyContent: "center",
-        flexDirection: "column",
-        marginTop: "20px",
-        border: `1px solid ${
-          theme.palette.type === "dark"
-            ? theme.palette.grey[800]
-            : theme.palette.grey[300]
-        }`,
-      },
-    })
-  )
   const classes = useStyles()
   const [projects, setProjects] = useState<Project[] | null>(null)
   const [errorMsg, setErrorMsg] = useState("")
@@ -105,15 +141,6 @@ function ProjectControl({
   refreshProjectList: () => void
   noProjects?: boolean
 }) {
-  const useStyles = makeStyles((theme: Theme) =>
-    createStyles({
-      projectControl: {
-        display: "flex",
-        alignItems: "flex-start",
-        flexDirection: "column",
-      },
-    })
-  )
   const classes = useStyles()
   const [formOpen, setFormOpen] = useState(noProjects ?? false)
   function handleProjectSubmit() {
@@ -136,14 +163,6 @@ function ProjectControl({
 }
 
 function ProjectControlButtons({ onCreate }: { onCreate?: () => void }) {
-  const useStyles = makeStyles((theme: Theme) =>
-    createStyles({
-      projectControlButtons: {
-        display: "flex",
-        alignItems: "flex-start",
-      },
-    })
-  )
   const classes = useStyles()
   return (
     <div
@@ -166,17 +185,7 @@ function ProjectList({
   projectRemover?: (tok: string, name: string) => Promise<void>
   onRemove?: () => void
 }) {
-  const useStyles = makeStyles((theme: Theme) =>
-    createStyles({
-      projectList: {
-        display: "flex",
-        justifyContent: "center",
-        flexDirection: "column",
-      },
-    })
-  )
   const classes = useStyles()
-
   return (
     <div className={classes.projectList} data-testid="project-list">
       {projects.length ? (
@@ -224,13 +233,6 @@ function ProjectEntry({
     area: `remove-project-${project.name}`,
   })
   const [hideSelf, setHideSelf] = useState(false)
-  const useStyles = makeStyles((theme: Theme) =>
-    createStyles({
-      hidden: {
-        display: "none",
-      },
-    })
-  )
   const classes = useStyles()
   function handleClick() {
     trackPromise(
@@ -244,7 +246,7 @@ function ProjectEntry({
   return (
     <StyledTableRow
       data-testid={`project-entry-${project.name}`}
-      className={hideSelf ? classes.hidden : ""}
+      className={`${classes.projectEntry}${hideSelf ? " hidden" : ""}`}
     >
       <StyledTableCell align="center">{project.name}</StyledTableCell>
       <StyledTableCell>
@@ -262,16 +264,6 @@ function ProjectEntry({
 }
 
 function NoProjects({ token }: { token: string }) {
-  const useStyles = makeStyles((theme: Theme) =>
-    createStyles({
-      noProjects: {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        marginTop: "20px",
-      },
-    })
-  )
   const classes = useStyles()
   return (
     <div className={classes.noProjects} data-testid="no-projects">
@@ -317,28 +309,7 @@ function ProjectCreateForm({
   projectCreator?: (token: string, name: string) => Promise<void>
   onSuccess?: () => void
 }) {
-  // Appearance
-  const useStyles = makeStyles((theme: Theme) =>
-    createStyles({
-      createForm: {
-        visibility: "visible",
-        overflow: "hidden",
-        maxHeight: "100px",
-        display: "flex",
-        alignItems: "center",
-        flexDirection: "column",
-        transition: "max-height 0.1s",
-        paddingLeft: "5px",
-      },
-      hidden: {
-        visibility: "hidden",
-        maxHeight: "0px",
-      },
-    })
-  )
   const classes = useStyles()
-
-  // Functionality
   const [name, setName] = useState("")
   const [errorMsg, setErrorMsg] = useState("")
   const { promiseInProgress } = usePromiseTracker({ area: "create-project" })
@@ -361,7 +332,7 @@ function ProjectCreateForm({
   }
   return (
     <form
-      className={`${classes.createForm} ${open ? "" : classes.hidden}`}
+      className={`${classes.createForm}${open ? "" : " hidden"}`}
       data-testid="project-create-form"
     >
       <div>
