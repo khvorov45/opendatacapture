@@ -122,8 +122,8 @@ jobs:
       - name: Download tarpaulin
         run: >-
           sudo apt-get install libssl-dev &&
-          wget https://github.com/xd009642/tarpaulin/releases/download/0.14.2/cargo-tarpaulin-0.14.2-travis.tar.gz &&
-          tar xf cargo-tarpaulin-0.14.2-travis.tar.gz
+          wget https://github.com/xd009642/tarpaulin/releases/download/0.14.3/cargo-tarpaulin-0.14.3-travis.tar.gz &&
+          tar xf cargo-tarpaulin-0.14.3-travis.tar.gz
       - name: Generate coverage report
         run: ./cargo-tarpaulin tarpaulin --out Lcov --exclude-files **/target/** --ignore-tests
       - name: Rename report
