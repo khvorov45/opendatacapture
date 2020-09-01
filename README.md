@@ -12,7 +12,7 @@ An open-source tool for capturing data in a relational database.
 Backend is written in
 [Rust](https://www.rust-lang.org/)
 with [tokio](https://github.com/tokio-rs/tokio) as the runtime,
-[tokio-postgres](https://github.com/sfackler/rust-postgres)
+[sqlx](https://github.com/launchbadge/sqlx)
 as the [PostgreSQL](https://www.postgresql.org/) interface
 and [warp](https://github.com/seanmonstar/warp) as the server framework.
 
