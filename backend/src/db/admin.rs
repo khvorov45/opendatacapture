@@ -415,6 +415,30 @@ impl AdminDB {
         log::debug!("got projects: {:?}", projects);
         Ok(projects)
     }
+    /// Returns one project
+    pub async fn get_user_project_by_name(
+        &self,
+        user_id: i32,
+        project_name: &str,
+    ) -> Result<Project> {
+        log::debug!("getting user id {} project {}", user_id, project_name);
+        let res = sqlx::query_as::<Database, Project>(
+            "SELECT * FROM \"project\" WHERE \"user\" = $1 AND \"name\" = $2",
+        )
+        .bind(user_id)
+        .bind(project_name)
+        .fetch_optional(self.get_pool())
+        .await?;
+        match res {
+            Some(project) => {
+                log::debug!("got project: {:?}", project);
+                Ok(project)
+            }
+            None => {
+                Err(Error::NoSuchProject(user_id, project_name.to_string()))
+            }
+        }
+    }
 }
 
 #[derive(
@@ -716,6 +740,21 @@ mod tests {
         assert!(project_exists(&test_db, &test_project2).await);
         assert_eq!(test_db.get_all_projects().await.unwrap().len(), 2);
         assert_eq!(test_db.get_user_projects(2).await.unwrap().len(), 1);
+
+        // Get a project by name
+        let user2_test_project =
+            test_db.get_user_project_by_name(2, "test").await.unwrap();
+        assert_eq!(user2_test_project.user, 2);
+        assert_eq!(user2_test_project.name, "test");
+
+        let nonexistent_project = test_db
+            .get_user_project_by_name(2, "nonexistent")
+            .await
+            .unwrap_err();
+        assert!(matches!(
+            nonexistent_project,
+            Error::NoSuchProject(id, name) if id == 2 && name == "nonexistent"
+        ));
 
         // Remove all projects
         test_db.remove_all_projects().await.unwrap();
