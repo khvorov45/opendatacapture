@@ -126,7 +126,7 @@ fn sufficient_access(
         })
 }
 
-/// Extracts
+/// Extracts a project given its id. Rejects if project is not found.
 async fn extract_project(
     project_name: String,
     user: db::admin::User,
