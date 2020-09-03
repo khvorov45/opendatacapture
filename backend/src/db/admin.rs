@@ -59,19 +59,16 @@ impl AdminDB {
 
     /// Locate user db in the vector
     /// If not present, will append an entry.
-    async fn get_user_db_position(
-        &mut self,
-        project: &Project,
-    ) -> Result<usize> {
+    async fn get_user_db(&mut self, project: &Project) -> Result<&UserDB> {
         let name = project.get_dbname(self.get_name());
         if let Some(i) =
             self.user_dbs.iter().position(|db| db.get_name() == name)
         {
-            return Ok(i);
+            return Ok(&self.user_dbs[i]);
         };
         let db = UserDB::new(self.get_config(), name.as_str()).await?;
         self.user_dbs.push(db);
-        Ok(self.user_dbs.len() - 1)
+        Ok(&self.user_dbs[self.user_dbs.len() - 1])
     }
 
     /// Creates tables
@@ -461,9 +458,9 @@ impl AdminDB {
     ) -> Result<()> {
         let db_name = project.get_dbname(self.get_name());
         log::debug!("creating table {} in database {}", table.name, db_name);
-        let user_db_index = self.get_user_db_position(project).await?;
+        let user_db = self.get_user_db(project).await?;
         sqlx::query(table.construct_create_query().as_str())
-            .execute(self.user_dbs[user_db_index].get_pool())
+            .execute(user_db.get_pool())
             .await?;
         Ok(())
     }
@@ -791,11 +788,8 @@ mod tests {
             .create_table(&user2_test_project, &primary_table)
             .await
             .unwrap();
-        let user_db_index = test_db
-            .get_user_db_position(&user2_test_project)
-            .await
-            .unwrap();
-        assert!(test_db.user_dbs[user_db_index]
+        let user_db = test_db.get_user_db(&user2_test_project).await.unwrap();
+        assert!(user_db
             .get_all_table_names()
             .await
             .unwrap()
