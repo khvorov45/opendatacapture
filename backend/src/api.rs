@@ -1,11 +1,15 @@
 use crate::{auth, db, db::admin::AdminDB, db::DB, error::Unauthorized, Error};
+use db::admin::User;
 use std::convert::Infallible;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 use warp::{Filter, Reply};
+
+type DBRef = Arc<Mutex<AdminDB>>;
 
 /// All routes
 pub fn routes(
-    db: Arc<AdminDB>,
+    db: DBRef,
     prefix: &str,
 ) -> impl Filter<Extract = impl Reply, Error = warp::Rejection> + Clone {
     let routes = health(db.clone())
@@ -14,7 +18,8 @@ pub fn routes(
         .or(get_users(db.clone()))
         .or(create_project(db.clone()))
         .or(get_user_projects(db.clone()))
-        .or(delete_project(db))
+        .or(delete_project(db.clone()))
+        .or(create_table(db))
         .recover(handle_rejection)
         .boxed();
     if prefix.is_empty() {
@@ -91,7 +96,7 @@ async fn handle_rejection(
 /// Rejects if the access (as per the Authorization header) is not high enough
 /// Returns the user who the token belongs to otherwise.
 fn sufficient_access(
-    db: Arc<AdminDB>,
+    db: DBRef,
     req_access: crate::auth::Access,
 ) -> impl Filter<Extract = (db::admin::User,), Error = warp::Rejection> + Clone
 {
@@ -105,7 +110,7 @@ fn sufficient_access(
         .and_then(move |tok: String| {
             let db = db.clone();
             async move {
-                match db.get_user_by_token(tok.as_str()).await {
+                match db.lock().await.get_user_by_token(tok.as_str()).await {
                     Ok(u) => Ok(u),
                     Err(e) => Err(warp::reject::custom(e)),
                 }
@@ -122,10 +127,27 @@ fn sufficient_access(
         })
 }
 
+/// Extracts a project given its id. Rejects if project is not found.
+async fn extract_project(
+    project_name: String,
+    user: db::admin::User,
+    db: DBRef,
+) -> std::result::Result<db::admin::Project, warp::Rejection> {
+    match db
+        .lock()
+        .await
+        .get_user_project_by_name(user.id(), project_name.as_str())
+        .await
+    {
+        Ok(p) => Ok(p),
+        Err(e) => Err(warp::reject::custom(e)),
+    }
+}
+
 /// Extracts the database reference
 fn with_db(
-    db: Arc<AdminDB>,
-) -> impl Filter<Extract = (Arc<AdminDB>,), Error = Infallible> + Clone {
+    db: DBRef,
+) -> impl Filter<Extract = (DBRef,), Error = Infallible> + Clone {
     warp::any().map(move || db.clone())
 }
 
@@ -133,12 +155,10 @@ fn with_db(
 
 /// Health check
 fn health(
-    db: Arc<AdminDB>,
+    db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    async fn get_health(
-        db: Arc<AdminDB>,
-    ) -> Result<impl warp::Reply, Infallible> {
-        Ok(warp::reply::json(&db.health().await))
+    async fn get_health(db: DBRef) -> Result<impl warp::Reply, Infallible> {
+        Ok(warp::reply::json(&db.lock().await.health().await))
     }
     warp::path("health")
         .and(warp::get())
@@ -148,32 +168,30 @@ fn health(
 
 /// Generate session token. Returns only the string.
 fn generate_session_token(
-    db: Arc<AdminDB>,
+    db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("auth" / "session-token")
         .and(warp::post())
         .and(warp::body::json())
         .and(with_db(db))
-        .and_then(
-            move |cred: auth::EmailPassword, db: Arc<AdminDB>| async move {
-                match db.generate_session_token(cred).await {
-                    Ok(t) => Ok(warp::reply::json(&t.token().to_string())),
-                    Err(e) => Err(warp::reject::custom(e)),
-                }
-            },
-        )
+        .and_then(move |cred: auth::EmailPassword, db: DBRef| async move {
+            match db.lock().await.generate_session_token(cred).await {
+                Ok(t) => Ok(warp::reply::json(&t.token().to_string())),
+                Err(e) => Err(warp::reject::custom(e)),
+            }
+        })
 }
 
 /// Get user by token. If the token is wrong (not found), say unauthorized
 /// (instead of not found).
 fn get_user_by_token(
-    db: Arc<AdminDB>,
+    db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("get" / "user" / "by" / "token" / String)
         .and(warp::get())
         .and(with_db(db))
-        .and_then(move |tok: String, db: Arc<AdminDB>| async move {
-            match db.get_user_by_token(tok.as_str()).await {
+        .and_then(move |tok: String, db: DBRef| async move {
+            match db.lock().await.get_user_by_token(tok.as_str()).await {
                 Ok(u) => Ok(warp::reply::json(&u)),
                 Err(e) => Err(warp::reject::custom(e)),
             }
@@ -182,14 +200,14 @@ fn get_user_by_token(
 
 /// Get all users
 pub fn get_users(
-    db: Arc<AdminDB>,
+    db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("get" / "users")
         .and(warp::get())
         .and(sufficient_access(db.clone(), auth::Access::Admin))
         .and(with_db(db))
-        .and_then(move |_user, db: Arc<AdminDB>| async move {
-            match db.get_users().await {
+        .and_then(move |_user, db: DBRef| async move {
+            match db.lock().await.get_users().await {
                 Ok(users) => Ok(warp::reply::json(&users)),
                 Err(e) => Err(warp::reject::custom(e)),
             }
@@ -198,7 +216,7 @@ pub fn get_users(
 
 /// Create a project
 pub fn create_project(
-    db: Arc<AdminDB>,
+    db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("create" / "project" / String)
         .and(warp::put())
@@ -207,7 +225,8 @@ pub fn create_project(
         .and_then(
             move |project_name: String,
                   user: db::admin::User,
-                  db: Arc<AdminDB>| async move {
+                  db: DBRef| async move {
+                let db = db.lock().await;
                 match db.create_project(user.id(), project_name.as_str()).await
                 {
                     Ok(()) => Ok(warp::reply()),
@@ -219,7 +238,7 @@ pub fn create_project(
 
 /// Delete a project
 pub fn delete_project(
-    db: Arc<AdminDB>,
+    db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("delete" / "project" / String)
         .and(warp::delete())
@@ -228,7 +247,8 @@ pub fn delete_project(
         .and_then(
             move |project_name: String,
                   user: db::admin::User,
-                  db: Arc<AdminDB>| async move {
+                  db: DBRef| async move {
+                let mut db = db.lock().await;
                 match db.remove_project(user.id(), project_name.as_str()).await
                 {
                     Ok(()) => Ok(warp::reply()),
@@ -240,18 +260,77 @@ pub fn delete_project(
 
 /// Get user's projects
 pub fn get_user_projects(
-    db: Arc<AdminDB>,
+    db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("get" / "projects")
         .and(warp::get())
         .and(sufficient_access(db.clone(), auth::Access::User))
         .and(with_db(db))
-        .and_then(move |user: db::admin::User, db: Arc<AdminDB>| async move {
-            match db.get_user_projects(user.id()).await {
+        .and_then(move |user: db::admin::User, db: DBRef| async move {
+            match db.lock().await.get_user_projects(user.id()).await {
                 Ok(projects) => Ok(warp::reply::json(&projects)),
                 Err(e) => Err(warp::reject::custom(e)),
             }
         })
+}
+
+/// Create table in a user's database
+pub fn create_table(
+    db: DBRef,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("project" / String / "create" / "table")
+        .and(warp::put())
+        .and(sufficient_access(db.clone(), auth::Access::User))
+        .and(with_db(db.clone()))
+        .and_then(extract_project)
+        .and(warp::body::json())
+        .and(with_db(db))
+        .and_then(
+            move |project: db::admin::Project,
+                  table: db::user::table::TableMeta,
+                  db: DBRef| async move {
+                match db.lock().await.create_table(&project, &table).await {
+                    Ok(()) => Ok(warp::reply()),
+                    Err(e) => Err(warp::reject::custom(e)),
+                }
+            },
+        )
+}
+
+/// Remove table from a user's database
+pub fn remove_table(
+    db: DBRef,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("project" / String / "remove" / "table" / String)
+        .and(warp::delete())
+        .and(sufficient_access(db.clone(), auth::Access::User))
+        .and(with_db(db.clone()))
+        .and_then(
+            move |project_name: String,
+                  table_name: String,
+                  user: User,
+                  db: DBRef| async move {
+                match extract_project(project_name, user, db).await {
+                    Ok(project) => Ok((project, table_name)),
+                    Err(e) => Err(e),
+                }
+            },
+        )
+        .and(with_db(db))
+        .and_then(
+            move |(project, table_name): (db::admin::Project, String),
+                  db: DBRef| async move {
+                match db
+                    .lock()
+                    .await
+                    .remove_table(&project, table_name.as_str())
+                    .await
+                {
+                    Ok(()) => Ok(warp::reply()),
+                    Err(e) => Err(warp::reject::custom(e)),
+                }
+            },
+        )
 }
 
 #[cfg(test)]
@@ -272,8 +351,9 @@ mod tests {
             tests::create_test_admindb(TEST_DB_NAME, true, true).await;
         tests::insert_test_user(&admindb).await;
 
-        let admindb_ref = Arc::new(admindb);
-        assert_eq!(admindb_ref.get_name(), TEST_DB_NAME);
+        let admindb_ref = Arc::new(Mutex::new(admindb));
+
+        assert_eq!(admindb_ref.lock().await.get_name(), TEST_DB_NAME);
 
         // Individual filters given good input --------------------------------
 
@@ -308,6 +388,8 @@ mod tests {
 
         // Generate tokens to be used below
         let admin_token = admindb_ref
+            .lock()
+            .await
             .generate_session_token(auth::EmailPassword {
                 email: "admin@example.com".to_string(),
                 password: "admin".to_string(),
@@ -316,6 +398,8 @@ mod tests {
             .unwrap();
         let admin_token = admin_token.token();
         let user_token = admindb_ref
+            .lock()
+            .await
             .generate_session_token(auth::EmailPassword {
                 email: "user@example.com".to_string(),
                 password: "user".to_string(),
@@ -372,7 +456,7 @@ mod tests {
         // Make sure test projects aren't present
         log::info!("remove test projects");
         crate::tests::remove_dbs(
-            admindb_ref.as_ref(),
+            &*admindb_ref.lock().await,
             &[test_project1.get_dbname(TEST_DB_NAME).as_str()],
         )
         .await;
@@ -400,6 +484,39 @@ mod tests {
                 )
                 .unwrap();
             assert_eq!(projects_obtained.len(), 1);
+        }
+
+        // Create table
+        let table = crate::tests::get_test_primary_table();
+
+        {
+            let filter = create_table(admindb_ref.clone());
+            let response = warp::test::request()
+                .method("PUT")
+                .path("/project/test/create/table")
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .body(serde_json::to_value(table.clone()).unwrap().to_string())
+                .reply(&filter)
+                .await;
+            assert_eq!(response.status(), StatusCode::OK);
+        }
+
+        // Remove table
+        {
+            let filter = remove_table(admindb_ref.clone());
+            let response = warp::test::request()
+                .method("DELETE")
+                .path(
+                    format!(
+                        "/project/test/remove/table/{}",
+                        table.name.as_str()
+                    )
+                    .as_str(),
+                )
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .reply(&filter)
+                .await;
+            assert_eq!(response.status(), StatusCode::OK);
         }
 
         // Delete projects
@@ -592,6 +709,8 @@ mod tests {
         // Token too old
         {
             let old_token = admindb_ref
+                .lock()
+                .await
                 .generate_session_token(auth::EmailPassword {
                     email: "admin@example.com".to_string(),
                     password: "admin".to_string(),
@@ -600,6 +719,8 @@ mod tests {
                 .unwrap();
             let old_token = old_token.token();
             admindb_ref
+                .lock()
+                .await
                 .execute(
                     format!(
                         "UPDATE \"token\" \

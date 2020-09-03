@@ -11,7 +11,7 @@ pub type DBJson = Vec<TableJson>;
 pub type RowJson = serde_json::Map<String, serde_json::Value>;
 
 /// Column metadata
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ColMeta {
     /// Column name
     pub name: String,
@@ -36,7 +36,7 @@ impl ColMeta {
 }
 
 /// Table metadata
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct TableMeta {
     /// Table name
     pub name: String,
@@ -187,6 +187,11 @@ impl TableJson {
             rows,
         }
     }
+}
+
+/// Drop query
+pub fn construct_drop_query(name: &str) -> String {
+    format!("DROP TABLE IF EXISTS \"{}\" CASCADE", name)
 }
 
 #[cfg(test)]

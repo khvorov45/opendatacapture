@@ -18,61 +18,29 @@ pub trait FromOpt {
     fn from_opt(opt: &crate::Opt) -> Self;
 }
 
-impl FromOpt for ConnectionConfig {
-    fn from_opt(opt: &crate::Opt) -> Self {
-        if let Ok(url) = std::env::var("DATABASE_URL") {
-            log::debug!("parsing DATABASE_URL: {}", url);
-            match url.parse() {
-                Ok(o) => return o,
-                Err(e) => log::error!(
-                    "error parsing DATABASE_URL, fall back to args: {}",
-                    e
-                ),
-            }
-        }
-        Self::new()
-            .host(opt.dbhost.as_str())
-            .port(opt.dbport)
-            .database(opt.admindbname.as_str())
-            .username(opt.apiusername.as_str())
-            .password(opt.apiuserpassword.as_str())
-    }
-}
-
-async fn create_pool(config: ConnectionConfig) -> Result<Pool> {
-    log::debug!("creating pool with {:#?}", config);
-    let pool = sqlx::postgres::PgPoolOptions::new()
-        .max_connections(DB_POOL_MAX_OPEN)
-        .min_connections(DB_POOL_MAX_IDLE)
-        .max_lifetime(std::time::Duration::from_secs(DB_POOL_TIMEOUT_SECONDS))
-        .connect_with(config)
-        .await?;
-    Ok(pool)
-}
-
-/// Common database methods
 #[async_trait::async_trait]
 pub trait DB {
+    /// Wrapped pool with accessible metadata
+    fn get_pool_meta(&self) -> &PoolMeta;
+
+    /// Reference to connection pool
+    fn get_pool(&self) -> &Pool {
+        self.get_pool_meta().get_pool()
+    }
+
     /// Database name
-    fn get_name(&self) -> &str;
+    fn get_name(&self) -> &str {
+        self.get_pool_meta().get_name()
+    }
 
-    /// Client object
-    fn get_pool(&self) -> &Pool;
-
-    /// Create all tables
-    async fn create_all_tables(&self) -> Result<()>;
+    /// Config used to connect to the database
+    fn get_config(&self) -> ConnectionConfig {
+        self.get_pool_meta().get_config()
+    }
 
     /// Health check
     async fn health(&self) -> bool {
         self.get_pool().acquire().await.is_ok()
-    }
-
-    /// Drop all tables and re-create them
-    async fn reset(&self) -> Result<()> {
-        log::info!("resetting \"{}\" database", self.get_name());
-        self.drop_all_tables().await?;
-        self.create_all_tables().await?;
-        Ok(())
     }
 
     /// Drop all tables found in the database
@@ -110,7 +78,7 @@ pub trait DB {
         // Vector of rows
         let res = sqlx::query(
             "SELECT tablename FROM pg_catalog.pg_tables \
-            WHERE schemaname = 'public';",
+        WHERE schemaname = 'public';",
         )
         .fetch_all(self.get_pool())
         .await?;
@@ -131,23 +99,109 @@ pub trait DB {
         let all_tables = self.get_all_table_names().await?;
         Ok(all_tables.is_empty())
     }
+
+    /// Allows the execution of arbitrary SQL
+    async fn execute(&self, sql: &str) -> Result<()> {
+        sqlx::query(sql).execute(self.get_pool()).await?;
+        Ok(())
+    }
+}
+
+/// Pool, but you can actually pull metadata from it
+#[derive(Debug)]
+pub struct PoolMeta {
+    pool: Pool,
+    config: ConnectionConfig,
+    name: String,
+}
+
+impl PoolMeta {
+    /// Database name in config will be ignored
+    pub async fn new(config: ConnectionConfig, name: &str) -> Result<Self> {
+        let config = config.database(name);
+        Ok(Self {
+            pool: create_pool(config.clone()).await?,
+            config,
+            name: name.to_string(),
+        })
+    }
+    /// Construction from opt
+    pub async fn from_opt(opt: &crate::Opt) -> Result<Self> {
+        let config = ConnectionConfig::from_opt(opt);
+        Ok(Self {
+            pool: create_pool(config.clone()).await?,
+            config,
+            name: opt.admindbname.to_string(),
+        })
+    }
+    /// Reference to the actual connection pool
+    pub fn get_pool(&self) -> &Pool {
+        &self.pool
+    }
+    /// Database name
+    pub fn get_name(&self) -> &str {
+        self.name.as_str()
+    }
+    /// Config used to create the connection pool
+    pub fn get_config(&self) -> ConnectionConfig {
+        self.config.clone()
+    }
+}
+
+impl FromOpt for ConnectionConfig {
+    fn from_opt(opt: &crate::Opt) -> Self {
+        if let Ok(url) = std::env::var("DATABASE_URL") {
+            log::debug!("parsing DATABASE_URL: {}", url);
+            match url.parse() {
+                Ok(o) => return o,
+                Err(e) => log::error!(
+                    "error parsing DATABASE_URL, fall back to args: {}",
+                    e
+                ),
+            }
+        }
+        Self::new()
+            .host(opt.dbhost.as_str())
+            .port(opt.dbport)
+            .database(opt.admindbname.as_str())
+            .username(opt.apiusername.as_str())
+            .password(opt.apiuserpassword.as_str())
+    }
+}
+
+async fn create_pool(config: ConnectionConfig) -> Result<Pool> {
+    log::debug!("creating pool with {:#?}", config);
+    let pool = sqlx::postgres::PgPoolOptions::new()
+        .max_connections(DB_POOL_MAX_OPEN)
+        .min_connections(DB_POOL_MAX_IDLE)
+        .max_lifetime(std::time::Duration::from_secs(DB_POOL_TIMEOUT_SECONDS))
+        .connect_with(config)
+        .await?;
+    Ok(pool)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    const TEST_DB_NAME: &str = "odcadmin_test_db";
+
     struct TestDB {
-        pool: Pool,
+        pool: PoolMeta,
     }
 
-    #[async_trait::async_trait]
     impl DB for TestDB {
-        fn get_name(&self) -> &str {
-            "test"
-        }
-        fn get_pool(&self) -> &Pool {
+        fn get_pool_meta(&self) -> &PoolMeta {
             &self.pool
+        }
+    }
+
+    impl TestDB {
+        async fn reset(&self) -> Result<()> {
+            log::info!("resetting \"{}\" database", self.get_name());
+            self.drop_all_tables().await?;
+            self.create_all_tables().await?;
+            Ok(())
         }
         async fn create_all_tables(&self) -> Result<()> {
             sqlx::query(
@@ -170,11 +224,12 @@ mod tests {
     #[tokio::test]
     pub async fn test_db() {
         let _ = pretty_env_logger::try_init();
-        crate::tests::setup_test_db("odcadmin_test_db").await;
+        crate::tests::setup_test_db(TEST_DB_NAME).await;
         let test_db = TestDB {
-            pool: create_pool(crate::tests::gen_test_config(
-                "odcadmin_test_db",
-            ))
+            pool: PoolMeta::new(
+                crate::tests::gen_test_config("anything"),
+                TEST_DB_NAME,
+            )
             .await
             .unwrap(),
         };
