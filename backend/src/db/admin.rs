@@ -1,21 +1,49 @@
-use crate::db::{create_pool, ConnectionConfig, Database, FromOpt, Pool, DB};
+use crate::db::{user, Database, PoolMeta, DB};
 use crate::{auth, error::Unauthorized, Error, Result};
+use user::{table::TableMeta, UserDB};
 
 /// Administrative database
 pub struct AdminDB {
-    name: String,
-    pool: Pool,
+    pool: PoolMeta,
+    user_dbs: Vec<UserDB>,
 }
 
 #[async_trait::async_trait]
 impl DB for AdminDB {
-    fn get_name(&self) -> &str {
-        self.name.as_str()
-    }
-    fn get_pool(&self) -> &Pool {
+    fn get_pool_meta(&self) -> &PoolMeta {
         &self.pool
     }
-    async fn reset(&self) -> Result<()> {
+}
+
+impl AdminDB {
+    pub async fn new(opt: &crate::Opt) -> Result<Self> {
+        // Connect to the admin database as the default api user
+        let mut admindb = Self {
+            pool: PoolMeta::from_opt(&opt).await?,
+            user_dbs: Vec::new(),
+        };
+        // Reset if required
+        let connected_to_empty = admindb.is_empty().await?;
+        if connected_to_empty {
+            admindb.create_all_tables().await?;
+        } else if opt.clean {
+            admindb.reset().await?;
+        }
+        // Fill access types and the one admin if required.
+        if opt.clean || connected_to_empty {
+            admindb.fill_access().await?;
+            admindb
+                .insert_admin(
+                    opt.admin_email.as_str(),
+                    opt.admin_password.as_str(),
+                )
+                .await?;
+        }
+        Ok(admindb)
+    }
+
+    /// Resets the database
+    async fn reset(&mut self) -> Result<()> {
         log::info!("resetting \"{}\" admin database", self.get_name());
         if self
             .get_all_table_names()
@@ -28,6 +56,25 @@ impl DB for AdminDB {
         self.create_all_tables().await?;
         Ok(())
     }
+
+    /// Locate user db in the vector
+    /// If not present, will append an entry.
+    async fn get_user_db_position(
+        &mut self,
+        project: &Project,
+    ) -> Result<usize> {
+        let name = project.get_dbname(self.get_name());
+        if let Some(i) =
+            self.user_dbs.iter().position(|db| db.get_name() == name)
+        {
+            return Ok(i);
+        };
+        let db = UserDB::new(self.get_config(), name.as_str()).await?;
+        self.user_dbs.push(db);
+        Ok(self.user_dbs.len() - 1)
+    }
+
+    /// Creates tables
     async fn create_all_tables(&self) -> Result<()> {
         sqlx::query("DROP TYPE IF EXISTS odc_user_access")
             .execute(self.get_pool())
@@ -79,42 +126,6 @@ impl DB for AdminDB {
         )
         .execute(self.get_pool())
         .await?;
-        Ok(())
-    }
-}
-
-impl AdminDB {
-    pub async fn new(opt: &crate::Opt) -> Result<Self> {
-        // Connection config
-        let config = ConnectionConfig::from_opt(&opt);
-        // Connect to the admin database as the default api user
-        let admindb = Self {
-            name: opt.admindbname.clone(),
-            pool: create_pool(config).await?,
-        };
-        // Reset if required
-        let connected_to_empty = admindb.is_empty().await?;
-        if connected_to_empty {
-            admindb.create_all_tables().await?;
-        } else if opt.clean {
-            admindb.reset().await?;
-        }
-        // Fill access types and the one admin if required.
-        if opt.clean || connected_to_empty {
-            admindb.fill_access().await?;
-            admindb
-                .insert_admin(
-                    opt.admin_email.as_str(),
-                    opt.admin_password.as_str(),
-                )
-                .await?;
-        }
-        Ok(admindb)
-    }
-
-    /// Allows the execution of arbitrary SQL
-    pub async fn execute(&self, sql: &str) -> Result<()> {
-        sqlx::query(sql).execute(self.get_pool()).await?;
         Ok(())
     }
 
@@ -299,7 +310,7 @@ impl AdminDB {
         sqlx::query(
             format!(
                 "CREATE DATABASE \"{}\"",
-                project.get_dbname(self.name.as_str())
+                project.get_dbname(self.get_name())
             )
             .as_str(),
         )
@@ -325,7 +336,7 @@ impl AdminDB {
     }
     /// Removes the given project including dropping the database
     pub async fn remove_project(
-        &self,
+        &mut self,
         user_id: i32,
         project_name: &str,
     ) -> Result<()> {
@@ -335,16 +346,19 @@ impl AdminDB {
             user_id
         );
         let project = self.get_project(user_id, project_name).await?;
+        let db_name = project.get_dbname(self.get_name());
+
+        // Remove the entry from UserDBs and close connections
+        if let Some(i) =
+            self.user_dbs.iter().position(|p| p.get_name() == db_name)
+        {
+            self.user_dbs.remove(i).get_pool().close().await;
+        }
+
         // Drop the database
-        sqlx::query(
-            format!(
-                "DROP DATABASE \"{}\"",
-                project.get_dbname(self.name.as_str())
-            )
-            .as_str(),
-        )
-        .execute(self.get_pool())
-        .await?;
+        sqlx::query(format!("DROP DATABASE \"{}\"", db_name).as_str())
+            .execute(self.get_pool())
+            .await?;
         // Delete the record
         self.delete_project(&project).await?;
         Ok(())
@@ -362,7 +376,7 @@ impl AdminDB {
         Ok(())
     }
     /// Removes all projects
-    pub async fn remove_all_projects(&self) -> Result<()> {
+    pub async fn remove_all_projects(&mut self) -> Result<()> {
         log::info!("removing all projects");
         let all_projects = self.get_all_projects().await?;
         for project in &all_projects {
@@ -438,6 +452,20 @@ impl AdminDB {
                 Err(Error::NoSuchProject(user_id, project_name.to_string()))
             }
         }
+    }
+    /// Creates a table in a user's database
+    pub async fn create_table(
+        &mut self,
+        project: &Project,
+        table: &TableMeta,
+    ) -> Result<()> {
+        let db_name = project.get_dbname(self.get_name());
+        log::debug!("creating table {} in database {}", table.name, db_name);
+        let user_db_index = self.get_user_db_position(project).await?;
+        sqlx::query(table.construct_create_query().as_str())
+            .execute(self.user_dbs[user_db_index].get_pool())
+            .await?;
+        Ok(())
     }
 }
 
@@ -561,7 +589,7 @@ mod tests {
     async fn project_exists(db: &AdminDB, project: &Project) -> bool {
         let db_exists = get_db_list(&db)
             .await
-            .contains(&project.get_dbname(db.name.as_str()));
+            .contains(&project.get_dbname(db.get_name()));
         let project_exists = db
             .get_all_projects()
             .await
@@ -699,9 +727,10 @@ mod tests {
         assert!(!project_exists(&test_db, &test_project1).await);
 
         // Create project
+        log::info!("create test project");
         test_db.create_project(1, "test").await.unwrap();
 
-        // Verify that the database was created
+        log::info!("verify that database was created");
         assert!(project_exists(&test_db, &test_project1).await);
         let project = test_db.get_project(1, "test").await.unwrap();
         assert_eq!(project.name, test_project1.name);
@@ -711,29 +740,29 @@ mod tests {
                 err,
                 Error::NoSuchProject(id, name) if id == 1 && name == "test1"));
 
-        // Reconnect
+        log::info!("reconnect");
         drop(test_db);
         let test_db =
             crate::tests::create_test_admindb(TEST_DB_NAME, false, false).await;
-        // Project should still exist
+        log::info!("verify that the project still exists");
         assert!(project_exists(&test_db, &test_project1).await);
 
-        // Reconnect cleanly
+        log::info!("reconnect cleanly");
         drop(test_db);
-        let test_db = crate::tests::create_test_admindb(
+        let mut test_db = crate::tests::create_test_admindb(
             "odcadmin_test_admin",
             true,
             false,
         )
         .await;
-        // Now the project should be removed
+        log::info!("verify that the project was removed");
         assert!(!project_exists(&test_db, &test_project1).await);
 
-        // Create the project again
+        log::info!("create the project again");
         test_db.create_project(1, "test").await.unwrap();
         assert!(project_exists(&test_db, &test_project1).await);
 
-        // Now create a project as a different user
+        log::info!("create the project as a different user");
         crate::tests::insert_test_user(&test_db).await;
         assert!(!project_exists(&test_db, &test_project2).await);
         test_db.create_project(2, "test").await.unwrap();
@@ -756,7 +785,23 @@ mod tests {
             Error::NoSuchProject(id, name) if id == 2 && name == "nonexistent"
         ));
 
-        // Remove all projects
+        log::info!("add a table to user project");
+        let primary_table = crate::tests::get_test_primary_table();
+        test_db
+            .create_table(&user2_test_project, &primary_table)
+            .await
+            .unwrap();
+        let user_db_index = test_db
+            .get_user_db_position(&user2_test_project)
+            .await
+            .unwrap();
+        assert!(test_db.user_dbs[user_db_index]
+            .get_all_table_names()
+            .await
+            .unwrap()
+            .contains(&primary_table.name));
+
+        log::info!("remove all projects");
         test_db.remove_all_projects().await.unwrap();
         assert!(!project_exists(&test_db, &test_project2).await);
         assert!(!project_exists(&test_db, &test_project1).await);

@@ -46,6 +46,10 @@ pub enum Error {
     #[error("project: {1} already exists for user id: {0}")]
     ProjectAlreadyExists(i32, String),
 
+    /// Database name not found
+    #[error("no such database: {0}")]
+    NoSuchDatabase(String),
+
     // Not my errors ----------------------------------------------------------
     /// Represents all cases of `sqlx::Error`
     #[error(transparent)]

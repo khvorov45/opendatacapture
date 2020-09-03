@@ -59,6 +59,8 @@ pub struct Opt {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::db::user::table::*;
+    use crate::db::DB;
 
     /// Test database config
     pub fn gen_test_config(dbname: &str) -> db::ConnectionConfig {
@@ -125,5 +127,26 @@ mod tests {
                 .await
                 .unwrap()
         }
+    }
+
+    // Test primary table
+    pub fn get_test_primary_table() -> TableMeta {
+        let mut cols = ColSpec::new();
+        cols.push(ColMeta::new("id", "INTEGER", "PRIMARY KEY"));
+        cols.push(ColMeta::new("email", "TEXT", "NOT NULL"));
+        TableMeta::new("primary", cols, "")
+    }
+
+    // Test secondary table
+    pub fn get_test_secondary_table() -> TableMeta {
+        let mut cols = ColSpec::new();
+        cols.push(ColMeta::new("id", "INTEGER", ""));
+        cols.push(ColMeta::new("timepoint", "INTEGER", ""));
+        TableMeta::new(
+            "secondary",
+            cols,
+            "PRIMARY KEY(\"id\", \"timepoint\"),\
+            FOREIGN KEY(\"id\") REFERENCES \"primary\"(\"id\")",
+        )
     }
 }
