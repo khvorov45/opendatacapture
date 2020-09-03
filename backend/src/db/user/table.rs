@@ -189,6 +189,11 @@ impl TableJson {
     }
 }
 
+/// Drop query
+pub fn construct_drop_query(name: &str) -> String {
+    format!("DROP TABLE IF EXISTS \"{}\" CASCADE", name)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

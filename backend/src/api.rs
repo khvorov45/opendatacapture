@@ -1,4 +1,5 @@
 use crate::{auth, db, db::admin::AdminDB, db::DB, error::Unauthorized, Error};
+use db::admin::User;
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -273,7 +274,7 @@ pub fn get_user_projects(
         })
 }
 
-/// Get user's projects
+/// Create table in a user's database
 pub fn create_table(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -289,6 +290,42 @@ pub fn create_table(
                   table: db::user::table::TableMeta,
                   db: DBRef| async move {
                 match db.lock().await.create_table(&project, &table).await {
+                    Ok(()) => Ok(warp::reply()),
+                    Err(e) => Err(warp::reject::custom(e)),
+                }
+            },
+        )
+}
+
+/// Remove table from a user's database
+pub fn remove_table(
+    db: DBRef,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("project" / String / "remove" / "table" / String)
+        .and(warp::delete())
+        .and(sufficient_access(db.clone(), auth::Access::User))
+        .and(with_db(db.clone()))
+        .and_then(
+            move |project_name: String,
+                  table_name: String,
+                  user: User,
+                  db: DBRef| async move {
+                match extract_project(project_name, user, db).await {
+                    Ok(project) => Ok((project, table_name)),
+                    Err(e) => Err(e),
+                }
+            },
+        )
+        .and(with_db(db))
+        .and_then(
+            move |(project, table_name): (db::admin::Project, String),
+                  db: DBRef| async move {
+                match db
+                    .lock()
+                    .await
+                    .remove_table(&project, table_name.as_str())
+                    .await
+                {
                     Ok(()) => Ok(warp::reply()),
                     Err(e) => Err(warp::reject::custom(e)),
                 }
@@ -447,6 +484,39 @@ mod tests {
                 )
                 .unwrap();
             assert_eq!(projects_obtained.len(), 1);
+        }
+
+        // Create table
+        let table = crate::tests::get_test_primary_table();
+
+        {
+            let filter = create_table(admindb_ref.clone());
+            let response = warp::test::request()
+                .method("PUT")
+                .path("/project/test/create/table")
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .body(serde_json::to_value(table.clone()).unwrap().to_string())
+                .reply(&filter)
+                .await;
+            assert_eq!(response.status(), StatusCode::OK);
+        }
+
+        // Remove table
+        {
+            let filter = remove_table(admindb_ref.clone());
+            let response = warp::test::request()
+                .method("DELETE")
+                .path(
+                    format!(
+                        "/project/test/remove/table/{}",
+                        table.name.as_str()
+                    )
+                    .as_str(),
+                )
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .reply(&filter)
+                .await;
+            assert_eq!(response.status(), StatusCode::OK);
         }
 
         // Delete projects

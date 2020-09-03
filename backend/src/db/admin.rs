@@ -1,6 +1,7 @@
 use crate::db::{user, Database, PoolMeta, DB};
 use crate::{auth, error::Unauthorized, Error, Result};
-use user::{table::TableMeta, UserDB};
+use user::table::TableMeta;
+use user::{table, UserDB};
 
 /// Administrative database
 pub struct AdminDB {
@@ -464,6 +465,20 @@ impl AdminDB {
             .await?;
         Ok(())
     }
+    /// Removes a table from a user's database
+    pub async fn remove_table(
+        &mut self,
+        project: &Project,
+        table_name: &str,
+    ) -> Result<()> {
+        let db_name = project.get_dbname(self.get_name());
+        log::debug!("removing table {} in database {}", table_name, db_name);
+        let user_db = self.get_user_db(project).await?;
+        sqlx::query(table::construct_drop_query(table_name).as_str())
+            .execute(user_db.get_pool())
+            .await?;
+        Ok(())
+    }
 }
 
 #[derive(
@@ -789,11 +804,18 @@ mod tests {
             .await
             .unwrap();
         let user_db = test_db.get_user_db(&user2_test_project).await.unwrap();
-        assert!(user_db
-            .get_all_table_names()
+        assert_eq!(
+            user_db.get_all_table_names().await.unwrap(),
+            vec![primary_table.name.clone()]
+        );
+
+        log::info!("remove that table");
+        test_db
+            .remove_table(&user2_test_project, primary_table.name.as_str())
             .await
-            .unwrap()
-            .contains(&primary_table.name));
+            .unwrap();
+        let user_db = test_db.get_user_db(&user2_test_project).await.unwrap();
+        assert!(user_db.is_empty().await.unwrap());
 
         log::info!("remove all projects");
         test_db.remove_all_projects().await.unwrap();
