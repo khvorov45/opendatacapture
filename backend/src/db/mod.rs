@@ -1,8 +1,10 @@
-use crate::Result;
+use crate::{Error, Result};
 use sqlx::Row;
 
 pub mod admin;
 pub mod user;
+
+use user::table::TableMeta;
 
 const DB_POOL_MAX_OPEN: u32 = 32;
 const DB_POOL_MAX_IDLE: u32 = 8;
@@ -92,6 +94,10 @@ pub trait DB {
             self.get_name()
         );
         Ok(table_names)
+    }
+
+    async fn get_table_meta(&self, table_name: &str) -> Result<TableMeta> {
+        Err(Error::TableNotPresent(table_name.to_string()))
     }
 
     /// See if the database is empty (no tables)

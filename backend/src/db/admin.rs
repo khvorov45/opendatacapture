@@ -1,6 +1,6 @@
 use crate::db::{user, Database, PoolMeta, DB};
 use crate::{auth, error::Unauthorized, Error, Result};
-use user::table::TableMeta;
+use user::table::{TableJson, TableMeta};
 use user::{table, UserDB};
 
 /// Administrative database
@@ -478,6 +478,14 @@ impl AdminDB {
             .execute(user_db.get_pool())
             .await?;
         Ok(())
+    }
+    /// Get full info on a table from a user's database
+    pub async fn get_table(
+        &mut self,
+        _project: &Project,
+        table_name: &str,
+    ) -> Result<TableJson> {
+        Err(Error::TableNotPresent(table_name.to_string()))
     }
 }
 
