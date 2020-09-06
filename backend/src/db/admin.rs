@@ -1,6 +1,6 @@
 use crate::db::{user, Database, PoolMeta, DB};
 use crate::{auth, error::Unauthorized, Error, Result};
-use user::table::{TableJson, TableMeta};
+use user::table::TableMeta;
 use user::{table, UserDB};
 
 /// Administrative database
@@ -451,6 +451,9 @@ impl AdminDB {
             }
         }
     }
+
+    // Project manipulation ---------------------------------------------------
+
     /// Creates a table in a user's database
     pub async fn create_table(
         &mut self,
@@ -459,10 +462,7 @@ impl AdminDB {
     ) -> Result<()> {
         let db_name = project.get_dbname(self.get_name());
         log::debug!("creating table {} in database {}", table.name, db_name);
-        let user_db = self.get_user_db(project).await?;
-        sqlx::query(table.construct_create_query().as_str())
-            .execute(user_db.get_pool())
-            .await?;
+        self.get_user_db(project).await?.create_table(table).await?;
         Ok(())
     }
     /// Removes a table from a user's database
@@ -479,13 +479,21 @@ impl AdminDB {
             .await?;
         Ok(())
     }
-    /// Get full info on a table from a user's database
-    pub async fn get_table(
+    /// Get metadata on a user's table
+    pub async fn get_user_table_meta(
         &mut self,
-        _project: &Project,
+        project: &Project,
         table_name: &str,
-    ) -> Result<TableJson> {
-        Err(Error::TableNotPresent(table_name.to_string()))
+    ) -> Result<TableMeta> {
+        log::debug!(
+            "getting table \"{}\" metadata in project \"{}\"",
+            table_name,
+            project.name
+        );
+        self.get_user_db(project)
+            .await?
+            .get_table_meta(table_name)
+            .await
     }
 }
 
