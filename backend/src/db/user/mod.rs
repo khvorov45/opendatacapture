@@ -34,6 +34,15 @@ impl UserDB {
         Ok(())
     }
 
+    /// Removes a table
+    pub async fn remove_table(&self, table_name: &str) -> Result<()> {
+        log::debug!("removing table {}", table_name);
+        sqlx::query(table::construct_drop_query(table_name).as_str())
+            .execute(self.get_pool())
+            .await?;
+        Ok(())
+    }
+
     /// Get all table metadata
     pub async fn get_table_meta(&self, table_name: &str) -> Result<TableMeta> {
         log::debug!("get metadata for {}", table_name);

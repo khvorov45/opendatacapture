@@ -323,7 +323,7 @@ pub fn remove_table(
                 match db
                     .lock()
                     .await
-                    .remove_table(&project, table_name.as_str())
+                    .remove_user_table(&project, table_name.as_str())
                     .await
                 {
                     Ok(()) => Ok(warp::reply()),
