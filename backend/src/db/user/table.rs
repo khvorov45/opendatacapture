@@ -31,7 +31,7 @@ impl ForeignKey {
 }
 
 /// Column metadata
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ColMeta {
     /// Column name
     pub name: String,
@@ -104,6 +104,24 @@ impl ColMeta {
 impl Default for ColMeta {
     fn default() -> Self {
         ColMeta::new()
+    }
+}
+
+impl PartialEq for ColMeta {
+    fn eq(&self, other: &Self) -> bool {
+        if self.name != other.name
+            || self.postgres_type.to_lowercase()
+                != other.postgres_type.to_lowercase()
+            || self.primary_key != other.primary_key
+            || self.foreign_key != other.foreign_key
+        {
+            return false;
+        }
+        // Don't check unique and not null if primary key
+        if self.primary_key {
+            return true;
+        }
+        self.unique == other.unique && self.not_null == other.not_null
     }
 }
 
@@ -414,5 +432,23 @@ mod tests {
             "INSERT INTO \"table\" (\"name\",\"id\") VALUES \
             ('alice','1'),('bob','2')"
         );
+    }
+    #[test]
+    fn compare_metadata() {
+        let primary_meta1 = crate::tests::get_test_primary_table();
+        let secondary_meta1 = crate::tests::get_test_secondary_table();
+        assert_eq!(primary_meta1, primary_meta1);
+        assert_eq!(secondary_meta1, secondary_meta1);
+        assert_ne!(primary_meta1, secondary_meta1);
+
+        let mut primary_meta2 = primary_meta1.clone();
+        primary_meta2.cols[0].postgres_type = "integer".to_string();
+        assert_eq!(primary_meta1, primary_meta2);
+
+        primary_meta2.cols[0].unique = true;
+        assert_eq!(primary_meta1, primary_meta2);
+
+        primary_meta2.cols[0].not_null = true;
+        assert_eq!(primary_meta1, primary_meta2);
     }
 }
