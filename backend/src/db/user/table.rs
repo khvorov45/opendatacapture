@@ -149,8 +149,7 @@ impl TableMeta {
             .map(|c| c.construct_create_query_entry())
             .collect::<Vec<String>>()
             .join(",");
-        let init_query =
-            format!("CREATE TABLE IF NOT EXISTS \"{}\"", self.name);
+        let init_query = format!("CREATE TABLE \"{}\"", self.name);
         format!("{} ({})", init_query, all_columns)
     }
     /// Select query
@@ -272,7 +271,7 @@ impl TableJson {
 
 /// Drop query
 pub fn construct_drop_query(name: &str) -> String {
-    format!("DROP TABLE IF EXISTS \"{}\" CASCADE", name)
+    format!("DROP TABLE \"{}\" CASCADE", name)
 }
 
 #[cfg(test)]
@@ -300,7 +299,7 @@ mod tests {
         let table = TableMeta::new("table", cols.clone());
         assert_eq!(
             table.construct_create_query(),
-            "CREATE TABLE IF NOT EXISTS \"table\" (\"name\" TEXT)"
+            "CREATE TABLE \"table\" (\"name\" TEXT)"
         );
         cols.push(
             ColMeta::new()
@@ -311,7 +310,7 @@ mod tests {
         let table = TableMeta::new("table", cols.clone());
         assert_eq!(
             table.construct_create_query(),
-            "CREATE TABLE IF NOT EXISTS \"table\" (\"name\" TEXT,\
+            "CREATE TABLE \"table\" (\"name\" TEXT,\
             \"id\" INTEGER PRIMARY KEY)"
         );
         cols.push(
@@ -325,7 +324,7 @@ mod tests {
         let table = TableMeta::new("table", cols);
         assert_eq!(
             table.construct_create_query(),
-            "CREATE TABLE IF NOT EXISTS \"table\" (\"name\" TEXT,\
+            "CREATE TABLE \"table\" (\"name\" TEXT,\
             \"id\" INTEGER PRIMARY KEY,\
             \"foreign_id\" INTEGER NOT NULL UNIQUE REFERENCES \
             \"foreign_table\"(\"foreign_column\"))"
