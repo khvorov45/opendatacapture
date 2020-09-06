@@ -455,7 +455,7 @@ impl AdminDB {
     // Project manipulation ---------------------------------------------------
 
     /// Creates a table in a user's database
-    pub async fn create_table(
+    pub async fn create_user_table(
         &mut self,
         project: &Project,
         table: &TableMeta,
@@ -814,7 +814,7 @@ mod tests {
         log::info!("add a table to user project");
         let primary_table = crate::tests::get_test_primary_table();
         test_db
-            .create_table(&user2_test_project, &primary_table)
+            .create_user_table(&user2_test_project, &primary_table)
             .await
             .unwrap();
         let user_db = test_db.get_user_db(&user2_test_project).await.unwrap();

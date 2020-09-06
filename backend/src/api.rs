@@ -299,7 +299,8 @@ pub fn create_table(
             move |project: db::admin::Project,
                   table: db::user::table::TableMeta,
                   db: DBRef| async move {
-                match db.lock().await.create_table(&project, &table).await {
+                match db.lock().await.create_user_table(&project, &table).await
+                {
                     Ok(()) => Ok(warp::reply()),
                     Err(e) => Err(warp::reject::custom(e)),
                 }
