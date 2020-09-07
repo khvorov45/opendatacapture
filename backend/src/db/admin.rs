@@ -704,7 +704,7 @@ mod tests {
 
         // Restart
         log::info!("restart");
-        drop(test_db);
+        test_db.get_pool().close().await;
         let test_db = crate::tests::create_test_admindb(
             "odcadmin_test_admin",
             false,
@@ -722,7 +722,7 @@ mod tests {
 
         // Start clean again
         log::info!("start clean again");
-        drop(test_db);
+        test_db.get_pool().close().await;
         let test_db = crate::tests::create_test_admindb(
             "odcadmin_test_admin",
             true,
@@ -824,14 +824,14 @@ mod tests {
                 Error::NoSuchProject(id, name) if id == 1 && name == "test1"));
 
         log::info!("reconnect");
-        drop(test_db);
+        test_db.get_pool().close().await;
         let test_db =
             crate::tests::create_test_admindb(TEST_DB_NAME, false, false).await;
         log::info!("verify that the project still exists");
         assert!(project_exists(&test_db, &test_project1).await);
 
         log::info!("reconnect cleanly");
-        drop(test_db);
+        test_db.get_pool().close().await;
         let mut test_db = crate::tests::create_test_admindb(
             "odcadmin_test_admin",
             true,
@@ -892,5 +892,8 @@ mod tests {
         test_db.remove_all_projects().await.unwrap();
         assert!(!project_exists(&test_db, &test_project2).await);
         assert!(!project_exists(&test_db, &test_project1).await);
+
+        // Remove test db -----------------------------------------------------
+        crate::tests::remove_test_db(&test_db).await;
     }
 }
