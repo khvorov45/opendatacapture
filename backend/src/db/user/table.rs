@@ -274,6 +274,25 @@ pub fn construct_drop_query(name: &str) -> String {
     format!("DROP TABLE \"{}\" CASCADE", name)
 }
 
+/// Insert query with parameters
+pub fn construct_insert_query<T: AsRef<str>>(name: &str, cols: &[T]) -> String {
+    // The keys and values that will go into the query
+    let mut key_entry = Vec::with_capacity(cols.len());
+    let mut value_entry = Vec::with_capacity(cols.len());
+    for (i, key) in cols.iter().enumerate() {
+        key_entry.push(format!("\"{}\"", key.as_ref()));
+        value_entry.push(format!("${}", i + 1));
+    }
+
+    // Complete query
+    format!(
+        "INSERT INTO \"{}\"({}) VALUES ({})",
+        name,
+        key_entry.join(","),
+        value_entry.join(",")
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -449,5 +468,16 @@ mod tests {
 
         primary_meta2.cols[0].not_null = true;
         assert_eq!(primary_meta1, primary_meta2);
+    }
+    #[test]
+    fn insert_query() {
+        let data = crate::tests::get_primary_data();
+        assert_eq!(
+            construct_insert_query(
+                "my_table",
+                &data[0].keys().collect::<Vec<&String>>()
+            ),
+            "INSERT INTO \"my_table\"(\"id\",\"email\") VALUES ($1,$2)"
+        );
     }
 }

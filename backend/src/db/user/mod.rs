@@ -128,6 +128,34 @@ impl UserDB {
         Ok(TableMeta::new(table_name, cols))
     }
 
+    /// Insert data into a table
+    pub async fn insert_table_data(
+        &self,
+        table_name: &str,
+        data: &[RowJson],
+    ) -> Result<()> {
+        use serde_json::Value;
+        let col_names: Vec<String> =
+            data[0].keys().map(|k| k.to_string()).collect();
+        let query = table::construct_insert_query(table_name, &col_names);
+        for row in data {
+            let mut row_query = sqlx::query(query.as_str());
+            for col_name in &col_names {
+                match &row[col_name] {
+                    Value::Number(n) => row_query = row_query.bind(n.as_f64()),
+                    Value::String(s) => row_query = row_query.bind(s.as_str()),
+                    other => {
+                        return Err(Error::InsertFormatUnimplemented(
+                            other.clone(),
+                        ))
+                    }
+                }
+            }
+            row_query.execute(self.get_pool()).await?;
+        }
+        Ok(())
+    }
+
     /// Get all data from a table
     pub async fn get_table_data(
         &self,
@@ -210,6 +238,23 @@ mod tests {
                 .await
                 .unwrap(),
             vec![]
+        );
+
+        log::info!("insert data");
+
+        let primary_data = crate::tests::get_primary_data();
+
+        db.insert_table_data(primary_table.name.as_str(), &primary_data)
+            .await
+            .unwrap();
+
+        log::info!("get data");
+
+        assert_eq!(
+            db.get_table_data(primary_table.name.as_str())
+                .await
+                .unwrap(),
+            primary_data
         );
     }
 }

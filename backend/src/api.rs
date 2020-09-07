@@ -1,5 +1,6 @@
-use crate::{auth, db, db::admin::AdminDB, db::DB, error::Unauthorized, Error};
-use db::admin::{Project, User};
+use crate::{auth, db, db::DB, error::Unauthorized, Error};
+use db::admin::{AdminDB, Project, User};
+use db::user::table::RowJson;
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -334,6 +335,7 @@ pub fn remove_table(
         )
 }
 
+/// Get a list of table names in a user's database
 pub fn get_table_names(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -351,6 +353,7 @@ pub fn get_table_names(
         })
 }
 
+/// Get user table metadata
 pub fn get_table_meta(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -375,6 +378,41 @@ pub fn get_table_meta(
         })
 }
 
+/// Insert data into a user's table
+pub fn insert_data(
+    db: DBRef,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("project" / String / "insert" / String)
+        .and(warp::put())
+        .and(sufficient_access(db.clone(), auth::Access::User))
+        .and(with_db(db.clone()))
+        .and_then(extract_project_and_table)
+        .and(warp::body::json())
+        .and(with_db(db))
+        .and_then(
+            move |(project, table_name): (Project, String),
+                  data: Vec<RowJson>,
+                  db: DBRef| {
+                async move {
+                    match db
+                        .lock()
+                        .await
+                        .insert_user_table_data(
+                            &project,
+                            table_name.as_str(),
+                            &data,
+                        )
+                        .await
+                    {
+                        Ok(()) => Ok(warp::reply()),
+                        Err(e) => Err(warp::reject::custom(e)),
+                    }
+                }
+            },
+        )
+}
+
+/// Get data from a user's table
 pub fn get_table_data(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -604,6 +642,46 @@ mod tests {
                 .unwrap(),
                 table
             );
+        }
+
+        // Insert table data
+        let data = crate::tests::get_primary_data();
+        {
+            let filter = insert_data(admindb_ref.clone());
+            let response = warp::test::request()
+                .method("PUT")
+                .path(
+                    format!("/project/test/insert/{}", table.name.as_str())
+                        .as_str(),
+                )
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .body(serde_json::to_value(&data).unwrap().to_string())
+                .reply(&filter)
+                .await;
+            assert_eq!(response.status(), StatusCode::OK);
+        }
+
+        // Get table data
+        {
+            let filter = get_table_data(admindb_ref.clone());
+            let response = warp::test::request()
+                .method("GET")
+                .path(
+                    format!(
+                        "/project/test/get/table/{}/data",
+                        table.name.as_str()
+                    )
+                    .as_str(),
+                )
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .reply(&filter)
+                .await;
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(
+                serde_json::from_slice::<Vec<RowJson>>(&*response.body())
+                    .unwrap(),
+                data
+            )
         }
 
         // Remove table

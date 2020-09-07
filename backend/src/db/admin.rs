@@ -501,6 +501,23 @@ impl AdminDB {
             .get_table_meta(table_name)
             .await
     }
+    /// Insert data into a user's table
+    pub async fn insert_user_table_data(
+        &mut self,
+        project: &Project,
+        table_name: &str,
+        data: &[RowJson],
+    ) -> Result<()> {
+        log::debug!(
+            "inserting into table \"{}\" from project \"{}\"",
+            table_name,
+            project.name
+        );
+        self.get_user_db(project)
+            .await?
+            .insert_table_data(table_name, data)
+            .await
+    }
     /// Get data from a user's table
     pub async fn get_user_table_data(
         &mut self,
