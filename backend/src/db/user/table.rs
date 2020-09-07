@@ -10,28 +10,118 @@ pub type DBJson = Vec<TableJson>;
 /// Row json
 pub type RowJson = serde_json::Map<String, serde_json::Value>;
 
-/// Column metadata
+/// Foreign key (column-level)
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct ForeignKey {
+    pub table: String,
+    pub column: String,
+}
+
+impl ForeignKey {
+    pub fn new(table: &str, column: &str) -> Self {
+        Self {
+            table: table.to_string(),
+            column: column.to_string(),
+        }
+    }
+    /// Entry for column-level create query
+    pub fn create_query_entry(&self) -> String {
+        format!("REFERENCES \"{}\"(\"{}\")", self.table, self.column)
+    }
+}
+
+/// Column metadata
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ColMeta {
     /// Column name
     pub name: String,
     /// Column type as understood by Postgres
     pub postgres_type: String,
-    /// Extra column attributes, e.g., `NOT NULL`
-    pub attr: String,
+    /// Whether it's allowed to be null
+    pub not_null: bool,
+    /// Whether values are allowed to duplicate
+    pub unique: bool,
+    /// Whether it's a primary key
+    pub primary_key: bool,
+    /// Optional foreign key
+    pub foreign_key: Option<ForeignKey>,
 }
 
 impl ColMeta {
-    pub fn new(name: &str, postgres_type: &str, attr: &str) -> Self {
+    pub fn name(mut self, val: &str) -> Self {
+        self.name = val.to_string();
+        self
+    }
+    pub fn postgres_type(mut self, val: &str) -> Self {
+        self.postgres_type = val.to_string();
+        self
+    }
+    pub fn not_null(mut self, val: bool) -> Self {
+        self.not_null = val;
+        self
+    }
+    pub fn unique(mut self, val: bool) -> Self {
+        self.unique = val;
+        self
+    }
+    pub fn primary_key(mut self, val: bool) -> Self {
+        self.primary_key = val;
+        self
+    }
+    pub fn foreign_key(mut self, val: ForeignKey) -> Self {
+        self.foreign_key = Some(val);
+        self
+    }
+    pub fn new() -> Self {
         Self {
-            name: String::from(name),
-            postgres_type: String::from(postgres_type),
-            attr: String::from(attr),
+            name: "".to_string(),
+            postgres_type: "".to_string(),
+            not_null: false,
+            unique: false,
+            primary_key: false,
+            foreign_key: None,
         }
     }
     /// Entry for the create query
     pub fn construct_create_query_entry(&self) -> String {
-        format!("\"{}\" {} {}", self.name, self.postgres_type, self.attr)
+        let mut entry = format!("\"{}\" {}", self.name, self.postgres_type);
+        if self.not_null {
+            entry = format!("{} NOT NULL", entry);
+        }
+        if self.unique {
+            entry = format!("{} UNIQUE", entry);
+        }
+        if self.primary_key {
+            entry = format!("{} PRIMARY KEY", entry);
+        }
+        if let Some(foreign_key) = &self.foreign_key {
+            entry = format!("{} {}", entry, foreign_key.create_query_entry());
+        }
+        entry
+    }
+}
+
+impl Default for ColMeta {
+    fn default() -> Self {
+        ColMeta::new()
+    }
+}
+
+impl PartialEq for ColMeta {
+    fn eq(&self, other: &Self) -> bool {
+        if self.name != other.name
+            || self.postgres_type.to_lowercase()
+                != other.postgres_type.to_lowercase()
+            || self.primary_key != other.primary_key
+            || self.foreign_key != other.foreign_key
+        {
+            return false;
+        }
+        // Don't check unique and not null if primary key
+        if self.primary_key {
+            return true;
+        }
+        self.unique == other.unique && self.not_null == other.not_null
     }
 }
 
@@ -42,16 +132,13 @@ pub struct TableMeta {
     pub name: String,
     /// Table columns
     pub cols: ColSpec,
-    /// Table constraints, e.g., `FOREIGN KEY`
-    pub constraints: String,
 }
 
 impl TableMeta {
-    pub fn new(name: &str, cols: ColSpec, constraints: &str) -> Self {
+    pub fn new(name: &str, cols: ColSpec) -> Self {
         Self {
             name: String::from(name),
             cols,
-            constraints: String::from(constraints),
         }
     }
     /// Create query
@@ -62,12 +149,8 @@ impl TableMeta {
             .map(|c| c.construct_create_query_entry())
             .collect::<Vec<String>>()
             .join(",");
-        let init_query =
-            format!("CREATE TABLE IF NOT EXISTS \"{}\"", self.name);
-        if self.constraints.is_empty() {
-            return format!("{} ({})", init_query, all_columns);
-        }
-        format!("{} ({}, {})", init_query, all_columns, self.constraints)
+        let init_query = format!("CREATE TABLE \"{}\"", self.name);
+        format!("{} ({})", init_query, all_columns)
     }
     /// Select query
     pub fn construct_select_query(
@@ -174,24 +257,21 @@ impl TableMeta {
 /// Table json
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct TableJson {
-    /// Table name
-    pub name: String,
+    /// Table metadata
+    pub meta: TableMeta,
     /// Table rows
     pub rows: Vec<RowJson>,
 }
 
 impl TableJson {
-    pub fn new(name: &str, rows: Vec<RowJson>) -> Self {
-        Self {
-            name: String::from(name),
-            rows,
-        }
+    pub fn new(meta: TableMeta, rows: Vec<RowJson>) -> Self {
+        Self { meta, rows }
     }
 }
 
 /// Drop query
 pub fn construct_drop_query(name: &str) -> String {
-    format!("DROP TABLE IF EXISTS \"{}\" CASCADE", name)
+    format!("DROP TABLE \"{}\" CASCADE", name)
 }
 
 #[cfg(test)]
@@ -200,9 +280,12 @@ mod tests {
     #[test]
     fn create_col() {
         let _ = pretty_env_logger::try_init();
-        let col = ColMeta::new("name", "TEXT", "");
-        assert_eq!(col.construct_create_query_entry(), "\"name\" TEXT ");
-        let col = ColMeta::new("name", "TEXT", "PRIMARY KEY");
+        let col = ColMeta::new().name("name").postgres_type("TEXT");
+        assert_eq!(col.construct_create_query_entry(), "\"name\" TEXT");
+        let col = ColMeta::new()
+            .name("name")
+            .postgres_type("TEXT")
+            .primary_key(true);
         assert_eq!(
             col.construct_create_query_entry(),
             "\"name\" TEXT PRIMARY KEY"
@@ -211,28 +294,54 @@ mod tests {
     #[test]
     fn create_table() {
         let _ = pretty_env_logger::try_init();
-        let mut cols = Vec::new();
-        cols.push(ColMeta::new("name", "TEXT", ""));
-        let table = TableMeta::new("table", cols.clone(), "");
+        let mut cols = ColSpec::new();
+        cols.push(ColMeta::new().name("name").postgres_type("TEXT"));
+        let table = TableMeta::new("table", cols.clone());
         assert_eq!(
             table.construct_create_query(),
-            "CREATE TABLE IF NOT EXISTS \"table\" (\"name\" TEXT )"
+            "CREATE TABLE \"table\" (\"name\" TEXT)"
         );
-        cols.push(ColMeta::new("id", "INTEGER", "PRIMARY KEY"));
-        let table = TableMeta::new("table", cols, "");
+        cols.push(
+            ColMeta::new()
+                .name("id")
+                .postgres_type("INTEGER")
+                .primary_key(true),
+        );
+        let table = TableMeta::new("table", cols.clone());
         assert_eq!(
             table.construct_create_query(),
-            "CREATE TABLE IF NOT EXISTS \"table\" (\"name\" TEXT ,\
+            "CREATE TABLE \"table\" (\"name\" TEXT,\
             \"id\" INTEGER PRIMARY KEY)"
+        );
+        cols.push(
+            ColMeta::new()
+                .name("foreign_id")
+                .postgres_type("INTEGER")
+                .foreign_key(ForeignKey::new("foreign_table", "foreign_column"))
+                .not_null(true)
+                .unique(true),
+        );
+        let table = TableMeta::new("table", cols);
+        assert_eq!(
+            table.construct_create_query(),
+            "CREATE TABLE \"table\" (\"name\" TEXT,\
+            \"id\" INTEGER PRIMARY KEY,\
+            \"foreign_id\" INTEGER NOT NULL UNIQUE REFERENCES \
+            \"foreign_table\"(\"foreign_column\"))"
         );
     }
     #[test]
     fn select_table() {
         let _ = pretty_env_logger::try_init();
         let mut cols = Vec::new();
-        cols.push(ColMeta::new("name", "TEXT", ""));
-        cols.push(ColMeta::new("id", "INTEGER", "PRIMARY KEY"));
-        let table = TableMeta::new("table", cols, "");
+        cols.push(ColMeta::new().name("name").postgres_type("TEXT"));
+        cols.push(
+            ColMeta::new()
+                .name("id")
+                .postgres_type("INTEGER")
+                .primary_key(true),
+        );
+        let table = TableMeta::new("table", cols);
         assert_eq!(
             table.construct_select_query(&[], "").unwrap(),
             "SELECT * FROM \"table\" "
@@ -275,9 +384,14 @@ mod tests {
     fn insert_table() {
         let _ = pretty_env_logger::try_init();
         let mut cols = Vec::new();
-        cols.push(ColMeta::new("name", "TEXT", ""));
-        cols.push(ColMeta::new("id", "INTEGER", "PRIMARY KEY"));
-        let table = TableMeta::new("table", cols, "");
+        cols.push(ColMeta::new().name("name").postgres_type("TEXT"));
+        cols.push(
+            ColMeta::new()
+                .name("id")
+                .postgres_type("INTEGER")
+                .primary_key(true),
+        );
+        let table = TableMeta::new("table", cols);
         let mut rows = Vec::new();
         let mut row1 = RowJson::new();
         row1.insert(
@@ -317,5 +431,23 @@ mod tests {
             "INSERT INTO \"table\" (\"name\",\"id\") VALUES \
             ('alice','1'),('bob','2')"
         );
+    }
+    #[test]
+    fn compare_metadata() {
+        let primary_meta1 = crate::tests::get_test_primary_table();
+        let secondary_meta1 = crate::tests::get_test_secondary_table();
+        assert_eq!(primary_meta1, primary_meta1);
+        assert_eq!(secondary_meta1, secondary_meta1);
+        assert_ne!(primary_meta1, secondary_meta1);
+
+        let mut primary_meta2 = primary_meta1.clone();
+        primary_meta2.cols[0].postgres_type = "integer".to_string();
+        assert_eq!(primary_meta1, primary_meta2);
+
+        primary_meta2.cols[0].unique = true;
+        assert_eq!(primary_meta1, primary_meta2);
+
+        primary_meta2.cols[0].not_null = true;
+        assert_eq!(primary_meta1, primary_meta2);
     }
 }

@@ -1,7 +1,7 @@
 use crate::db::{user, Database, PoolMeta, DB};
 use crate::{auth, error::Unauthorized, Error, Result};
 use user::table::TableMeta;
-use user::{table, UserDB};
+use user::UserDB;
 
 /// Administrative database
 pub struct AdminDB {
@@ -451,33 +451,47 @@ impl AdminDB {
             }
         }
     }
+
+    // Project manipulation ---------------------------------------------------
+
     /// Creates a table in a user's database
-    pub async fn create_table(
+    pub async fn create_user_table(
         &mut self,
         project: &Project,
         table: &TableMeta,
     ) -> Result<()> {
         let db_name = project.get_dbname(self.get_name());
         log::debug!("creating table {} in database {}", table.name, db_name);
-        let user_db = self.get_user_db(project).await?;
-        sqlx::query(table.construct_create_query().as_str())
-            .execute(user_db.get_pool())
-            .await?;
-        Ok(())
+        self.get_user_db(project).await?.create_table(table).await
     }
     /// Removes a table from a user's database
-    pub async fn remove_table(
+    pub async fn remove_user_table(
         &mut self,
         project: &Project,
         table_name: &str,
     ) -> Result<()> {
         let db_name = project.get_dbname(self.get_name());
         log::debug!("removing table {} in database {}", table_name, db_name);
-        let user_db = self.get_user_db(project).await?;
-        sqlx::query(table::construct_drop_query(table_name).as_str())
-            .execute(user_db.get_pool())
-            .await?;
-        Ok(())
+        self.get_user_db(project)
+            .await?
+            .remove_table(table_name)
+            .await
+    }
+    /// Get metadata on a user's table
+    pub async fn get_user_table_meta(
+        &mut self,
+        project: &Project,
+        table_name: &str,
+    ) -> Result<TableMeta> {
+        log::debug!(
+            "getting table \"{}\" metadata in project \"{}\"",
+            table_name,
+            project.name
+        );
+        self.get_user_db(project)
+            .await?
+            .get_table_meta(table_name)
+            .await
     }
 }
 
@@ -800,7 +814,7 @@ mod tests {
         log::info!("add a table to user project");
         let primary_table = crate::tests::get_test_primary_table();
         test_db
-            .create_table(&user2_test_project, &primary_table)
+            .create_user_table(&user2_test_project, &primary_table)
             .await
             .unwrap();
         let user_db = test_db.get_user_db(&user2_test_project).await.unwrap();
@@ -811,7 +825,7 @@ mod tests {
 
         log::info!("remove that table");
         test_db
-            .remove_table(&user2_test_project, primary_table.name.as_str())
+            .remove_user_table(&user2_test_project, primary_table.name.as_str())
             .await
             .unwrap();
         let user_db = test_db.get_user_db(&user2_test_project).await.unwrap();

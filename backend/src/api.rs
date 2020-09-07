@@ -1,5 +1,5 @@
 use crate::{auth, db, db::admin::AdminDB, db::DB, error::Unauthorized, Error};
-use db::admin::User;
+use db::admin::{Project, User};
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -142,6 +142,16 @@ async fn extract_project(
         Ok(p) => Ok(p),
         Err(e) => Err(warp::reject::custom(e)),
     }
+}
+
+/// Extracts project name and table name
+async fn extract_project_and_table(
+    project_name: String,
+    table_name: String,
+    user: User,
+    db: DBRef,
+) -> std::result::Result<(Project, String), warp::Rejection> {
+    Ok((extract_project(project_name, user, db).await?, table_name))
 }
 
 /// Extracts the database reference
@@ -289,7 +299,8 @@ pub fn create_table(
             move |project: db::admin::Project,
                   table: db::user::table::TableMeta,
                   db: DBRef| async move {
-                match db.lock().await.create_table(&project, &table).await {
+                match db.lock().await.create_user_table(&project, &table).await
+                {
                     Ok(()) => Ok(warp::reply()),
                     Err(e) => Err(warp::reject::custom(e)),
                 }
@@ -305,25 +316,15 @@ pub fn remove_table(
         .and(warp::delete())
         .and(sufficient_access(db.clone(), auth::Access::User))
         .and(with_db(db.clone()))
-        .and_then(
-            move |project_name: String,
-                  table_name: String,
-                  user: User,
-                  db: DBRef| async move {
-                match extract_project(project_name, user, db).await {
-                    Ok(project) => Ok((project, table_name)),
-                    Err(e) => Err(e),
-                }
-            },
-        )
+        .and_then(extract_project_and_table)
         .and(with_db(db))
         .and_then(
-            move |(project, table_name): (db::admin::Project, String),
+            move |(project, table_name): (Project, String),
                   db: DBRef| async move {
                 match db
                     .lock()
                     .await
-                    .remove_table(&project, table_name.as_str())
+                    .remove_user_table(&project, table_name.as_str())
                     .await
                 {
                     Ok(()) => Ok(warp::reply()),
@@ -331,6 +332,30 @@ pub fn remove_table(
                 }
             },
         )
+}
+
+pub fn get_table_meta(
+    db: DBRef,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("project" / String / "get" / "table" / String / "meta")
+        .and(warp::get())
+        .and(sufficient_access(db.clone(), auth::Access::User))
+        .and(with_db(db.clone()))
+        .and_then(extract_project_and_table)
+        .and(with_db(db))
+        .and_then(move |(project, table_name): (Project, String), db: DBRef| {
+            async move {
+                match db
+                    .lock()
+                    .await
+                    .get_user_table_meta(&project, table_name.as_str())
+                    .await
+                {
+                    Ok(tm) => Ok(warp::reply::json(&tm)),
+                    Err(e) => Err(warp::reject::custom(e))
+                }
+            }
+        })
 }
 
 #[cfg(test)]
@@ -499,6 +524,28 @@ mod tests {
                 .reply(&filter)
                 .await;
             assert_eq!(response.status(), StatusCode::OK);
+        }
+
+        // Get table metadata
+        {
+            let filter = get_table_meta(admindb_ref.clone());
+            let response = warp::test::request()
+                .method("GET")
+                .path(
+                    format!("/project/test/get/table/{}/meta", table.name)
+                        .as_str(),
+                )
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .reply(&filter)
+                .await;
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(
+                serde_json::from_slice::<db::user::table::TableMeta>(
+                    &*response.body()
+                )
+                .unwrap(),
+                table
+            );
         }
 
         // Remove table

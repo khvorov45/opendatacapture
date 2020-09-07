@@ -132,21 +132,32 @@ mod tests {
     // Test primary table
     pub fn get_test_primary_table() -> TableMeta {
         let mut cols = ColSpec::new();
-        cols.push(ColMeta::new("id", "INTEGER", "PRIMARY KEY"));
-        cols.push(ColMeta::new("email", "TEXT", "NOT NULL"));
-        TableMeta::new("primary", cols, "")
+        cols.push(
+            ColMeta::new()
+                .name("id")
+                .postgres_type("INTEGER")
+                .primary_key(true),
+        );
+        cols.push(
+            ColMeta::new()
+                .name("email")
+                .postgres_type("TEXT")
+                .not_null(true),
+        );
+        TableMeta::new("primary", cols)
     }
 
     // Test secondary table
     pub fn get_test_secondary_table() -> TableMeta {
         let mut cols = ColSpec::new();
-        cols.push(ColMeta::new("id", "INTEGER", ""));
-        cols.push(ColMeta::new("timepoint", "INTEGER", ""));
-        TableMeta::new(
-            "secondary",
-            cols,
-            "PRIMARY KEY(\"id\", \"timepoint\"),\
-            FOREIGN KEY(\"id\") REFERENCES \"primary\"(\"id\")",
-        )
+        cols.push(
+            ColMeta::new()
+                .name("id")
+                .postgres_type("INTEGER")
+                .primary_key(true)
+                .foreign_key(ForeignKey::new("primary", "id")),
+        );
+        cols.push(ColMeta::new().name("timepoint").postgres_type("INTEGER"));
+        TableMeta::new("secondary", cols)
     }
 }
