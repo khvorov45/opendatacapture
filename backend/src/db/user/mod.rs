@@ -156,6 +156,14 @@ impl UserDB {
         Ok(())
     }
 
+    /// Remove all data from a table
+    pub async fn remove_all_table_data(&self, table_name: &str) -> Result<()> {
+        sqlx::query(format!("DELETE FROM \"{}\"", table_name).as_str())
+            .execute(self.get_pool())
+            .await?;
+        Ok(())
+    }
+
     /// Get all data from a table
     pub async fn get_table_data(
         &self,
@@ -255,6 +263,21 @@ mod tests {
                 .await
                 .unwrap(),
             primary_data
+        );
+
+        log::info!("remove data");
+
+        db.remove_all_table_data(primary_table.name.as_str())
+            .await
+            .unwrap();
+
+        log::info!("get data");
+
+        assert_eq!(
+            db.get_table_data(primary_table.name.as_str())
+                .await
+                .unwrap(),
+            vec![]
         );
     }
 }

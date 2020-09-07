@@ -518,6 +518,22 @@ impl AdminDB {
             .insert_table_data(table_name, data)
             .await
     }
+    /// Remove all data from a user's table
+    pub async fn remove_all_user_table_data(
+        &mut self,
+        project: &Project,
+        table_name: &str,
+    ) -> Result<()> {
+        log::debug!(
+            "deleting all data from table \"{}\" in project \"{}\"",
+            table_name,
+            project.name
+        );
+        self.get_user_db(project)
+            .await?
+            .remove_all_table_data(table_name)
+            .await
+    }
     /// Get data from a user's table
     pub async fn get_user_table_data(
         &mut self,
