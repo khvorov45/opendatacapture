@@ -918,6 +918,13 @@ mod tests {
                 serde_json::from_slice::<String>(&*resp.body()).unwrap(),
                 "ProjectAlreadyExists(1, \"test\")"
             );
+            let resp = warp::test::request()
+                .method("DELETE")
+                .path("/delete/project/test")
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .reply(&routes)
+                .await;
+            assert_eq!(resp.status(), StatusCode::OK);
         }
 
         // Delete a non-existent project
