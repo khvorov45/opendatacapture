@@ -160,4 +160,24 @@ mod tests {
         cols.push(ColMeta::new().name("timepoint").postgres_type("INTEGER"));
         TableMeta::new("secondary", cols)
     }
+
+    /// Primary table data
+    pub fn get_primary_data() -> Vec<RowJson> {
+        let mut data = Vec::new();
+        let mut row1 = RowJson::new();
+        row1.insert("id".to_string(), serde_json::from_str("1").unwrap());
+        row1.insert(
+            "email".to_string(),
+            serde_json::from_str("\"email@example.com\"").unwrap(),
+        );
+        data.push(row1);
+        let mut row2 = RowJson::new();
+        row2.insert("id".to_string(), serde_json::from_str("2").unwrap());
+        row2.insert(
+            "email".to_string(),
+            serde_json::from_str("\"email2@example.com\"").unwrap(),
+        );
+        data.push(row2);
+        data
+    }
 }

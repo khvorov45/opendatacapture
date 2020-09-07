@@ -1,11 +1,11 @@
 use sqlx::Row;
 
 use crate::db::{ConnectionConfig, PoolMeta, DB};
-use crate::Result;
+use crate::{Error, Result};
 
 pub mod table;
 
-use table::{ColMeta, ColSpec, ForeignKey, TableMeta};
+use table::{ColMeta, ColSpec, ForeignKey, RowJson, TableMeta};
 
 /// User project database
 #[derive(Debug)]
@@ -127,6 +127,55 @@ impl UserDB {
 
         Ok(TableMeta::new(table_name, cols))
     }
+
+    /// Insert data into a table
+    pub async fn insert_table_data(
+        &self,
+        table_name: &str,
+        data: &[RowJson],
+    ) -> Result<()> {
+        use serde_json::Value;
+        let col_names: Vec<String> =
+            data[0].keys().map(|k| k.to_string()).collect();
+        let query = table::construct_insert_query(table_name, &col_names);
+        for row in data {
+            let mut row_query = sqlx::query(query.as_str());
+            for col_name in &col_names {
+                match &row[col_name] {
+                    Value::Number(n) => row_query = row_query.bind(n.as_f64()),
+                    Value::String(s) => row_query = row_query.bind(s.as_str()),
+                    other => {
+                        return Err(Error::InsertFormatUnimplemented(
+                            other.clone(),
+                        ))
+                    }
+                }
+            }
+            row_query.execute(self.get_pool()).await?;
+        }
+        Ok(())
+    }
+
+    /// Get all data from a table
+    pub async fn get_table_data(
+        &self,
+        table_name: &str,
+    ) -> Result<Vec<RowJson>> {
+        let res = sqlx::query(
+            format!("SELECT ROW_TO_JSON(\"{0}\") FROM \"{0}\"", table_name)
+                .as_str(),
+        )
+        .fetch_all(self.get_pool())
+        .await?;
+        let mut rows = Vec::with_capacity(res.len());
+        for row in res {
+            match row.get::<serde_json::Value, usize>(0).as_object() {
+                Some(o) => rows.push(o.clone()),
+                None => return Err(Error::RowParse(row.get(0))),
+            }
+        }
+        Ok(rows)
+    }
 }
 
 #[cfg(test)]
@@ -181,5 +230,31 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(secondary_meta, secondary_table);
+
+        log::info!("get data");
+
+        assert_eq!(
+            db.get_table_data(primary_table.name.as_str())
+                .await
+                .unwrap(),
+            vec![]
+        );
+
+        log::info!("insert data");
+
+        let primary_data = crate::tests::get_primary_data();
+
+        db.insert_table_data(primary_table.name.as_str(), &primary_data)
+            .await
+            .unwrap();
+
+        log::info!("get data");
+
+        assert_eq!(
+            db.get_table_data(primary_table.name.as_str())
+                .await
+                .unwrap(),
+            primary_data
+        );
     }
 }
