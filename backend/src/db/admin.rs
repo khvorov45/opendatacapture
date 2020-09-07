@@ -477,6 +477,14 @@ impl AdminDB {
             .remove_table(table_name)
             .await
     }
+    /// Get table names from a user db
+    pub async fn get_user_table_names(
+        &mut self,
+        project: &Project,
+    ) -> Result<Vec<String>> {
+        log::debug!("getting table names for project {}", project.name);
+        self.get_user_db(project).await?.get_all_table_names().await
+    }
     /// Get metadata on a user's table
     pub async fn get_user_table_meta(
         &mut self,

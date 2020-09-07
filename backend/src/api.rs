@@ -334,6 +334,23 @@ pub fn remove_table(
         )
 }
 
+pub fn get_table_names(
+    db: DBRef,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("project" / String / "get" / "tablenames")
+        .and(warp::get())
+        .and(sufficient_access(db.clone(), auth::Access::User))
+        .and(with_db(db.clone()))
+        .and_then(extract_project)
+        .and(with_db(db))
+        .and_then(move |project: Project, db: DBRef| async move {
+            match db.lock().await.get_user_table_names(&project).await {
+                Ok(tn) => Ok(warp::reply::json(&tn)),
+                Err(e) => Err(warp::reject::custom(e)),
+            }
+        })
+}
+
 pub fn get_table_meta(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -524,6 +541,23 @@ mod tests {
                 .reply(&filter)
                 .await;
             assert_eq!(response.status(), StatusCode::OK);
+        }
+
+        // Get table list
+        {
+            let filter = get_table_names(admindb_ref.clone());
+            let response = warp::test::request()
+                .method("GET")
+                .path("/project/test/get/tablenames")
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .reply(&filter)
+                .await;
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(
+                serde_json::from_slice::<Vec<String>>(&*response.body())
+                    .unwrap(),
+                vec![table.name.clone()]
+            );
         }
 
         // Get table metadata
