@@ -61,6 +61,7 @@ mod tests {
     use super::*;
     use crate::db::user::table::*;
     use crate::db::DB;
+    use sqlx::ConnectOptions;
 
     /// Test database config
     pub fn gen_test_config(dbname: &str) -> db::ConnectionConfig {
@@ -72,18 +73,34 @@ mod tests {
             .password("odcapi")
     }
 
+    /// Remove test database
+    /// Assumes the odcadmin database exists
+    pub async fn remove_test_db(db: &db::admin::AdminDB) {
+        log::info!("removing database {}", db.get_name());
+        db.get_pool().close().await;
+        let config = gen_test_config("odcadmin");
+        let mut con = config.connect().await.unwrap();
+        sqlx::query(
+            format!("DROP DATABASE IF EXISTS \"{0}\"", db.get_name()).as_str(),
+        )
+        .execute(&mut con)
+        .await
+        .unwrap();
+    }
+
     /// Makes sure the test database database exists.
     /// Assumes the odcadmin database exists
     pub async fn setup_test_db(dbname: &str) {
-        use sqlx::ConnectOptions;
         log::info!("setting up database {}", dbname);
-        let config = gen_test_config(dbname).database("odcadmin");
+        let config = gen_test_config("odcadmin");
         let mut con = config.connect().await.unwrap();
-        sqlx::query(format!("DROP DATABASE IF EXISTS {0}", dbname).as_str())
-            .execute(&mut con)
-            .await
-            .unwrap();
-        sqlx::query(format!("CREATE DATABASE {0}", dbname).as_str())
+        sqlx::query(
+            format!("DROP DATABASE IF EXISTS \"{0}\"", dbname).as_str(),
+        )
+        .execute(&mut con)
+        .await
+        .unwrap();
+        sqlx::query(format!("CREATE DATABASE \"{0}\"", dbname).as_str())
             .execute(&mut con)
             .await
             .unwrap();

@@ -1061,5 +1061,9 @@ mod tests {
                 .await;
             assert_eq!(resp.status(), StatusCode::FORBIDDEN);
         }
+
+        // Remove the test database -------------------------------------------
+
+        crate::tests::remove_test_db(&*admindb_ref.lock().await).await;
     }
 }
