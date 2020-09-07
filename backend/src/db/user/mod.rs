@@ -279,5 +279,8 @@ mod tests {
                 .unwrap(),
             vec![]
         );
+
+        // Remove test DB -----------------------------------------------------
+        crate::tests::remove_test_db(&db).await;
     }
 }
