@@ -75,7 +75,7 @@ mod tests {
 
     /// Remove test database
     /// Assumes the odcadmin database exists
-    pub async fn remove_test_db(db: &db::admin::AdminDB) {
+    pub async fn remove_test_db<T: db::DB>(db: &T) {
         log::info!("removing database {}", db.get_name());
         db.get_pool().close().await;
         let config = gen_test_config("odcadmin");

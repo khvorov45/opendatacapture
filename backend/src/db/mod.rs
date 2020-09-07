@@ -264,5 +264,8 @@ mod tests {
         // Drop tables
         test_db.drop_all_tables().await.unwrap();
         assert!(test_db.is_empty().await.unwrap());
+
+        // Remove test database -----------------------------------------------
+        crate::tests::remove_test_db(&test_db).await;
     }
 }
