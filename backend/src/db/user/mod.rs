@@ -1,11 +1,11 @@
 use sqlx::Row;
 
 use crate::db::{ConnectionConfig, PoolMeta, DB};
-use crate::Result;
+use crate::{Error, Result};
 
 pub mod table;
 
-use table::{ColMeta, ColSpec, ForeignKey, TableMeta};
+use table::{ColMeta, ColSpec, ForeignKey, RowJson, TableMeta};
 
 /// User project database
 #[derive(Debug)]
@@ -127,6 +127,27 @@ impl UserDB {
 
         Ok(TableMeta::new(table_name, cols))
     }
+
+    /// Get all data from a table
+    pub async fn get_table_data(
+        &self,
+        table_name: &str,
+    ) -> Result<Vec<RowJson>> {
+        let res = sqlx::query(
+            format!("SELECT ROW_TO_JSON(\"{0}\") FROM \"{0}\"", table_name)
+                .as_str(),
+        )
+        .fetch_all(self.get_pool())
+        .await?;
+        let mut rows = Vec::with_capacity(res.len());
+        for row in res {
+            match row.get::<serde_json::Value, usize>(0).as_object() {
+                Some(o) => rows.push(o.clone()),
+                None => return Err(Error::RowParse(row.get(0))),
+            }
+        }
+        Ok(rows)
+    }
 }
 
 #[cfg(test)]
@@ -181,5 +202,14 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(secondary_meta, secondary_table);
+
+        log::info!("get data");
+
+        assert_eq!(
+            db.get_table_data(primary_table.name.as_str())
+                .await
+                .unwrap(),
+            vec![]
+        );
     }
 }

@@ -375,6 +375,30 @@ pub fn get_table_meta(
         })
 }
 
+pub fn get_table_data(
+    db: DBRef,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("project" / String / "get" / "table" / String / "data")
+        .and(warp::get())
+        .and(sufficient_access(db.clone(), auth::Access::User))
+        .and(with_db(db.clone()))
+        .and_then(extract_project_and_table)
+        .and(with_db(db))
+        .and_then(move |(project, table_name): (Project, String), db: DBRef| {
+            async move {
+                match db
+                    .lock()
+                    .await
+                    .get_user_table_data(&project, table_name.as_str())
+                    .await
+                {
+                    Ok(td) => Ok(warp::reply::json(&td)),
+                    Err(e) => Err(warp::reject::custom(e))
+                }
+            }
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
