@@ -13,7 +13,7 @@ import { LoginFailure } from "../lib/auth"
 test("basic functionality", async () => {
   let token: string | null = null
   let token_expected = "123"
-  let { getByTestId } = render(
+  let { getByTestId, getByText } = render(
     <BrowserRouter>
       <Switch>
         <Route path="/login">
@@ -32,7 +32,7 @@ test("basic functionality", async () => {
   )
   let emailInput = getByTestId("email-input") as HTMLInputElement
   let passwordInput = getByTestId("password-input") as HTMLInputElement
-  let submitButton = getByTestId("login-submit")
+  let submitButton = getByText("Submit")
   expect(emailInput.value).toBe("")
   fireEvent.change(emailInput, { target: { value: "admin@example.com" } })
   expect(emailInput.value).toBe("admin@example.com")
@@ -47,7 +47,7 @@ test("basic functionality", async () => {
 })
 
 test("login when can't connect to server", async () => {
-  const { getByTestId } = render(
+  const { getByTestId, getByText } = render(
     <Login
       updateToken={(token: string) => {}}
       tokenFetcher={(c) =>
@@ -55,7 +55,7 @@ test("login when can't connect to server", async () => {
       }
     />
   )
-  let submitButton = getByTestId("login-submit")
+  let submitButton = getByText("Submit")
   let submitButtonMsg = getByTestId("login-button-msg")
   expect(submitButtonMsg.innerHTML).toBe("")
   spyOn(console, "error") // There is expected to be an error
@@ -75,7 +75,7 @@ function verifyFieldError(element: HTMLElement, expected: string) {
 }
 
 test("login when email is wrong", async () => {
-  const { getByTestId } = render(
+  const { getByTestId, getByText } = render(
     <Login
       updateToken={(token: string) => {}}
       tokenFetcher={(c) =>
@@ -84,7 +84,7 @@ test("login when email is wrong", async () => {
     />
   )
   let emailField = getByTestId("email-field")
-  let submitButton = getByTestId("login-submit")
+  let submitButton = getByText("Submit")
   spyOn(console, "error") // There is expected to be an error
   fireEvent.click(submitButton)
   await waitForDomChange()
@@ -98,7 +98,7 @@ test("errors reset", async () => {
     Error(LoginFailure.WrongPassword),
     Error("Network Error"),
   ]
-  const { getByTestId } = render(
+  const { getByTestId, getByText } = render(
     <Login
       updateToken={(token: string) => {}}
       tokenFetcher={(c) =>
@@ -108,7 +108,7 @@ test("errors reset", async () => {
   )
   let emailField = getByTestId("email-field")
   let passwordField = getByTestId("password-field")
-  let submitButton = getByTestId("login-submit")
+  let submitButton = getByText("Submit")
   let submitButtonMsg = getByTestId("login-button-msg")
 
   // Prior to any clicking
