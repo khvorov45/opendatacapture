@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, ReactNode } from "react"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 import Add from "@material-ui/icons/Add"
 import Send from "@material-ui/icons/Send"
@@ -80,6 +80,13 @@ const useStyles = makeStyles((theme: Theme) =>
     centered: {
       display: "flex",
       justifyContent: "center",
+    },
+    buttonArray: {
+      display: "flex",
+      flexDirection: "column",
+      "& div.buttons": {
+        display: "flex",
+      },
     },
   })
 )
@@ -192,6 +199,26 @@ function ProjectControlButtons({
   )
 }
 
+function ButtonArray({
+  errorMsg,
+  children,
+  errorTestId,
+}: {
+  errorMsg?: string
+  children: ReactNode
+  errorTestId?: string
+}) {
+  const classes = useStyles()
+  return (
+    <div className={classes.buttonArray}>
+      <div className="buttons">{children}</div>
+      <FormHelperText error={true} data-testid={errorTestId}>
+        {errorMsg}
+      </FormHelperText>
+    </div>
+  )
+}
+
 function ProjectList({
   token,
   projects,
@@ -245,15 +272,19 @@ function ProjectEntry({
     area: `remove-project-${project.name}`,
   })
   const [hideSelf, setHideSelf] = useState(false)
+  const [errorMsg, setErrorMsg] = useState("")
   const classes = useStyles()
   function handleClick() {
     trackPromise(
       deleteProject(token, project.name),
       `remove-project-${project.name}`
-    ).then(() => {
-      setHideSelf(true)
-      onRemove?.()
-    })
+    )
+      .then(() => {
+        setErrorMsg("")
+        setHideSelf(true)
+        onRemove?.()
+      })
+      .catch((e) => setErrorMsg(e.message))
   }
   return (
     <StyledTableRow
@@ -265,10 +296,15 @@ function ProjectEntry({
         {promiseInProgress ? (
           <CircularProgress />
         ) : (
-          <ProjectRemoveButton
-            dataTestId={`project-remove-${project.name}`}
-            onClick={handleClick}
-          />
+          <ButtonArray
+            errorMsg={errorMsg}
+            errorTestId={`project-entry-buttons-error-${project.name}`}
+          >
+            <ProjectRemoveButton
+              dataTestId={`project-remove-${project.name}`}
+              onClick={handleClick}
+            />
+          </ButtonArray>
         )}
       </StyledTableCell>
     </StyledTableRow>
