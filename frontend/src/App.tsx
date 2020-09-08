@@ -2,6 +2,7 @@ import React, { ReactNode, useState } from "react"
 import { createMuiTheme, ThemeProvider, Theme } from "@material-ui/core/styles"
 import Nav from "./components/nav"
 import Login from "./components/login"
+import Project from "./components/project"
 import { tokenFetcher, tokenValidator } from "./lib/auth"
 import CssBaseline from "@material-ui/core/CssBaseline"
 import {
@@ -50,15 +51,18 @@ export default function App({
       <Nav handleThemeChange={handleThemeChange} />
       <Router>
         <Switch>
-          <Route path="/login">
+          <Route exact path="/login">
             {auth === AuthStatus.Ok ? (
               <Redirect to="/" />
             ) : (
               <Login updateToken={updateToken} tokenFetcher={tokenFetcher} />
             )}
           </Route>
-          <AuthRoute path="/" auth={auth}>
+          <AuthRoute exact path="/" auth={auth}>
             <Home token={token} />
+          </AuthRoute>
+          <AuthRoute path="/project/:name" auth={auth}>
+            <Project />
           </AuthRoute>
         </Switch>
       </Router>
@@ -70,13 +74,15 @@ function AuthRoute({
   path,
   auth,
   children,
+  exact,
 }: {
   path: string
   auth: AuthStatus
   children: ReactNode
+  exact?: boolean
 }) {
   return (
-    <Route path={path}>
+    <Route exact={exact} path={path}>
       {auth === AuthStatus.Err ? (
         <Redirect to="/login" />
       ) : auth === AuthStatus.InProgress ? (
