@@ -110,7 +110,6 @@ test("errors reset", async () => {
   let passwordField = getByTestId("password-field")
   let submitButton = getByTestId("login-submit")
   let submitButtonMsg = getByTestId("login-button-msg")
-  spyOn(console, "error") // There is expected to be an error
 
   // Prior to any clicking
   expect(submitButtonMsg.innerHTML).toBe("")
