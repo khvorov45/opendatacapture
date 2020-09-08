@@ -3,6 +3,24 @@ import { TextField, Button, FormHelperText } from "@material-ui/core"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 import { EmailPassword, LoginFailure } from "../lib/auth"
 
+const useStyles = makeStyles((theme: Theme) =>
+  createStyles({
+    loginPage: {
+      display: "flex",
+      justifyContent: "center",
+    },
+    loginForm: {
+      display: "flex",
+      flexDirection: "column",
+      maxWidth: "50em",
+      marginTop: "25px",
+    },
+    submitButton: {
+      marginTop: "2em",
+    },
+  })
+)
+
 export default function Login({
   updateToken,
   tokenFetcher,
@@ -10,14 +28,6 @@ export default function Login({
   updateToken: (tok: string) => void
   tokenFetcher: (cred: EmailPassword) => Promise<string>
 }) {
-  const useStyles = makeStyles((theme: Theme) =>
-    createStyles({
-      loginPage: {
-        display: "flex",
-        justifyContent: "center",
-      },
-    })
-  )
   const classes = useStyles()
   return (
     <div className={classes.loginPage}>
@@ -33,18 +43,6 @@ function LoginForm({
   updateToken: (tok: string) => void
   tokenFetcher: (cred: EmailPassword) => Promise<string>
 }) {
-  const useStyles = makeStyles((theme: Theme) =>
-    createStyles({
-      loginForm: {
-        display: "flex",
-        "flex-direction": "column",
-        "max-width": "50em",
-      },
-      submitButton: {
-        "margin-top": "2em",
-      },
-    })
-  )
   const classes = useStyles()
   let [email, setEmail] = useState("")
   let [emailError, setEmailError] = useState(false)

@@ -36,11 +36,7 @@ const useStyles = makeStyles((theme: Theme) =>
       justifyContent: "center",
       flexDirection: "column",
       marginTop: "20px",
-      border: `1px solid ${
-        theme.palette.type === "dark"
-          ? theme.palette.grey[800]
-          : theme.palette.grey[300]
-      }`,
+      border: `1px solid ${theme.palette.divider}`,
     },
     projectControl: {
       display: "flex",
