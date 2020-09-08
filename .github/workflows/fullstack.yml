@@ -1,29 +1,7 @@
 on:
-  push:
-    branches-ignore:
-      - deploy
-    paths-ignore:
-      - ".vscode/**"
-      - "docs/**"
-      - ".gitignore"
-      - "LICENSE"
-      - "README.md"
-      - "frontend/.gitignore"
-      - "frontend/README.md"
-      - "frontend/.vscode/**"
-      - "backend/.gitignore"
-      - "backend/README.md"
-      - "backend/.vscode/**"
-      - "backend/backup-json/**"
-      - ".github/workflows/backend.yml"
-      - ".github/workflows/frontend.yml"
-      - ".github/workflows/coverage.yml"
-      - ".github/workflows/deploy.yml"
-      - "docker-compose.yml"
-      - "**/Dockerfile"
   pull_request:
-    branches-ignore:
-      - deploy
+    branches:
+      - master
     paths-ignore:
       - ".vscode/**"
       - "docs/**"
