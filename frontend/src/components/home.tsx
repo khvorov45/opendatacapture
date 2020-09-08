@@ -43,10 +43,6 @@ const useStyles = makeStyles((theme: Theme) =>
       alignItems: "flex-start",
       flexDirection: "column",
     },
-    projectControlButtons: {
-      display: "flex",
-      alignItems: "flex-start",
-    },
     projectList: {
       display: "flex",
       justifyContent: "center",
@@ -121,6 +117,7 @@ export function ProjectWidget({ token }: { token: string }) {
         token={token}
         refreshProjectList={refreshProjectList}
         noProjects={projects ? projects.length === 0 : false}
+        errorMsg={errorMsg}
       />
       {projects ? (
         <ProjectList
@@ -135,9 +132,6 @@ export function ProjectWidget({ token }: { token: string }) {
           <CircularProgress />
         </div>
       )}
-      <FormHelperText error={true} data-testid="get-projects-error">
-        {errorMsg}
-      </FormHelperText>
     </div>
   )
 }
@@ -146,10 +140,12 @@ function ProjectControl({
   token,
   refreshProjectList,
   noProjects,
+  errorMsg,
 }: {
   token: string
   refreshProjectList: () => void
   noProjects: boolean
+  errorMsg?: string
 }) {
   const classes = useStyles()
   const [formOpen, setFormOpen] = useState(noProjects)
@@ -165,6 +161,7 @@ function ProjectControl({
       <ProjectControlButtons
         onCreate={() => setFormOpen(!formOpen)}
         onRefresh={() => refreshProjectList()}
+        errorMsg={errorMsg}
       />
       <ProjectCreateForm
         token={token}
@@ -178,24 +175,22 @@ function ProjectControl({
 function ProjectControlButtons({
   onCreate,
   onRefresh,
+  errorMsg,
 }: {
   onCreate: () => void
   onRefresh: () => void
+  errorMsg?: string
 }) {
-  const classes = useStyles()
   const { promiseInProgress } = usePromiseTracker({ area: "get-projects" })
   return (
-    <div
-      className={classes.projectControlButtons}
-      data-testid="project-control-buttons"
-    >
+    <ButtonArray errorMsg={errorMsg} errorTestId="project-control-error">
       <ProjectCreateButton onClick={onCreate} />
       {promiseInProgress ? (
         <CircularProgress />
       ) : (
         <ProjectRefreshButton onClick={onRefresh} />
       )}
-    </div>
+    </ButtonArray>
   )
 }
 

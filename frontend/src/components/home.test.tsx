@@ -106,12 +106,12 @@ test("project widget - fail to get projects", async () => {
     .mockResolvedValueOnce([])
   const { getByTestId } = render(<ProjectWidget token="123" />)
   await waitForDomChange()
-  expect(getByTestId("get-projects-error")).toHaveTextContent(
+  expect(getByTestId("project-control-error")).toHaveTextContent(
     "failed to get projects"
   )
   fireEvent.click(getByTestId("project-refresh-button"))
   await waitForDomChange()
-  expect(getByTestId("get-projects-error")).toHaveTextContent("")
+  expect(getByTestId("project-control-error")).toHaveTextContent("")
 })
 
 test("project widget - project already exists", async () => {
