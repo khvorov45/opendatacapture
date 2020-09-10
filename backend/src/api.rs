@@ -137,7 +137,7 @@ async fn extract_project(
     match db
         .lock()
         .await
-        .get_user_project_by_name(user.id(), project_name.as_str())
+        .get_user_project(user.id(), project_name.as_str())
         .await
     {
         Ok(p) => Ok(p),
@@ -279,6 +279,27 @@ pub fn get_user_projects(
         .and(with_db(db))
         .and_then(move |user: db::admin::User, db: DBRef| async move {
             match db.lock().await.get_user_projects(user.id()).await {
+                Ok(projects) => Ok(warp::reply::json(&projects)),
+                Err(e) => Err(warp::reject::custom(e)),
+            }
+        })
+}
+
+/// Get a specific project
+pub fn get_user_project(
+    db: DBRef,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("get" / "project" / String)
+        .and(warp::get())
+        .and(sufficient_access(db.clone(), auth::Access::User))
+        .and(with_db(db))
+        .and_then(move |name: String, user: User, db: DBRef| async move {
+            match db
+                .lock()
+                .await
+                .get_user_project(user.id(), name.as_str())
+                .await
+            {
                 Ok(projects) => Ok(warp::reply::json(&projects)),
                 Err(e) => Err(warp::reject::custom(e)),
             }
@@ -583,8 +604,6 @@ mod tests {
             assert_eq!(users_obtained.len(), 2);
         }
 
-        // Create projects
-
         // Test projects
         let test_project1 = db::admin::Project::new(1, "test");
 
@@ -596,6 +615,7 @@ mod tests {
         )
         .await;
 
+        // Create projects
         {
             let create_project_filter = create_project(admindb_ref.clone());
             let create_project_response = warp::test::request()
@@ -605,6 +625,10 @@ mod tests {
                 .reply(&create_project_filter)
                 .await;
             assert_eq!(create_project_response.status(), StatusCode::OK);
+        }
+
+        // Get projects
+        {
             let get_projects_filter = get_user_projects(admindb_ref.clone());
             let get_projects_response = warp::test::request()
                 .method("GET")
@@ -619,6 +643,31 @@ mod tests {
                 )
                 .unwrap();
             assert_eq!(projects_obtained.len(), 1);
+            assert_eq!(
+                projects_obtained[0].get_dbname(TEST_DB_NAME),
+                test_project1.get_dbname(TEST_DB_NAME)
+            )
+        }
+
+        // Get project
+        {
+            let filter = get_user_project(admindb_ref.clone());
+            let response = warp::test::request()
+                .method("GET")
+                .path(
+                    format!("/get/project/{}", test_project1.get_name())
+                        .as_str(),
+                )
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .reply(&filter)
+                .await;
+            assert_eq!(response.status(), StatusCode::OK);
+            let project_obtained =
+                serde_json::from_slice::<Project>(&*response.body()).unwrap();
+            assert_eq!(
+                project_obtained.get_dbname(TEST_DB_NAME),
+                test_project1.get_dbname(TEST_DB_NAME)
+            )
         }
 
         // Create table

@@ -428,7 +428,7 @@ impl AdminDB {
         Ok(projects)
     }
     /// Returns one project
-    pub async fn get_user_project_by_name(
+    pub async fn get_user_project(
         &self,
         user_id: i32,
         project_name: &str,
@@ -609,6 +609,15 @@ impl Project {
     }
     pub fn get_dbname(&self, admin_db_name: &str) -> String {
         format!("{}_user{}_{}", admin_db_name, self.user, self.name)
+    }
+    pub fn get_name(&self) -> &str {
+        self.name.as_str()
+    }
+    pub fn get_user(&self) -> i32 {
+        self.user
+    }
+    pub fn get_created(&self) -> chrono::DateTime<chrono::Utc> {
+        self.created
     }
 }
 
@@ -855,12 +864,12 @@ mod tests {
 
         // Get a project by name
         let user2_test_project =
-            test_db.get_user_project_by_name(2, "test").await.unwrap();
+            test_db.get_user_project(2, "test").await.unwrap();
         assert_eq!(user2_test_project.user, 2);
         assert_eq!(user2_test_project.name, "test");
 
         let nonexistent_project = test_db
-            .get_user_project_by_name(2, "nonexistent")
+            .get_user_project(2, "nonexistent")
             .await
             .unwrap_err();
         assert!(matches!(
