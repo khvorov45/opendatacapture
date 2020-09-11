@@ -15,6 +15,7 @@ import {
   TableBody,
   CircularProgress,
   Typography,
+  Link,
 } from "@material-ui/core"
 import { usePromiseTracker, trackPromise } from "react-promise-tracker"
 import {
@@ -24,6 +25,7 @@ import {
   createProject,
 } from "../lib/project"
 import { StyledTableRow, StyledTableCell } from "./table"
+import { Link as RouterLink } from "react-router-dom"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -83,6 +85,9 @@ const useStyles = makeStyles((theme: Theme) =>
       "& div.buttons": {
         display: "flex",
       },
+    },
+    link: {
+      color: "var(--palette-link)",
     },
   })
 )
@@ -268,7 +273,6 @@ function ProjectEntry({
   })
   const [hideSelf, setHideSelf] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
-  const classes = useStyles()
   function handleClick() {
     trackPromise(
       deleteProject(token, project.name),
@@ -281,12 +285,21 @@ function ProjectEntry({
       })
       .catch((e) => setErrorMsg(e.message))
   }
+  const classes = useStyles()
   return (
     <StyledTableRow
       data-testid={`project-entry-${project.name}`}
       className={`${classes.projectEntry}${hideSelf ? " hidden" : ""}`}
     >
-      <StyledTableCell align="center">{project.name}</StyledTableCell>
+      <StyledTableCell align="center">
+        <Link
+          className={classes.link}
+          component={RouterLink}
+          to={`/project/${project.name}`}
+        >
+          {project.name}
+        </Link>
+      </StyledTableCell>
       <StyledTableCell>
         {promiseInProgress ? (
           <CircularProgress />

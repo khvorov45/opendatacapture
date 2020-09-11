@@ -4,12 +4,25 @@ import axios from "axios"
 import httpStatusCodes from "http-status-codes"
 import Home, { ProjectWidget } from "./home"
 import { render, waitForDomChange, fireEvent } from "@testing-library/react"
+import { MemoryRouter as Router, Route } from "react-router"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
 function renderHome(token: string | null) {
-  return render(<Home token={token} />)
+  return render(
+    <Router>
+      <Home token={token} />
+    </Router>
+  )
+}
+
+function renderProjectWidget() {
+  return render(
+    <Router>
+      <ProjectWidget token="123" />
+    </Router>
+  )
 }
 
 test("homepage with no token", () => {
@@ -35,9 +48,9 @@ test("homepage with token and some projects", async () => {
   // Get projects
   mockedAxios.get.mockResolvedValueOnce({
     status: httpStatusCodes.OK,
-    data: [{ user: 1, name: 2, created: new Date() }],
+    data: [{ user: 1, name: "some-project", created: new Date() }],
   })
-  const { getByTestId } = renderHome("123")
+  const { getByTestId, getByText } = renderHome("123")
   await waitForDomChange()
   expect(getByTestId("homepage")).toBeInTheDocument()
   expect(getByTestId("project-widget")).toBeInTheDocument()
@@ -51,7 +64,7 @@ test("project widget - click on project create", async () => {
     status: httpStatusCodes.OK,
     data: [{ user: 1, name: 2, created: new Date() }],
   })
-  const { getByTestId } = render(<ProjectWidget token="123" />)
+  const { getByTestId } = renderProjectWidget()
   await waitForDomChange()
   expect(getByTestId("project-control")).toBeInTheDocument()
   expect(getByTestId("project-list")).toBeInTheDocument()
@@ -72,7 +85,7 @@ test("project widget - create project", async () => {
       status: httpStatusCodes.OK,
       data: [{ user: 1, name: "newproject", created: new Date() }],
     })
-  const { getByTestId, getByText } = render(<ProjectWidget token="123" />)
+  const { getByTestId, getByText } = renderProjectWidget()
   await waitForDomChange()
   expect(getByTestId("project-create-form")).not.toHaveClass("hidden")
   // Fill in the form
@@ -97,7 +110,7 @@ test("project widget - remove projects", async () => {
       status: httpStatusCodes.OK,
       data: [],
     })
-  const { getByTestId, queryByTestId } = render(<ProjectWidget token="123" />)
+  const { getByTestId, queryByTestId } = renderProjectWidget()
   await waitForDomChange()
   expect(getByTestId("project-entry-2")).toBeInTheDocument()
   // Create form should be hidden
@@ -107,6 +120,25 @@ test("project widget - remove projects", async () => {
   expect(queryByTestId("project-entry-2")).not.toBeInTheDocument()
   // Create form should appear
   expect(getByTestId("project-create-form")).not.toHaveClass("hidden")
+})
+
+test("project widget - routing", async () => {
+  mockedAxios.get.mockResolvedValueOnce({
+    data: [{ user: 1, name: "some-project", created: new Date() }],
+  })
+  const { getByText } = render(
+    <Router>
+      <Route exact to="/">
+        <ProjectWidget token="123" />
+      </Route>
+      <Route exact to="/project/some-project">
+        <div>Page for some-project</div>
+      </Route>
+    </Router>
+  )
+  await waitForDomChange()
+  fireEvent.click(getByText("some-project"))
+  expect(getByText("Page for some-project")).toBeInTheDocument()
 })
 
 test("project widget - fail to get projects", async () => {
@@ -135,7 +167,7 @@ test("project widget - project already exists", async () => {
     .mockRejectedValueOnce(Error("ProjectAlreadyExists"))
     .mockRejectedValueOnce(Error("some other error"))
     .mockResolvedValueOnce({ status: httpStatusCodes.NO_CONTENT })
-  const { getByTestId } = render(<ProjectWidget token="123" />)
+  const { getByTestId } = renderProjectWidget()
   await waitForDomChange()
   fireEvent.change(getByTestId("project-name-field") as HTMLInputElement, {
     target: { value: "newproject" },
@@ -161,7 +193,7 @@ test("project widget - fail to delete project", async () => {
     status: httpStatusCodes.OK,
     data: [{ user: 1, name: "prj", created: new Date() }],
   })
-  const { getByTestId } = render(<ProjectWidget token="123" />)
+  const { getByTestId } = renderProjectWidget()
   await waitForDomChange()
   expect(getByTestId("project-entry-buttons-error-prj")).toHaveTextContent("")
   fireEvent.click(getByTestId("project-remove-prj"))
