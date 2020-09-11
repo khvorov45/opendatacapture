@@ -45,10 +45,14 @@ export default function App({
     localStorage.setItem("token", tok)
   }
   const { auth } = useToken(token, tokenValidator)
+  const [currentProject, setCurrentProject] = useState<string | undefined>()
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Nav handleThemeChange={handleThemeChange} />
+      <Nav
+        handleThemeChange={handleThemeChange}
+        currentProject={currentProject}
+      />
       <Router>
         <Switch>
           <Route exact path="/login">
@@ -62,7 +66,9 @@ export default function App({
             <Home token={token} />
           </AuthRoute>
           <AuthRoute path="/project/:name" auth={auth}>
-            <Project />
+            <Project
+              onVisit={(projectName: string) => setCurrentProject(projectName)}
+            />
           </AuthRoute>
         </Switch>
       </Router>
