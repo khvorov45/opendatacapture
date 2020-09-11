@@ -95,6 +95,6 @@ test("route to project page", async () => {
   // Check redirection
   expect(getByTestId("project-page-somename")).toBeInTheDocument()
   // Check that project info on nav updated
-  expect(getByText("Project:")).toBeInTheDocument()
+  expect(getByText("Project")).toBeInTheDocument()
   expect(getByText("somename")).toBeInTheDocument()
 })
