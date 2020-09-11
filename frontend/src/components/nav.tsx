@@ -5,6 +5,13 @@ import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
+    nav: {
+      zIndex: theme.zIndex.drawer + 1,
+      overflow: "auto",
+      "& .toolbar": {
+        display: "flex",
+      },
+    },
     themeswitch: {
       marginLeft: "auto",
     },
@@ -15,10 +22,10 @@ const useStyles = makeStyles((theme: Theme) =>
         margin: "auto",
       },
       "& .label": {
-        "font-size": "small",
+        "font-size": "0.9em",
       },
       "& .name": {
-        "font-size": "1em",
+        "font-size": "1.1em",
       },
     },
   })
@@ -31,9 +38,10 @@ export default function Nav({
   handleThemeChange: () => void
   currentProject?: string
 }) {
+  const classes = useStyles()
   return (
-    <AppBar position="sticky">
-      <Toolbar>
+    <AppBar position="fixed" className={classes.nav}>
+      <Toolbar className="toolbar">
         <ProjectInfo name={currentProject} />
         <ThemeSwitch handleThemeChange={handleThemeChange} />
       </Toolbar>
@@ -48,7 +56,7 @@ function ProjectInfo({ name }: { name?: string }) {
   }
   return (
     <div className={classes.projectInfo}>
-      <div className="label">Project:</div>
+      <div className="label">Project</div>
       <div className="name">{name}</div>
     </div>
   )
