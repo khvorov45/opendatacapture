@@ -40,7 +40,7 @@ export default function Nav({
 }) {
   const classes = useStyles()
   return (
-    <AppBar position="fixed" className={classes.nav}>
+    <AppBar position="relative" className={classes.nav}>
       <Toolbar className="toolbar">
         <ProjectInfo name={currentProject} />
         <ThemeSwitch handleThemeChange={handleThemeChange} />
