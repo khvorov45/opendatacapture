@@ -399,6 +399,24 @@ pub fn get_table_meta(
         })
 }
 
+/// Get all table metadata for a project
+pub fn get_all_meta(
+    db: DBRef,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("project" / String / "get" / "meta")
+        .and(warp::get())
+        .and(sufficient_access(db.clone(), auth::Access::User))
+        .and(with_db(db.clone()))
+        .and_then(extract_project)
+        .and(with_db(db))
+        .and_then(move |project: Project, db: DBRef| async move {
+            match db.lock().await.get_all_meta(&project).await {
+                Ok(tm) => Ok(warp::reply::json(&tm)),
+                Err(e) => Err(warp::reject::custom(e)),
+            }
+        })
+}
+
 /// Insert data into a user's table
 pub fn insert_data(
     db: DBRef,
@@ -721,6 +739,25 @@ mod tests {
                 )
                 .unwrap(),
                 table
+            );
+        }
+
+        // Get all metadata
+        {
+            let filter = get_all_meta(admindb_ref.clone());
+            let response = warp::test::request()
+                .method("GET")
+                .path("/project/test/get/meta")
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .reply(&filter)
+                .await;
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(
+                serde_json::from_slice::<db::user::table::TableSpec>(
+                    &*response.body()
+                )
+                .unwrap(),
+                vec![table.clone()]
             );
         }
 
