@@ -174,7 +174,12 @@ mod tests {
                 .primary_key(true)
                 .foreign_key(ForeignKey::new("primary", "id")),
         );
-        cols.push(ColMeta::new().name("timepoint").postgres_type("INTEGER"));
+        cols.push(
+            ColMeta::new()
+                .name("timepoint")
+                .postgres_type("INTEGER")
+                .primary_key(true),
+        );
         TableMeta::new("secondary", cols)
     }
 

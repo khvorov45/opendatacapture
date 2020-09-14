@@ -5,7 +5,20 @@
 /* istanbul ignore file */
 
 import { Access, LoginFailure, tokenFetcher, tokenValidator } from "../lib/auth"
-import { createProject, getUserProjects, deleteProject } from "../lib/project"
+import {
+  createProject,
+  getUserProjects,
+  deleteProject,
+  TableMeta,
+  createTable,
+  getAllTableNames,
+  getAllMeta,
+  getTableMeta,
+  removeTable,
+  insertData,
+  getTableData,
+  removeAllTableData,
+} from "../lib/project"
 
 test("wrong token", async () => {
   expect.assertions(1)
@@ -81,5 +94,83 @@ test("create the same project twice", async () => {
   } catch (e) {
     expect(e.message).toBe('ProjectAlreadyExists(1, "test")')
   }
+  await deleteProject(token, "test")
+})
+
+const primaryTable: TableMeta = {
+  name: "primary",
+  cols: [
+    {
+      name: "id",
+      postgres_type: "integer",
+      not_null: true,
+      unique: false, // UNIQUE constraint isn't added when PRIMARY KEY
+      primary_key: true,
+      foreign_key: null,
+    },
+    {
+      name: "email",
+      postgres_type: "text",
+      not_null: true,
+      unique: true,
+      primary_key: false,
+      foreign_key: null,
+    },
+  ],
+}
+
+const primaryData = [
+  { id: 1, email: "email1@example.com" },
+  { id: 2, email: "email2@example.com" },
+]
+
+const secondaryTable: TableMeta = {
+  name: "secondary",
+  cols: [
+    {
+      name: "id",
+      postgres_type: "integer",
+      not_null: true,
+      unique: false,
+      primary_key: true,
+      foreign_key: {
+        table: "primary",
+        column: "id",
+      },
+    },
+    {
+      name: "timepoint",
+      postgres_type: "integer",
+      not_null: true,
+      unique: false,
+      primary_key: true,
+      foreign_key: null,
+    },
+  ],
+}
+
+test("table manipulation", async () => {
+  let token = await tokenFetcher({
+    email: "admin@example.com",
+    password: "admin",
+  })
+  await createProject(token, "test")
+  await createTable(token, "test", primaryTable)
+  await createTable(token, "test", secondaryTable)
+  let tableNames = await getAllTableNames(token, "test")
+  expect(tableNames).toEqual([primaryTable.name, secondaryTable.name])
+  let allMeta = await getAllMeta(token, "test")
+  expect(allMeta).toEqual([primaryTable, secondaryTable])
+  let primaryMeta = await getTableMeta(token, "test", "primary")
+  expect(primaryMeta).toEqual(primaryTable)
+  await removeTable(token, "test", "secondary")
+  expect(await getAllTableNames(token, "test")).toEqual([primaryTable.name])
+  expect(await getTableData(token, "test", primaryTable.name)).toEqual([])
+  await insertData(token, "test", primaryTable.name, primaryData)
+  expect(await getTableData(token, "test", primaryTable.name)).toEqual(
+    primaryData
+  )
+  await removeAllTableData(token, "test", primaryTable.name)
+  expect(await getTableData(token, "test", primaryTable.name)).toEqual([])
   await deleteProject(token, "test")
 })

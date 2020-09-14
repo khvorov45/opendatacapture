@@ -91,9 +91,8 @@ impl ColMeta {
         if self.unique {
             entry = format!("{} UNIQUE", entry);
         }
-        if self.primary_key {
-            entry = format!("{} PRIMARY KEY", entry);
-        }
+        // Ignore primary key because inlining multiple primary keys does not
+        // work
         if let Some(foreign_key) = &self.foreign_key {
             entry = format!("{} {}", entry, foreign_key.create_query_entry());
         }
@@ -149,8 +148,22 @@ impl TableMeta {
             .map(|c| c.construct_create_query_entry())
             .collect::<Vec<String>>()
             .join(",");
-        let init_query = format!("CREATE TABLE \"{}\"", self.name);
-        format!("{} ({})", init_query, all_columns)
+        // Inlining multiple primary keys doesn't work, so here we are
+        let primary_keys = self
+            .cols
+            .iter()
+            .filter(|c| c.primary_key)
+            .map(|c| format!("\"{}\"", c.name))
+            .collect::<Vec<String>>()
+            .join(",");
+        let mut primary_key_entry = "".to_string();
+        if !primary_keys.is_empty() {
+            primary_key_entry = format!(",PRIMARY KEY({})", primary_keys);
+        }
+        format!(
+            "CREATE TABLE \"{}\"({}{})",
+            self.name, all_columns, primary_key_entry
+        )
     }
     /// Select query
     pub fn construct_select_query(
@@ -299,55 +312,103 @@ mod tests {
     #[test]
     fn create_col() {
         let _ = pretty_env_logger::try_init();
-        let col = ColMeta::new().name("name").postgres_type("TEXT");
-        assert_eq!(col.construct_create_query_entry(), "\"name\" TEXT");
-        let col = ColMeta::new()
-            .name("name")
-            .postgres_type("TEXT")
-            .primary_key(true);
-        assert_eq!(
-            col.construct_create_query_entry(),
-            "\"name\" TEXT PRIMARY KEY"
-        )
+        {
+            let col = ColMeta::new().name("name").postgres_type("TEXT");
+            assert_eq!(col.construct_create_query_entry(), "\"name\" TEXT");
+        }
+        {
+            let col = ColMeta::new()
+                .name("name")
+                .postgres_type("TEXT")
+                .primary_key(true)
+                .unique(true);
+            assert_eq!(
+                col.construct_create_query_entry(),
+                "\"name\" TEXT UNIQUE"
+            )
+        }
+        {
+            let col = ColMeta::new()
+                .name("name")
+                .postgres_type("TEXT")
+                .foreign_key(ForeignKey::new("table", "column"));
+            assert_eq!(
+                col.construct_create_query_entry(),
+                "\"name\" TEXT REFERENCES \"table\"(\"column\")"
+            )
+        }
     }
     #[test]
     fn create_table() {
         let _ = pretty_env_logger::try_init();
         let mut cols = ColSpec::new();
+
+        log::info!("empty columns");
+        {
+            let table = TableMeta::new("table", cols.clone());
+            assert_eq!(
+                table.construct_create_query(),
+                "CREATE TABLE \"table\"()"
+            );
+        }
+
         cols.push(ColMeta::new().name("name").postgres_type("TEXT"));
-        let table = TableMeta::new("table", cols.clone());
-        assert_eq!(
-            table.construct_create_query(),
-            "CREATE TABLE \"table\" (\"name\" TEXT)"
-        );
+
+        log::info!("no primary key");
+        {
+            let table = TableMeta::new("table", cols.clone());
+            assert_eq!(
+                table.construct_create_query(),
+                "CREATE TABLE \"table\"(\
+                    \"name\" TEXT\
+                )"
+            );
+        }
+
         cols.push(
             ColMeta::new()
                 .name("id")
                 .postgres_type("INTEGER")
                 .primary_key(true),
         );
-        let table = TableMeta::new("table", cols.clone());
-        assert_eq!(
-            table.construct_create_query(),
-            "CREATE TABLE \"table\" (\"name\" TEXT,\
-            \"id\" INTEGER PRIMARY KEY)"
-        );
+
+        log::info!("two columns");
+        {
+            let table = TableMeta::new("table", cols.clone());
+            assert_eq!(
+                table.construct_create_query(),
+                "CREATE TABLE \"table\"(\
+                    \"name\" TEXT,\
+                    \"id\" INTEGER,\
+                    PRIMARY KEY(\"id\")\
+                )"
+            );
+        }
+
         cols.push(
             ColMeta::new()
                 .name("foreign_id")
                 .postgres_type("INTEGER")
                 .foreign_key(ForeignKey::new("foreign_table", "foreign_column"))
                 .not_null(true)
-                .unique(true),
+                .unique(true)
+                .primary_key(true),
         );
-        let table = TableMeta::new("table", cols);
-        assert_eq!(
-            table.construct_create_query(),
-            "CREATE TABLE \"table\" (\"name\" TEXT,\
-            \"id\" INTEGER PRIMARY KEY,\
-            \"foreign_id\" INTEGER NOT NULL UNIQUE REFERENCES \
-            \"foreign_table\"(\"foreign_column\"))"
-        );
+
+        log::info!("foreign key");
+        {
+            let table = TableMeta::new("table", cols);
+            assert_eq!(
+                table.construct_create_query(),
+                "CREATE TABLE \"table\"(\
+                    \"name\" TEXT,\
+                    \"id\" INTEGER,\
+                    \"foreign_id\" INTEGER NOT NULL UNIQUE REFERENCES \
+                    \"foreign_table\"(\"foreign_column\"),\
+                    PRIMARY KEY(\"id\",\"foreign_id\")\
+                )"
+            );
+        }
     }
     #[test]
     fn select_table() {

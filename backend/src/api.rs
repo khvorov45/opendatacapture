@@ -20,7 +20,14 @@ pub fn routes(
         .or(create_project(db.clone()))
         .or(get_user_projects(db.clone()))
         .or(delete_project(db.clone()))
-        .or(create_table(db))
+        .or(create_table(db.clone()))
+        .or(remove_table(db.clone()))
+        .or(get_table_names(db.clone()))
+        .or(get_all_meta(db.clone()))
+        .or(get_table_meta(db.clone()))
+        .or(get_table_data(db.clone()))
+        .or(insert_data(db.clone()))
+        .or(remove_all_user_table_data(db))
         .recover(handle_rejection)
         .boxed();
     if prefix.is_empty() {
