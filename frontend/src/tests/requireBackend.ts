@@ -67,34 +67,46 @@ test("correct credentials", async () => {
   expect(admin.id).toBe(1)
 })
 
-test("project manipulation", async () => {
-  let token = await tokenFetcher({
-    email: "admin@example.com",
-    password: "admin",
-  })
-  await createProject(token, "test")
-  let projects = await getUserProjects(token)
-  let projectIds = projects.map((p) => `${p.user}${p.name}`)
-  expect(projectIds).toContain("1test")
-  await deleteProject(token, "test")
-  projects = await getUserProjects(token)
-  projectIds = projects.map((p) => `${p.user}${p.name}`)
-  expect(projectIds).not.toContain("1test")
-})
+describe("need credentials", () => {
+  let token: string
 
-test("create the same project twice", async () => {
-  expect.assertions(1)
-  let token = await tokenFetcher({
-    email: "admin@example.com",
-    password: "admin",
+  beforeAll(async () => {
+    token = await tokenFetcher({
+      email: "admin@example.com",
+      password: "admin",
+    })
   })
-  await createProject(token, "test")
-  try {
+
+  test("project manipulation", async () => {
     await createProject(token, "test")
-  } catch (e) {
-    expect(e.message).toBe('ProjectAlreadyExists(1, "test")')
-  }
-  await deleteProject(token, "test")
+    let projects = await getUserProjects(token)
+    let projectIds = projects.map((p) => `${p.user}${p.name}`)
+    expect(projectIds).toContain("1test")
+    await deleteProject(token, "test")
+    projects = await getUserProjects(token)
+    projectIds = projects.map((p) => `${p.user}${p.name}`)
+    expect(projectIds).not.toContain("1test")
+  })
+
+  test("create the same project twice", async () => {
+    expect.assertions(1)
+    await createProject(token, "test")
+    try {
+      await createProject(token, "test")
+    } catch (e) {
+      expect(e.message).toBe('ProjectAlreadyExists(1, "test")')
+    }
+    await deleteProject(token, "test")
+  })
+
+  test("delete nonexistent project", async () => {
+    expect.assertions(1)
+    try {
+      await deleteProject(token, "nonexistent")
+    } catch (e) {
+      expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+    }
+  })
 })
 
 const primaryTable: TableMeta = {

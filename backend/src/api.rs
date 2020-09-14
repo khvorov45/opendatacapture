@@ -4,7 +4,7 @@ use db::user::table::RowJson;
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use warp::{Filter, Reply};
+use warp::{http::StatusCode, Filter, Reply};
 
 type DBRef = Arc<Mutex<AdminDB>>;
 
@@ -50,7 +50,6 @@ pub fn get_cors() -> warp::cors::Builder {
 async fn handle_rejection(
     err: warp::Rejection,
 ) -> Result<impl warp::Reply, Infallible> {
-    use warp::http::StatusCode;
     let status;
     let message;
     log::debug!("recover filter error: {:?}", err);
@@ -65,9 +64,16 @@ async fn handle_rejection(
                 status = StatusCode::CONFLICT;
                 message = format!("{:?}", e)
             }
+            Error::NoSuchProject(_, _) => {
+                status = StatusCode::NOT_FOUND;
+                message = format!("{:?}", e);
+            }
+            // The rest are my errors but there shouldn't be anything the
+            // client can do to fix them, so log them
             _ => {
                 status = StatusCode::INTERNAL_SERVER_ERROR;
                 message = format!("{:?}", e);
+                log::error!("{}", message);
             }
         }
     // Not my errors
@@ -269,7 +275,7 @@ pub fn delete_project(
                 let mut db = db.lock().await;
                 match db.remove_project(user.id(), project_name.as_str()).await
                 {
-                    Ok(()) => Ok(warp::reply()),
+                    Ok(()) => Ok(warp::reply::with_status(warp::reply(), StatusCode::NO_CONTENT)),
                     Err(e) => Err(warp::reject::custom(e)),
                 }
             },
@@ -850,7 +856,10 @@ mod tests {
                 .header("Authorization", format!("Bearer {}", admin_token))
                 .reply(&delete_project_filter)
                 .await;
-            assert_eq!(delete_project_response.status(), StatusCode::OK);
+            assert_eq!(
+                delete_project_response.status(),
+                StatusCode::NO_CONTENT
+            );
             let get_projects_filter = get_user_projects(admindb_ref.clone());
             let get_projects_response = warp::test::request()
                 .method("GET")
@@ -1017,7 +1026,7 @@ mod tests {
                 .header("Authorization", format!("Bearer {}", admin_token))
                 .reply(&routes)
                 .await;
-            assert_eq!(resp.status(), StatusCode::OK);
+            assert_eq!(resp.status(), StatusCode::NO_CONTENT);
         }
 
         // Delete a non-existent project
@@ -1028,7 +1037,7 @@ mod tests {
                 .header("Authorization", format!("Bearer {}", admin_token))
                 .reply(&routes)
                 .await;
-            assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+            assert_eq!(resp.status(), StatusCode::NOT_FOUND);
             assert_eq!(
                 serde_json::from_slice::<String>(&*resp.body()).unwrap(),
                 "NoSuchProject(1, \"test_nonexistent\")"

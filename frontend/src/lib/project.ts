@@ -52,10 +52,14 @@ export async function createProject(tok: string, name: string): Promise<void> {
 }
 
 export async function deleteProject(tok: string, name: string): Promise<void> {
-  await axios.delete(`${API_ROOT}/delete/project/${name}`, {
-    validateStatus: (s) => s === httpStatusCodes.OK,
+  let res = await axios.delete(`${API_ROOT}/delete/project/${name}`, {
+    validateStatus: (s) =>
+      [httpStatusCodes.NO_CONTENT, httpStatusCodes.NOT_FOUND].includes(s),
     headers: { Authorization: `Bearer ${tok}` },
   })
+  if (res.status === httpStatusCodes.NOT_FOUND) {
+    throw Error(res.data)
+  }
 }
 
 export async function getUserProjects(tok: string): Promise<Project[]> {
