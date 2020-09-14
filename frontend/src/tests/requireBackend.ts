@@ -162,6 +162,7 @@ describe("need credentials", () => {
 
   describe("need a project", () => {
     beforeAll(async () => await createProject(token, "test"))
+    afterAll(async () => await deleteProject(token, "test"))
 
     test("table manipulation", async () => {
       await createTable(token, "test", primaryTable)
@@ -181,7 +182,6 @@ describe("need credentials", () => {
       )
       await removeAllTableData(token, "test", primaryTable.name)
       expect(await getTableData(token, "test", primaryTable.name)).toEqual([])
-      await deleteProject(token, "test")
     })
   })
 })
