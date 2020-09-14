@@ -192,5 +192,14 @@ describe("need credentials", () => {
         expect(e.message).toBe('NoSuchTable("nonexistent")')
       }
     })
+
+    test("delete table in a nonexistent project", async () => {
+      expect.assertions(1)
+      try {
+        await removeTable(token, "nonexistent", "some-table")
+      } catch (e) {
+        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+      }
+    })
   })
 })
