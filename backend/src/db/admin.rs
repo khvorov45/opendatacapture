@@ -1,6 +1,6 @@
 use crate::db::{user, Database, PoolMeta, DB};
 use crate::{auth, error::Unauthorized, Error, Result};
-use user::table::{RowJson, TableMeta};
+use user::table::{RowJson, TableMeta, TableSpec};
 use user::UserDB;
 
 /// Administrative database
@@ -500,6 +500,17 @@ impl AdminDB {
             .await?
             .get_table_meta(table_name)
             .await
+    }
+    /// Get all tables metadata
+    pub async fn get_all_meta(
+        &mut self,
+        project: &Project,
+    ) -> Result<TableSpec> {
+        log::debug!(
+            "getting all metadata for project \"{}\"",
+            project.get_name()
+        );
+        self.get_user_db(project).await?.get_all_meta().await
     }
     /// Insert data into a user's table
     pub async fn insert_user_table_data(

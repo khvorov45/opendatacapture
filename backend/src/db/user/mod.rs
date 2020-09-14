@@ -5,7 +5,7 @@ use crate::{Error, Result};
 
 pub mod table;
 
-use table::{ColMeta, ColSpec, ForeignKey, RowJson, TableMeta};
+use table::{ColMeta, ColSpec, ForeignKey, RowJson, TableMeta, TableSpec};
 
 /// User project database
 #[derive(Debug)]
@@ -128,6 +128,16 @@ impl UserDB {
         Ok(TableMeta::new(table_name, cols))
     }
 
+    /// Get all tables metadata
+    pub async fn get_all_meta(&self) -> Result<TableSpec> {
+        let table_names = self.get_all_table_names().await?;
+        let mut table_spec = TableSpec::with_capacity(table_names.len());
+        for table_name in table_names {
+            table_spec.push(self.get_table_meta(table_name.as_str()).await?)
+        }
+        Ok(table_spec)
+    }
+
     /// Insert data into a table
     pub async fn insert_table_data(
         &self,
@@ -238,6 +248,14 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(secondary_meta, secondary_table);
+
+        log::info!("get all metadata");
+
+        let all_meta = db.get_all_meta().await.unwrap();
+        assert_eq!(
+            all_meta,
+            vec![primary_table.clone(), secondary_table.clone()]
+        );
 
         log::info!("get data");
 
