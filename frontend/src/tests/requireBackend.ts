@@ -160,25 +160,28 @@ describe("need credentials", () => {
     ],
   }
 
-  test("table manipulation", async () => {
-    await createProject(token, "test")
-    await createTable(token, "test", primaryTable)
-    await createTable(token, "test", secondaryTable)
-    let tableNames = await getAllTableNames(token, "test")
-    expect(tableNames).toEqual([primaryTable.name, secondaryTable.name])
-    let allMeta = await getAllMeta(token, "test")
-    expect(allMeta).toEqual([primaryTable, secondaryTable])
-    let primaryMeta = await getTableMeta(token, "test", "primary")
-    expect(primaryMeta).toEqual(primaryTable)
-    await removeTable(token, "test", "secondary")
-    expect(await getAllTableNames(token, "test")).toEqual([primaryTable.name])
-    expect(await getTableData(token, "test", primaryTable.name)).toEqual([])
-    await insertData(token, "test", primaryTable.name, primaryData)
-    expect(await getTableData(token, "test", primaryTable.name)).toEqual(
-      primaryData
-    )
-    await removeAllTableData(token, "test", primaryTable.name)
-    expect(await getTableData(token, "test", primaryTable.name)).toEqual([])
-    await deleteProject(token, "test")
+  describe("need a project", () => {
+    beforeAll(async () => await createProject(token, "test"))
+
+    test("table manipulation", async () => {
+      await createTable(token, "test", primaryTable)
+      await createTable(token, "test", secondaryTable)
+      let tableNames = await getAllTableNames(token, "test")
+      expect(tableNames).toEqual([primaryTable.name, secondaryTable.name])
+      let allMeta = await getAllMeta(token, "test")
+      expect(allMeta).toEqual([primaryTable, secondaryTable])
+      let primaryMeta = await getTableMeta(token, "test", "primary")
+      expect(primaryMeta).toEqual(primaryTable)
+      await removeTable(token, "test", "secondary")
+      expect(await getAllTableNames(token, "test")).toEqual([primaryTable.name])
+      expect(await getTableData(token, "test", primaryTable.name)).toEqual([])
+      await insertData(token, "test", primaryTable.name, primaryData)
+      expect(await getTableData(token, "test", primaryTable.name)).toEqual(
+        primaryData
+      )
+      await removeAllTableData(token, "test", primaryTable.name)
+      expect(await getTableData(token, "test", primaryTable.name)).toEqual([])
+      await deleteProject(token, "test")
+    })
   })
 })
