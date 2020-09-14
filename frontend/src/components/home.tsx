@@ -15,7 +15,7 @@ import {
   TableBody,
   CircularProgress,
   Typography,
-  Link,
+  Button,
 } from "@material-ui/core"
 import { usePromiseTracker, trackPromise } from "react-promise-tracker"
 import {
@@ -84,10 +84,11 @@ const useStyles = makeStyles((theme: Theme) =>
       flexDirection: "column",
       "& div.buttons": {
         display: "flex",
+        alignItems: "center",
       },
     },
-    link: {
-      color: "var(--palette-link)",
+    projectName: {
+      textTransform: "none",
     },
   })
 )
@@ -292,13 +293,15 @@ function ProjectEntry({
       className={`${classes.projectEntry}${hideSelf ? " hidden" : ""}`}
     >
       <StyledTableCell align="center">
-        <Link
-          className={classes.link}
+        <Button
+          className={classes.projectName}
+          variant="contained"
+          color="primary"
           component={RouterLink}
           to={`/project/${project.name}`}
         >
           {project.name}
-        </Link>
+        </Button>
       </StyledTableCell>
       <StyledTableCell>
         {promiseInProgress ? (
