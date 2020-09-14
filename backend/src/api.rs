@@ -64,7 +64,7 @@ async fn handle_rejection(
                 status = StatusCode::CONFLICT;
                 message = format!("{:?}", e)
             }
-            Error::NoSuchProject(_, _) => {
+            Error::NoSuchProject(_, _) | Error::NoSuchTable(_) => {
                 status = StatusCode::NOT_FOUND;
                 message = format!("{:?}", e);
             }
@@ -362,7 +362,9 @@ pub fn remove_table(
                     .remove_user_table(&project, table_name.as_str())
                     .await
                 {
-                    Ok(()) => Ok(warp::reply()),
+                    Ok(()) => Ok(warp::reply::with_status(
+                        warp::reply(), StatusCode::NO_CONTENT
+                    )),
                     Err(e) => Err(warp::reject::custom(e)),
                 }
             },
@@ -844,7 +846,7 @@ mod tests {
                 .header("Authorization", format!("Bearer {}", admin_token))
                 .reply(&filter)
                 .await;
-            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(response.status(), StatusCode::NO_CONTENT);
         }
 
         // Delete projects
@@ -1001,34 +1003,6 @@ mod tests {
             assert_eq!(body, "HTTP method not allowed");
         }
 
-        // Creating the same project twice
-        {
-            warp::test::request()
-                .method("PUT")
-                .path("/create/project/test")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&routes)
-                .await;
-            let resp = warp::test::request()
-                .method("PUT")
-                .path("/create/project/test")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::CONFLICT);
-            assert_eq!(
-                serde_json::from_slice::<String>(&*resp.body()).unwrap(),
-                "ProjectAlreadyExists(1, \"test\")"
-            );
-            let resp = warp::test::request()
-                .method("DELETE")
-                .path("/delete/project/test")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::NO_CONTENT);
-        }
-
         // Delete a non-existent project
         {
             let resp = warp::test::request()
@@ -1042,6 +1016,57 @@ mod tests {
                 serde_json::from_slice::<String>(&*resp.body()).unwrap(),
                 "NoSuchProject(1, \"test_nonexistent\")"
             );
+        }
+
+        // Create a project that will be used later ---------------------------
+        {
+            warp::test::request()
+                .method("PUT")
+                .path("/create/project/test")
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .reply(&routes)
+                .await;
+        }
+
+        // Creating the same project twice
+        {
+            let resp = warp::test::request()
+                .method("PUT")
+                .path("/create/project/test")
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .reply(&routes)
+                .await;
+            assert_eq!(resp.status(), StatusCode::CONFLICT);
+            assert_eq!(
+                serde_json::from_slice::<String>(&*resp.body()).unwrap(),
+                "ProjectAlreadyExists(1, \"test\")"
+            );
+        }
+
+        log::info!("delete a non-existent table");
+        {
+            let resp = warp::test::request()
+                .method("DELETE")
+                .path("/project/test/remove/table/nonexistent")
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .reply(&routes)
+                .await;
+            assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+            assert_eq!(
+                serde_json::from_slice::<String>(&*resp.body()).unwrap(),
+                "NoSuchTable(\"nonexistent\")"
+            );
+        }
+
+        // Delete the project created earlier ---------------------------------
+        {
+            let resp = warp::test::request()
+                .method("DELETE")
+                .path("/delete/project/test")
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .reply(&routes)
+                .await;
+            assert_eq!(resp.status(), StatusCode::NO_CONTENT);
         }
 
         // Token too old

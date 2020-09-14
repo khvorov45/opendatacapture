@@ -90,13 +90,17 @@ export async function removeTable(
   projectName: string,
   tableName: string
 ): Promise<void> {
-  await axios.delete(
+  let res = await axios.delete(
     `${API_ROOT}/project/${projectName}/remove/table/${tableName}`,
     {
-      validateStatus: (s) => s === httpStatusCodes.OK,
+      validateStatus: (s) =>
+        [httpStatusCodes.NO_CONTENT, httpStatusCodes.NOT_FOUND].includes(s),
       headers: { Authorization: `Bearer ${tok}` },
     }
   )
+  if (res.status === httpStatusCodes.NOT_FOUND) {
+    throw Error(res.data)
+  }
 }
 
 export async function getAllTableNames(

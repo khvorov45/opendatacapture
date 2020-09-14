@@ -183,5 +183,14 @@ describe("need credentials", () => {
       await removeAllTableData(token, "test", primaryTable.name)
       expect(await getTableData(token, "test", primaryTable.name)).toEqual([])
     })
+
+    test("delete nonexistent table", async () => {
+      expect.assertions(1)
+      try {
+        await removeTable(token, "test", "nonexistent")
+      } catch (e) {
+        expect(e.message).toBe('NoSuchTable("nonexistent")')
+      }
+    })
   })
 })
