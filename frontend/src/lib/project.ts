@@ -42,11 +42,15 @@ export async function createProject(tok: string, name: string): Promise<void> {
     {},
     {
       validateStatus: (s) =>
-        [httpStatusCodes.OK, httpStatusCodes.CONFLICT].includes(s),
+        [
+          httpStatusCodes.NO_CONTENT,
+          httpStatusCodes.CONFLICT,
+          httpStatusCodes.UNAUTHORIZED,
+        ].includes(s),
       headers: { Authorization: `Bearer ${tok}` },
     }
   )
-  if (res.status !== httpStatusCodes.OK) {
+  if (res.status !== httpStatusCodes.NO_CONTENT) {
     throw Error(res.data)
   }
 }
@@ -54,19 +58,27 @@ export async function createProject(tok: string, name: string): Promise<void> {
 export async function deleteProject(tok: string, name: string): Promise<void> {
   let res = await axios.delete(`${API_ROOT}/delete/project/${name}`, {
     validateStatus: (s) =>
-      [httpStatusCodes.NO_CONTENT, httpStatusCodes.NOT_FOUND].includes(s),
+      [
+        httpStatusCodes.NO_CONTENT,
+        httpStatusCodes.NOT_FOUND,
+        httpStatusCodes.UNAUTHORIZED,
+      ].includes(s),
     headers: { Authorization: `Bearer ${tok}` },
   })
-  if (res.status === httpStatusCodes.NOT_FOUND) {
+  if (res.status !== httpStatusCodes.NO_CONTENT) {
     throw Error(res.data)
   }
 }
 
 export async function getUserProjects(tok: string): Promise<Project[]> {
   let res = await axios.get(`${API_ROOT}/get/projects`, {
-    validateStatus: (s) => s === httpStatusCodes.OK,
+    validateStatus: (s) =>
+      [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),
     headers: { Authorization: `Bearer ${tok}` },
   })
+  if (res.status !== httpStatusCodes.OK) {
+    throw Error(res.data)
+  }
   return res.data
 }
 
@@ -75,14 +87,22 @@ export async function createTable(
   projectName: string,
   tableMeta: TableMeta
 ): Promise<void> {
-  await axios.put(
+  let res = await axios.put(
     `${API_ROOT}/project/${projectName}/create/table`,
     tableMeta,
     {
-      validateStatus: (s) => s === httpStatusCodes.OK,
+      validateStatus: (s) =>
+        [
+          httpStatusCodes.NO_CONTENT,
+          httpStatusCodes.NOT_FOUND,
+          httpStatusCodes.UNAUTHORIZED,
+        ].includes(s),
       headers: { Authorization: `Bearer ${tok}` },
     }
   )
+  if (res.status !== httpStatusCodes.NO_CONTENT) {
+    throw Error(res.data)
+  }
 }
 
 export async function removeTable(
@@ -94,11 +114,15 @@ export async function removeTable(
     `${API_ROOT}/project/${projectName}/remove/table/${tableName}`,
     {
       validateStatus: (s) =>
-        [httpStatusCodes.NO_CONTENT, httpStatusCodes.NOT_FOUND].includes(s),
+        [
+          httpStatusCodes.NO_CONTENT,
+          httpStatusCodes.NOT_FOUND,
+          httpStatusCodes.UNAUTHORIZED,
+        ].includes(s),
       headers: { Authorization: `Bearer ${tok}` },
     }
   )
-  if (res.status === httpStatusCodes.NOT_FOUND) {
+  if (res.status !== httpStatusCodes.NO_CONTENT) {
     throw Error(res.data)
   }
 }
@@ -111,10 +135,14 @@ export async function getAllTableNames(
   let res = await axios.get(
     `${API_ROOT}/project/${projectName}/get/tablenames`,
     {
-      validateStatus: (s) => s === httpStatusCodes.OK,
+      validateStatus: (s) =>
+        [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),
       headers: { Authorization: `Bearer ${tok}` },
     }
   )
+  if (res.status !== httpStatusCodes.OK) {
+    throw Error(res.data)
+  }
   return res.data
 }
 
@@ -123,9 +151,13 @@ export async function getAllMeta(
   projectName: string
 ): Promise<TableSpec> {
   let res = await axios.get(`${API_ROOT}/project/${projectName}/get/meta`, {
-    validateStatus: (s) => s === httpStatusCodes.OK,
+    validateStatus: (s) =>
+      [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),
     headers: { Authorization: `Bearer ${tok}` },
   })
+  if (res.status !== httpStatusCodes.OK) {
+    throw Error(res.data)
+  }
   return res.data
 }
 
@@ -137,10 +169,14 @@ export async function getTableMeta(
   let res = await axios.get(
     `${API_ROOT}/project/${projectName}/get/table/${tableName}/meta`,
     {
-      validateStatus: (s) => s === httpStatusCodes.OK,
+      validateStatus: (s) =>
+        [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),
       headers: { Authorization: `Bearer ${tok}` },
     }
   )
+  if (res.status !== httpStatusCodes.OK) {
+    throw Error(res.data)
+  }
   return res.data
 }
 
@@ -150,14 +186,18 @@ export async function insertData(
   tableName: string,
   tableData: TableData
 ): Promise<void> {
-  await axios.put(
+  let res = await axios.put(
     `${API_ROOT}/project/${projectName}/insert/${tableName}`,
     tableData,
     {
-      validateStatus: (s) => s === httpStatusCodes.OK,
+      validateStatus: (s) =>
+        [httpStatusCodes.NO_CONTENT, httpStatusCodes.UNAUTHORIZED].includes(s),
       headers: { Authorization: `Bearer ${tok}` },
     }
   )
+  if (res.status !== httpStatusCodes.NO_CONTENT) {
+    throw Error(res.data)
+  }
 }
 
 export async function removeAllTableData(
@@ -165,13 +205,17 @@ export async function removeAllTableData(
   projectName: string,
   tableName: string
 ): Promise<void> {
-  await axios.delete(
+  let res = await axios.delete(
     `${API_ROOT}/project/${projectName}/remove/${tableName}/all`,
     {
-      validateStatus: (s) => s === httpStatusCodes.OK,
+      validateStatus: (s) =>
+        [httpStatusCodes.NO_CONTENT, httpStatusCodes.UNAUTHORIZED].includes(s),
       headers: { Authorization: `Bearer ${tok}` },
     }
   )
+  if (res.status !== httpStatusCodes.NO_CONTENT) {
+    throw Error(res.data)
+  }
 }
 
 export async function getTableData(
@@ -182,9 +226,13 @@ export async function getTableData(
   let res = await axios.get(
     `${API_ROOT}/project/${projectName}/get/table/${tableName}/data`,
     {
-      validateStatus: (s) => s === httpStatusCodes.OK,
+      validateStatus: (s) =>
+        [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),
       headers: { Authorization: `Bearer ${tok}` },
     }
   )
+  if (res.status !== httpStatusCodes.OK) {
+    throw Error(res.data)
+  }
   return res.data
 }

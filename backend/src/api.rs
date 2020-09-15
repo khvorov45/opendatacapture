@@ -175,6 +175,11 @@ fn with_db(
     warp::any().map(move || db.clone())
 }
 
+/// Reply with the no content status
+fn reply_no_content() -> impl warp::Reply {
+    warp::reply::with_status(warp::reply(), StatusCode::NO_CONTENT)
+}
+
 // Routes ---------------------------------------------------------------------
 
 /// Health check
@@ -253,7 +258,7 @@ pub fn create_project(
                 let db = db.lock().await;
                 match db.create_project(user.id(), project_name.as_str()).await
                 {
-                    Ok(()) => Ok(warp::reply()),
+                    Ok(()) => Ok(reply_no_content()),
                     Err(e) => Err(warp::reject::custom(e)),
                 }
             },
@@ -336,7 +341,7 @@ pub fn create_table(
                   db: DBRef| async move {
                 match db.lock().await.create_user_table(&project, &table).await
                 {
-                    Ok(()) => Ok(warp::reply()),
+                    Ok(()) => Ok(reply_no_content()),
                     Err(e) => Err(warp::reject::custom(e)),
                 }
             },
@@ -362,9 +367,7 @@ pub fn remove_table(
                     .remove_user_table(&project, table_name.as_str())
                     .await
                 {
-                    Ok(()) => Ok(warp::reply::with_status(
-                        warp::reply(), StatusCode::NO_CONTENT
-                    )),
+                    Ok(()) => Ok(reply_no_content()),
                     Err(e) => Err(warp::reject::custom(e)),
                 }
             },
@@ -458,7 +461,7 @@ pub fn insert_data(
                         )
                         .await
                     {
-                        Ok(()) => Ok(warp::reply()),
+                        Ok(()) => Ok(reply_no_content()),
                         Err(e) => Err(warp::reject::custom(e)),
                     }
                 }
@@ -489,7 +492,7 @@ pub fn remove_all_user_table_data(
                         )
                         .await
                     {
-                        Ok(()) => Ok(warp::reply()),
+                        Ok(()) => Ok(reply_no_content()),
                         Err(e) => Err(warp::reject::custom(e)),
                     }
                 }
@@ -657,7 +660,10 @@ mod tests {
                 .header("Authorization", format!("Bearer {}", admin_token))
                 .reply(&create_project_filter)
                 .await;
-            assert_eq!(create_project_response.status(), StatusCode::OK);
+            assert_eq!(
+                create_project_response.status(),
+                StatusCode::NO_CONTENT
+            );
         }
 
         // Get projects
@@ -715,7 +721,7 @@ mod tests {
                 .body(serde_json::to_value(table.clone()).unwrap().to_string())
                 .reply(&filter)
                 .await;
-            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(response.status(), StatusCode::NO_CONTENT);
         }
 
         // Get table list
@@ -790,7 +796,7 @@ mod tests {
                 .body(serde_json::to_value(&data).unwrap().to_string())
                 .reply(&filter)
                 .await;
-            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(response.status(), StatusCode::NO_CONTENT);
         }
 
         // Get table data
@@ -828,7 +834,7 @@ mod tests {
                 .header("Authorization", format!("Bearer {}", admin_token))
                 .reply(&filter)
                 .await;
-            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(response.status(), StatusCode::NO_CONTENT);
         }
 
         // Remove table
