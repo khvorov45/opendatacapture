@@ -168,20 +168,27 @@ impl UserDB {
         if data.is_empty() {
             return Err(Error::InsertEmptyData);
         }
-        let col_names: Vec<String> =
-            data[0].keys().map(|k| k.to_string()).collect();
-        let query = table.construct_param_insert_query(&col_names)?;
         for row in data {
+            // Only keep the columns that are not null
+            let col_names: Vec<String> = row
+                .iter()
+                .filter_map(|(k, v)| {
+                    if v.is_null() {
+                        None
+                    } else {
+                        Some(k.to_string())
+                    }
+                })
+                .collect();
+            let query = table.construct_param_insert_query(&col_names)?;
             let mut row_query = sqlx::query(query.as_str());
             for col_name in &col_names {
                 match &row[col_name] {
                     Value::Number(n) => row_query = row_query.bind(n.as_f64()),
                     Value::String(s) => row_query = row_query.bind(s.as_str()),
-                    other => {
-                        return Err(Error::InsertFormatUnimplemented(
-                            other.clone(),
-                        ))
-                    }
+                    Value::Bool(b) => row_query = row_query.bind(b),
+                    // Everything else is just a json
+                    other => row_query = row_query.bind(other),
                 }
             }
             row_query.execute(self.get_pool()).await?;
@@ -308,8 +315,49 @@ mod tests {
         log::info!("insert data");
 
         let primary_data = crate::tests::get_primary_data();
+        let secondary_data_partial = crate::tests::get_secondary_data_part();
+        let secondary_data_null = crate::tests::get_secondary_data_null();
+        let secondary_data = crate::tests::get_secondary_data();
+
+        // Concatenate secondary data into what's expected to be in the table
+        let secondary_data_partial_filled: Vec<RowJson> =
+            secondary_data_partial
+                .iter()
+                .cloned()
+                .map(|mut row| {
+                    row.insert("sick".to_string(), serde_json::Value::Null);
+                    row.insert("symptoms".to_string(), serde_json::Value::Null);
+                    row.insert(
+                        "locations".to_string(),
+                        serde_json::Value::Null,
+                    );
+                    row
+                })
+                .collect();
+        let mut secondary_data_full: Vec<RowJson> =
+            secondary_data_partial_filled.clone();
+        secondary_data_full.append(&mut secondary_data_null.clone());
+        secondary_data_full.append(&mut secondary_data.clone());
 
         db.insert_table_data(primary_table.name.as_str(), &primary_data)
+            .await
+            .unwrap();
+
+        db.insert_table_data(
+            secondary_table.name.as_str(),
+            &secondary_data_partial,
+        )
+        .await
+        .unwrap();
+
+        db.insert_table_data(
+            secondary_table.name.as_str(),
+            &secondary_data_null,
+        )
+        .await
+        .unwrap();
+
+        db.insert_table_data(secondary_table.name.as_str(), &secondary_data)
             .await
             .unwrap();
 
@@ -331,7 +379,18 @@ mod tests {
             primary_data
         );
 
+        assert_eq!(
+            db.get_table_data(secondary_table.name.as_str())
+                .await
+                .unwrap(),
+            secondary_data_full,
+        );
+
         log::info!("remove data");
+
+        db.remove_all_table_data(secondary_table.name.as_str())
+            .await
+            .unwrap();
 
         db.remove_all_table_data(primary_table.name.as_str())
             .await
