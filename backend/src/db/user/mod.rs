@@ -313,6 +313,15 @@ mod tests {
             .await
             .unwrap();
 
+        log::info!("insert empty data");
+
+        assert!(matches!(
+            db.insert_table_data(primary_table.name.as_str(), &[])
+                .await
+                .unwrap_err(),
+            Error::InsertEmptyData
+        ));
+
         log::info!("get data");
 
         assert_eq!(
