@@ -136,7 +136,11 @@ export async function getAllTableNames(
     `${API_ROOT}/project/${projectName}/get/tablenames`,
     {
       validateStatus: (s) =>
-        [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),
+        [
+          httpStatusCodes.OK,
+          httpStatusCodes.UNAUTHORIZED,
+          httpStatusCodes.NOT_FOUND,
+        ].includes(s),
       headers: { Authorization: `Bearer ${tok}` },
     }
   )
@@ -152,7 +156,11 @@ export async function getAllMeta(
 ): Promise<TableSpec> {
   let res = await axios.get(`${API_ROOT}/project/${projectName}/get/meta`, {
     validateStatus: (s) =>
-      [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),
+      [
+        httpStatusCodes.OK,
+        httpStatusCodes.UNAUTHORIZED,
+        httpStatusCodes.NOT_FOUND,
+      ].includes(s),
     headers: { Authorization: `Bearer ${tok}` },
   })
   if (res.status !== httpStatusCodes.OK) {
@@ -170,7 +178,11 @@ export async function getTableMeta(
     `${API_ROOT}/project/${projectName}/get/table/${tableName}/meta`,
     {
       validateStatus: (s) =>
-        [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),
+        [
+          httpStatusCodes.OK,
+          httpStatusCodes.UNAUTHORIZED,
+          httpStatusCodes.NOT_FOUND,
+        ].includes(s),
       headers: { Authorization: `Bearer ${tok}` },
     }
   )
@@ -191,7 +203,11 @@ export async function insertData(
     tableData,
     {
       validateStatus: (s) =>
-        [httpStatusCodes.NO_CONTENT, httpStatusCodes.UNAUTHORIZED].includes(s),
+        [
+          httpStatusCodes.NO_CONTENT,
+          httpStatusCodes.UNAUTHORIZED,
+          httpStatusCodes.NOT_FOUND,
+        ].includes(s),
       headers: { Authorization: `Bearer ${tok}` },
     }
   )
@@ -209,7 +225,11 @@ export async function removeAllTableData(
     `${API_ROOT}/project/${projectName}/remove/${tableName}/all`,
     {
       validateStatus: (s) =>
-        [httpStatusCodes.NO_CONTENT, httpStatusCodes.UNAUTHORIZED].includes(s),
+        [
+          httpStatusCodes.NO_CONTENT,
+          httpStatusCodes.UNAUTHORIZED,
+          httpStatusCodes.NOT_FOUND,
+        ].includes(s),
       headers: { Authorization: `Bearer ${tok}` },
     }
   )
@@ -227,7 +247,11 @@ export async function getTableData(
     `${API_ROOT}/project/${projectName}/get/table/${tableName}/data`,
     {
       validateStatus: (s) =>
-        [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),
+        [
+          httpStatusCodes.OK,
+          httpStatusCodes.UNAUTHORIZED,
+          httpStatusCodes.NOT_FOUND,
+        ].includes(s),
       headers: { Authorization: `Bearer ${tok}` },
     }
   )

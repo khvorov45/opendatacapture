@@ -191,6 +191,73 @@ describe("need credentials", () => {
     }
   })
 
+  describe("manipulate non-existent project", () => {
+    test("create table", async () => {
+      expect.assertions(1)
+      try {
+        await createTable(token, "nonexistent", { name: "sometable", cols: [] })
+      } catch (e) {
+        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+      }
+    })
+    test("delete table", async () => {
+      expect.assertions(1)
+      try {
+        await removeTable(token, "nonexistent", "some-table")
+      } catch (e) {
+        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+      }
+    })
+    test("get table names", async () => {
+      expect.assertions(1)
+      try {
+        await getAllTableNames(token, "nonexistent")
+      } catch (e) {
+        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+      }
+    })
+    test("get all meta", async () => {
+      expect.assertions(1)
+      try {
+        await getAllMeta(token, "nonexistent")
+      } catch (e) {
+        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+      }
+    })
+    test("get table meta", async () => {
+      expect.assertions(1)
+      try {
+        await getTableMeta(token, "nonexistent", "table")
+      } catch (e) {
+        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+      }
+    })
+    test("insert table data", async () => {
+      expect.assertions(1)
+      try {
+        await insertData(token, "nonexistent", "table", [])
+      } catch (e) {
+        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+      }
+    })
+    test("remove all table data", async () => {
+      expect.assertions(1)
+      try {
+        await removeAllTableData(token, "nonexistent", "table")
+      } catch (e) {
+        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+      }
+    })
+    test("get table data", async () => {
+      expect.assertions(1)
+      try {
+        await getTableData(token, "nonexistent", "table")
+      } catch (e) {
+        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+      }
+    })
+  })
+
   const primaryTable: TableMeta = {
     name: "primary",
     cols: [
@@ -273,15 +340,6 @@ describe("need credentials", () => {
         await removeTable(token, "test", "nonexistent")
       } catch (e) {
         expect(e.message).toBe('NoSuchTable("nonexistent")')
-      }
-    })
-
-    test("delete table in a nonexistent project", async () => {
-      expect.assertions(1)
-      try {
-        await removeTable(token, "nonexistent", "some-table")
-      } catch (e) {
-        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
       }
     })
   })
