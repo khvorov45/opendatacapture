@@ -67,6 +67,89 @@ test("correct credentials", async () => {
   expect(admin.id).toBe(1)
 })
 
+describe("bad token", () => {
+  test("create project", async () => {
+    expect.assertions(1)
+    try {
+      await createProject("123", "test")
+    } catch (e) {
+      expect(e.message).toBe('NoSuchToken("123")')
+    }
+  })
+  test("remove project", async () => {
+    expect.assertions(1)
+    try {
+      await deleteProject("123", "test")
+    } catch (e) {
+      expect(e.message).toBe('NoSuchToken("123")')
+    }
+  })
+  test("get projects", async () => {
+    expect.assertions(1)
+    try {
+      await getUserProjects("123")
+    } catch (e) {
+      expect(e.message).toBe('NoSuchToken("123")')
+    }
+  })
+  test("create table", async () => {
+    expect.assertions(1)
+    try {
+      await createTable("123", "test", { name: "test", cols: [] })
+    } catch (e) {
+      expect(e.message).toBe('NoSuchToken("123")')
+    }
+  })
+  test("remove table", async () => {
+    expect.assertions(1)
+    try {
+      await removeTable("123", "test", "test")
+    } catch (e) {
+      expect(e.message).toBe('NoSuchToken("123")')
+    }
+  })
+  test("get meta", async () => {
+    expect.assertions(1)
+    try {
+      await getAllMeta("123", "test")
+    } catch (e) {
+      expect(e.message).toBe('NoSuchToken("123")')
+    }
+  })
+  test("get table meta", async () => {
+    expect.assertions(1)
+    try {
+      await getTableMeta("123", "test", "test")
+    } catch (e) {
+      expect(e.message).toBe('NoSuchToken("123")')
+    }
+  })
+  test("insert table data", async () => {
+    expect.assertions(1)
+    try {
+      await insertData("123", "test", "test", [])
+    } catch (e) {
+      expect(e.message).toBe('NoSuchToken("123")')
+    }
+  })
+  test("remove all table data", async () => {
+    expect.assertions(1)
+    try {
+      await removeAllTableData("123", "test", "test")
+    } catch (e) {
+      expect(e.message).toBe('NoSuchToken("123")')
+    }
+  })
+  test("get table data", async () => {
+    expect.assertions(1)
+    try {
+      await getTableData("123", "test", "test")
+    } catch (e) {
+      expect(e.message).toBe('NoSuchToken("123")')
+    }
+  })
+})
+
 describe("need credentials", () => {
   let token: string
 
