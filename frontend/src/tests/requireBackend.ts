@@ -26,7 +26,7 @@ test("wrong token", async () => {
     let res = await tokenValidator("123")
     console.log(`wrong token response: ${res}`)
   } catch (e) {
-    expect(e.message).toBe("Request failed with status code 401")
+    expect(e.message).toBe('NoSuchToken("123")')
   }
 })
 

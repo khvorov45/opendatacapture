@@ -65,8 +65,12 @@ export async function tokenFetcher(cred: EmailPassword): Promise<string> {
 
 export async function tokenValidator(tok: string): Promise<User> {
   const res = await axios.get(`${API_ROOT}/get/user/by/token/${tok}`, {
-    validateStatus: (s) => s === httpStatusCodes.OK,
+    validateStatus: (s) =>
+      [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),
   })
+  if (res.status !== httpStatusCodes.OK) {
+    throw Error(res.data)
+  }
   if (!validateUser(res.data)) {
     throw Error("unexpected response data: " + JSON.stringify(res.data))
   }
