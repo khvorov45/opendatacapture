@@ -466,5 +466,8 @@ mod tests {
 
         primary_meta2.cols[0].not_null = true;
         assert_eq!(primary_meta1, primary_meta2);
+
+        primary_meta2.cols[0].primary_key = false;
+        assert_ne!(primary_meta1, primary_meta2);
     }
 }
