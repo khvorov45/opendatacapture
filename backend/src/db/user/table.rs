@@ -275,7 +275,7 @@ impl TableJson {
 
 /// Drop query
 pub fn construct_drop_query(name: &str) -> String {
-    format!("DROP TABLE \"{}\" CASCADE", name)
+    format!("DROP TABLE \"{}\"", name)
 }
 
 #[cfg(test)]

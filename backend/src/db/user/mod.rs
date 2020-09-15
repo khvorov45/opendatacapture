@@ -424,28 +424,11 @@ mod tests {
 
         log::info!("remove table that others reference");
 
-        db.remove_table(primary_table.name.as_str()).await.unwrap();
-
-        assert_eq!(
-            db.get_all_table_names().await.unwrap(),
-            vec![secondary_table.name.clone()]
-        );
-
-        let mut secondary_cols_no_fk = secondary_table.cols.clone();
-        let i = secondary_cols_no_fk
-            .iter()
-            .position(|c| c.name == "id")
-            .unwrap();
-        secondary_cols_no_fk[i].foreign_key = None;
-
-        let secondary_table_no_fk =
-            TableMeta::new(secondary_table.name.as_str(), secondary_cols_no_fk);
-        assert_eq!(
-            db.get_table_meta(secondary_table.name.as_str())
-                .await
-                .unwrap(),
-            secondary_table_no_fk
-        );
+        assert!(matches!(
+            db.remove_table(primary_table.name.as_str()).await.unwrap_err(),
+            Error::Sqlx(sqlx::Error::Database(e))
+                if e.code().unwrap() == "2BP01"
+        ));
 
         // Remove test DB -----------------------------------------------------
         crate::tests::remove_test_db(&db).await;
