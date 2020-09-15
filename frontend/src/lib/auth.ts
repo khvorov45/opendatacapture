@@ -38,14 +38,10 @@ function validateUser(u: any): boolean {
 export async function tokenFetcher(cred: EmailPassword): Promise<string> {
   const res = await axios.post(`${API_ROOT}/auth/session-token`, cred, {
     validateStatus: (s: number) =>
-      [
-        httpStatusCodes.OK,
-        httpStatusCodes.UNAUTHORIZED,
-        httpStatusCodes.INTERNAL_SERVER_ERROR,
-      ].includes(s),
+      [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),
   })
   if (typeof res.data !== "string") {
-    throw Error(`unexpected response data: ${JSON.stringify(res.data)}`)
+    throw Error("unexpected response data: " + JSON.stringify(res.data))
   }
   if (res.status !== httpStatusCodes.OK) {
     if (res.data.startsWith("NoSuchUserEmail")) {
@@ -54,11 +50,7 @@ export async function tokenFetcher(cred: EmailPassword): Promise<string> {
     if (res.data.startsWith("WrongPassword")) {
       throw Error(LoginFailure.WrongPassword)
     }
-    throw Error(
-      `login failed with status ${res.status} and data ${JSON.stringify(
-        res.data
-      )}`
-    )
+    throw Error(res.data)
   }
   return res.data
 }
