@@ -8,7 +8,7 @@ jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
 test("tokenFetcher", async () => {
-  expect.assertions(1)
+  expect.assertions(2)
   let cred = { email: "test@example.com", password: "test" }
   // Non-string response data
   mockedAxios.post.mockResolvedValue({ status: httpStatusCodes.OK, data: 123 })
@@ -16,6 +16,16 @@ test("tokenFetcher", async () => {
     await tokenFetcher(cred)
   } catch (e) {
     expect(e.message).toBe("unexpected response data: 123")
+  }
+  // Some random error
+  mockedAxios.post.mockResolvedValue({
+    status: httpStatusCodes.UNAUTHORIZED,
+    data: "some random error",
+  })
+  try {
+    await tokenFetcher(cred)
+  } catch (e) {
+    expect(e.message).toBe("some random error")
   }
 })
 
