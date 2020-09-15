@@ -261,6 +261,13 @@ mod tests {
             .unwrap()
             .contains(&secondary_table.name));
 
+        log::info!("create the same table again");
+
+        assert!(matches!(
+            db.create_table(&primary_table).await.unwrap_err(),
+            Error::TableAlreadyExists(name) if name == primary_table.name
+        ));
+
         log::info!("get table names");
 
         assert_eq!(
