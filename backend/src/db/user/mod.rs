@@ -26,8 +26,22 @@ impl UserDB {
             pool: PoolMeta::new(config, name).await?,
         })
     }
+    /// Checks that the table exists, returns Err if not
+    async fn check_table_exists(&self, name: &str) -> Result<()> {
+        if !self
+            .get_all_table_names()
+            .await?
+            .contains(&name.to_string())
+        {
+            return Err(Error::NoSuchTable(name.to_string()));
+        }
+        Ok(())
+    }
     /// Creates the given table
     pub async fn create_table(&self, table: &TableMeta) -> Result<()> {
+        if self.get_all_table_names().await?.contains(&table.name) {
+            return Err(Error::TableAlreadyExists(table.name.clone()));
+        }
         sqlx::query(table.construct_create_query().as_str())
             .execute(self.get_pool())
             .await?;
@@ -37,13 +51,9 @@ impl UserDB {
     /// Removes a table
     pub async fn remove_table(&self, table_name: &str) -> Result<()> {
         log::debug!("removing table {}", table_name);
-        if !self
-            .get_all_table_names()
-            .await?
-            .contains(&table_name.to_string())
-        {
-            return Err(Error::NoSuchTable(table_name.to_string()));
-        }
+
+        self.check_table_exists(table_name).await?;
+
         sqlx::query(table::construct_drop_query(table_name).as_str())
             .execute(self.get_pool())
             .await?;
@@ -53,6 +63,8 @@ impl UserDB {
     /// Get all table metadata
     pub async fn get_table_meta(&self, table_name: &str) -> Result<TableMeta> {
         log::debug!("get metadata for {}", table_name);
+
+        self.check_table_exists(table_name).await?;
 
         let mut cols = ColSpec::new();
 
@@ -152,9 +164,13 @@ impl UserDB {
         data: &[RowJson],
     ) -> Result<()> {
         use serde_json::Value;
+        let table = self.get_table_meta(table_name).await?;
+        if data.is_empty() {
+            return Err(Error::InsertEmptyData);
+        }
         let col_names: Vec<String> =
             data[0].keys().map(|k| k.to_string()).collect();
-        let query = table::construct_insert_query(table_name, &col_names);
+        let query = table.construct_param_insert_query(&col_names)?;
         for row in data {
             let mut row_query = sqlx::query(query.as_str());
             for col_name in &col_names {
@@ -175,6 +191,7 @@ impl UserDB {
 
     /// Remove all data from a table
     pub async fn remove_all_table_data(&self, table_name: &str) -> Result<()> {
+        self.check_table_exists(table_name).await?;
         sqlx::query(format!("DELETE FROM \"{}\"", table_name).as_str())
             .execute(self.get_pool())
             .await?;
@@ -186,6 +203,7 @@ impl UserDB {
         &self,
         table_name: &str,
     ) -> Result<Vec<RowJson>> {
+        self.check_table_exists(table_name).await?;
         let res = sqlx::query(
             format!("SELECT ROW_TO_JSON(\"{0}\") FROM \"{0}\"", table_name)
                 .as_str(),

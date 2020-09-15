@@ -6,6 +6,10 @@ pub enum Error {
     #[error("want to address table {0} but it does not exist")]
     NoSuchTable(String),
 
+    /// Create a table that is already present
+    #[error("table \"{0}\" already exists")]
+    TableAlreadyExists(String),
+
     /// Occurs when a row cannot be parsed as map
     #[error("failed to parse as map: {0}")]
     RowParse(serde_json::Value),
@@ -16,7 +20,7 @@ pub enum Error {
 
     /// Occurs when addressing non-existent columns
     #[error("want to address columns {0:?} but they do not exist")]
-    ColsNotPresent(Vec<String>),
+    NoSuchColumns(Vec<String>),
 
     /// Unimplemented value for insert format
     #[error("unimplemented value for insert format: {0}")]

@@ -60,7 +60,9 @@ async fn handle_rejection(
                 status = StatusCode::UNAUTHORIZED;
                 message = format!("{:?}", reason);
             }
-            Error::ProjectAlreadyExists(_, _) => {
+            Error::ProjectAlreadyExists(_, _)
+            | Error::TableAlreadyExists(_)
+            | Error::NoSuchColumns(_) => {
                 status = StatusCode::CONFLICT;
                 message = format!("{:?}", e)
             }

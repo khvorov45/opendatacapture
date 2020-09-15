@@ -96,6 +96,7 @@ export async function createTable(
           httpStatusCodes.NO_CONTENT,
           httpStatusCodes.NOT_FOUND,
           httpStatusCodes.UNAUTHORIZED,
+          httpStatusCodes.CONFLICT,
         ].includes(s),
       headers: { Authorization: `Bearer ${tok}` },
     }
@@ -207,6 +208,7 @@ export async function insertData(
           httpStatusCodes.NO_CONTENT,
           httpStatusCodes.UNAUTHORIZED,
           httpStatusCodes.NOT_FOUND,
+          httpStatusCodes.CONFLICT,
         ].includes(s),
       headers: { Authorization: `Bearer ${tok}` },
     }

@@ -315,32 +315,97 @@ describe("need credentials", () => {
     afterAll(async () => await deleteProject(token, "test"))
 
     test("table manipulation", async () => {
+      expect(await getAllTableNames(token, "test")).toEqual([])
       await createTable(token, "test", primaryTable)
       await createTable(token, "test", secondaryTable)
-      let tableNames = await getAllTableNames(token, "test")
-      expect(tableNames).toEqual([primaryTable.name, secondaryTable.name])
+      expect(await getAllTableNames(token, "test")).toEqual([
+        primaryTable.name,
+        secondaryTable.name,
+      ])
       let allMeta = await getAllMeta(token, "test")
       expect(allMeta).toEqual([primaryTable, secondaryTable])
       let primaryMeta = await getTableMeta(token, "test", "primary")
       expect(primaryMeta).toEqual(primaryTable)
-      await removeTable(token, "test", "secondary")
+      await removeTable(token, "test", secondaryTable.name)
       expect(await getAllTableNames(token, "test")).toEqual([primaryTable.name])
-      expect(await getTableData(token, "test", primaryTable.name)).toEqual([])
-      await insertData(token, "test", primaryTable.name, primaryData)
-      expect(await getTableData(token, "test", primaryTable.name)).toEqual(
-        primaryData
-      )
-      await removeAllTableData(token, "test", primaryTable.name)
-      expect(await getTableData(token, "test", primaryTable.name)).toEqual([])
+      await removeTable(token, "test", primaryTable.name)
+      expect(await getAllTableNames(token, "test")).toEqual([])
     })
 
-    test("delete nonexistent table", async () => {
-      expect.assertions(1)
-      try {
-        await removeTable(token, "test", "nonexistent")
-      } catch (e) {
-        expect(e.message).toBe('NoSuchTable("nonexistent")')
-      }
+    describe("nonexistent table", () => {
+      test("delete", async () => {
+        expect.assertions(1)
+        try {
+          await removeTable(token, "test", "nonexistent")
+        } catch (e) {
+          expect(e.message).toBe('NoSuchTable("nonexistent")')
+        }
+      })
+      test("get meta", async () => {
+        expect.assertions(1)
+        try {
+          await getTableMeta(token, "test", "nonexistent")
+        } catch (e) {
+          expect(e.message).toBe('NoSuchTable("nonexistent")')
+        }
+      })
+      test("insert", async () => {
+        expect.assertions(1)
+        try {
+          await insertData(token, "test", "nonexistent", [])
+        } catch (e) {
+          expect(e.message).toBe('NoSuchTable("nonexistent")')
+        }
+      })
+      test("get data", async () => {
+        expect.assertions(1)
+        try {
+          await getTableData(token, "test", "nonexistent")
+        } catch (e) {
+          expect(e.message).toBe('NoSuchTable("nonexistent")')
+        }
+      })
+      test("remove all data", async () => {
+        expect.assertions(1)
+        try {
+          await removeAllTableData(token, "test", "nonexistent")
+        } catch (e) {
+          expect(e.message).toBe('NoSuchTable("nonexistent")')
+        }
+      })
+    })
+
+    describe("need a table", () => {
+      beforeAll(async () => await createTable(token, "test", primaryTable))
+      afterAll(async () => await removeTable(token, "test", primaryTable.name))
+
+      test("data manipulation", async () => {
+        expect(await getTableData(token, "test", primaryTable.name)).toEqual([])
+        await insertData(token, "test", primaryTable.name, primaryData)
+        expect(await getTableData(token, "test", primaryTable.name)).toEqual(
+          primaryData
+        )
+        await removeAllTableData(token, "test", primaryTable.name)
+        expect(await getTableData(token, "test", primaryTable.name)).toEqual([])
+      })
+
+      test("insert data with the wrong columns", async () => {
+        expect.assertions(1)
+        try {
+          await insertData(token, "test", primaryTable.name, [{ wrong: 1 }])
+        } catch (e) {
+          expect(e.message).toBe('NoSuchColumns(["wrong"])')
+        }
+      })
+
+      test("try to create again", async () => {
+        expect.assertions(1)
+        try {
+          await createTable(token, "test", primaryTable)
+        } catch (e) {
+          expect(e.message).toBe('TableAlreadyExists("primary")')
+        }
+      })
     })
   })
 })

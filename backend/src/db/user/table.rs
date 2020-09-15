@@ -1,4 +1,4 @@
-use crate::{json, Error, Result};
+use crate::{Error, Result};
 
 /// Column specification
 pub type ColSpec = Vec<ColMeta>;
@@ -209,59 +209,50 @@ impl TableMeta {
             self.name, inner_query
         ))
     }
-    // Insert query
-    pub fn construct_insert_query(&self, rows: &[RowJson]) -> Result<String> {
-        if rows.is_empty() {
-            return Err(Error::InsertEmptyData);
+    /// Insert query with parameters
+    pub fn construct_param_insert_query<T: AsRef<str>>(
+        &self,
+        cols: &[T],
+    ) -> Result<String> {
+        self.verify_cols_present(cols)?;
+
+        // The keys and values that will go into the query
+        let mut key_entry = Vec::with_capacity(cols.len());
+        let mut value_entry = Vec::with_capacity(cols.len());
+        for (i, key) in cols.iter().enumerate() {
+            key_entry.push(format!("\"{}\"", key.as_ref()));
+            value_entry.push(format!("${}", i + 1));
         }
-        // Make sure all the columns are present
-        let cols = rows[0].keys().map(|k| k.as_str()).collect::<Vec<&str>>();
-        self.verify_cols_present(&cols)?;
-        // Need to make sure keys and values go in the same order
-        let mut keys = Vec::with_capacity(cols.len());
-        // Each entry is a vector of values for that row
-        let mut row_entries =
-            vec![Vec::with_capacity(rows[0].len()); rows.len()];
-        for key in cols {
-            keys.push(format!("\"{}\"", key));
-            for (i, row) in rows.iter().enumerate() {
-                row_entries[i].push(json::insert_format(&row[key])?);
-            }
-        }
-        // Format each entry
-        let row_entries: Vec<String> = row_entries
-            .iter()
-            .map(|r| r.join(",")) // comma-separated list
-            .map(|r| format!("({})", r)) // surround by paretheses
-            .collect();
+
+        // Complete query
         Ok(format!(
-            "INSERT INTO \"{}\" ({}) VALUES {}",
+            "INSERT INTO \"{}\"({}) VALUES({})",
             self.name,
-            keys.join(","),
-            row_entries.join(",")
+            key_entry.join(","),
+            value_entry.join(",")
         ))
     }
     // Checks that a column is present
-    fn contains_col(&self, colname: &str) -> bool {
+    fn contains_col<T: AsRef<str>>(&self, colname: T) -> bool {
         for col in &self.cols {
-            if col.name == colname {
+            if col.name == colname.as_ref() {
                 return true;
             }
         }
         false
     }
     // Find all columns that are not present
-    fn find_cols_not_present(&self, cols: &[&str]) -> Vec<String> {
+    fn find_cols_not_present<T: AsRef<str>>(&self, cols: &[T]) -> Vec<String> {
         cols.iter()
             .filter(|c| !self.contains_col(c))
-            .map(|c| String::from(*c))
+            .map(|c| c.as_ref().to_string())
             .collect()
     }
     // Verifies that all the given columns are present
-    fn verify_cols_present(&self, cols: &[&str]) -> Result<()> {
+    fn verify_cols_present<T: AsRef<str>>(&self, cols: &[T]) -> Result<()> {
         let cols_not_present = self.find_cols_not_present(cols);
         if !cols_not_present.is_empty() {
-            return Err(Error::ColsNotPresent(cols_not_present));
+            return Err(Error::NoSuchColumns(cols_not_present));
         }
         Ok(())
     }
@@ -285,25 +276,6 @@ impl TableJson {
 /// Drop query
 pub fn construct_drop_query(name: &str) -> String {
     format!("DROP TABLE \"{}\" CASCADE", name)
-}
-
-/// Insert query with parameters
-pub fn construct_insert_query<T: AsRef<str>>(name: &str, cols: &[T]) -> String {
-    // The keys and values that will go into the query
-    let mut key_entry = Vec::with_capacity(cols.len());
-    let mut value_entry = Vec::with_capacity(cols.len());
-    for (i, key) in cols.iter().enumerate() {
-        key_entry.push(format!("\"{}\"", key.as_ref()));
-        value_entry.push(format!("${}", i + 1));
-    }
-
-    // Complete query
-    format!(
-        "INSERT INTO \"{}\"({}) VALUES ({})",
-        name,
-        key_entry.join(","),
-        value_entry.join(",")
-    )
 }
 
 #[cfg(test)]
@@ -457,60 +429,25 @@ mod tests {
             .unwrap_err();
         assert!(matches!(
             err,
-            Error::ColsNotPresent(cont) if cont == vec![String::from("extra")]
+            Error::NoSuchColumns(cont) if cont == vec![String::from("extra")]
         ));
     }
     #[test]
     fn insert_table() {
         let _ = pretty_env_logger::try_init();
-        let mut cols = Vec::new();
-        cols.push(ColMeta::new().name("name").postgres_type("TEXT"));
-        cols.push(
-            ColMeta::new()
-                .name("id")
-                .postgres_type("INTEGER")
-                .primary_key(true),
-        );
-        let table = TableMeta::new("table", cols);
-        let mut rows = Vec::new();
-        let mut row1 = RowJson::new();
-        row1.insert(
-            "name".to_string(),
-            serde_json::Value::String("alice".to_string()),
-        );
-        rows.push(row1.clone());
+        let table = crate::tests::get_test_primary_table();
+        let table_data = crate::tests::get_primary_data();
+        let mut col_names: Vec<String> =
+            table_data[0].keys().map(|k| k.to_string()).collect();
         assert_eq!(
-            table.construct_insert_query(&rows).unwrap(),
-            "INSERT INTO \"table\" (\"name\") VALUES ('alice')"
+            table.construct_param_insert_query(&col_names).unwrap(),
+            "INSERT INTO \"primary\"(\"id\",\"email\") VALUES($1,$2)"
         );
-        let mut row2 = RowJson::new();
-        row2.insert(
-            "name".to_string(),
-            serde_json::Value::String("bob".to_string()),
-        );
-        rows.push(row2.clone());
-        assert_eq!(
-            table.construct_insert_query(&rows).unwrap(),
-            "INSERT INTO \"table\" (\"name\") VALUES ('alice'),('bob')"
-        );
-        row1.insert(
-            "id".to_string(),
-            serde_json::Value::Number(
-                serde_json::Number::from_f64(1.0).unwrap(),
-            ),
-        );
-        row2.insert(
-            "id".to_string(),
-            serde_json::Value::Number(
-                serde_json::Number::from_f64(2.0).unwrap(),
-            ),
-        );
-        let rows = vec![row1, row2];
-        assert_eq!(
-            table.construct_insert_query(&rows).unwrap(),
-            "INSERT INTO \"table\" (\"name\",\"id\") VALUES \
-            ('alice','1'),('bob','2')"
-        );
+        col_names.push("another-name".to_string());
+        assert!(matches!(
+            table.construct_param_insert_query(&col_names).unwrap_err(),
+            Error::NoSuchColumns(cs) if cs == vec!["another-name".to_string()]
+        ));
     }
     #[test]
     fn compare_metadata() {
@@ -529,16 +466,5 @@ mod tests {
 
         primary_meta2.cols[0].not_null = true;
         assert_eq!(primary_meta1, primary_meta2);
-    }
-    #[test]
-    fn insert_query() {
-        let data = crate::tests::get_primary_data();
-        assert_eq!(
-            construct_insert_query(
-                "my_table",
-                &data[0].keys().collect::<Vec<&String>>()
-            ),
-            "INSERT INTO \"my_table\"(\"id\",\"email\") VALUES ($1,$2)"
-        );
     }
 }
