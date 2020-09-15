@@ -159,7 +159,8 @@ mod tests {
             ColMeta::new()
                 .name("email")
                 .postgres_type("TEXT")
-                .not_null(true),
+                .not_null(true)
+                .unique(true),
         );
         TableMeta::new("primary", cols)
     }
