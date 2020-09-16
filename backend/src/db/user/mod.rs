@@ -26,8 +26,22 @@ impl UserDB {
             pool: PoolMeta::new(config, name).await?,
         })
     }
+    /// Checks that the table exists, returns Err if not
+    async fn check_table_exists(&self, name: &str) -> Result<()> {
+        if !self
+            .get_all_table_names()
+            .await?
+            .contains(&name.to_string())
+        {
+            return Err(Error::NoSuchTable(name.to_string()));
+        }
+        Ok(())
+    }
     /// Creates the given table
     pub async fn create_table(&self, table: &TableMeta) -> Result<()> {
+        if self.get_all_table_names().await?.contains(&table.name) {
+            return Err(Error::TableAlreadyExists(table.name.clone()));
+        }
         sqlx::query(table.construct_create_query().as_str())
             .execute(self.get_pool())
             .await?;
@@ -37,6 +51,9 @@ impl UserDB {
     /// Removes a table
     pub async fn remove_table(&self, table_name: &str) -> Result<()> {
         log::debug!("removing table {}", table_name);
+
+        self.check_table_exists(table_name).await?;
+
         sqlx::query(table::construct_drop_query(table_name).as_str())
             .execute(self.get_pool())
             .await?;
@@ -46,6 +63,8 @@ impl UserDB {
     /// Get all table metadata
     pub async fn get_table_meta(&self, table_name: &str) -> Result<TableMeta> {
         log::debug!("get metadata for {}", table_name);
+
+        self.check_table_exists(table_name).await?;
 
         let mut cols = ColSpec::new();
 
@@ -145,20 +164,31 @@ impl UserDB {
         data: &[RowJson],
     ) -> Result<()> {
         use serde_json::Value;
-        let col_names: Vec<String> =
-            data[0].keys().map(|k| k.to_string()).collect();
-        let query = table::construct_insert_query(table_name, &col_names);
+        let table = self.get_table_meta(table_name).await?;
+        if data.is_empty() {
+            return Err(Error::InsertEmptyData);
+        }
         for row in data {
+            // Only keep the columns that are not null
+            let col_names: Vec<String> = row
+                .iter()
+                .filter_map(|(k, v)| {
+                    if v.is_null() {
+                        None
+                    } else {
+                        Some(k.to_string())
+                    }
+                })
+                .collect();
+            let query = table.construct_param_insert_query(&col_names)?;
             let mut row_query = sqlx::query(query.as_str());
             for col_name in &col_names {
                 match &row[col_name] {
                     Value::Number(n) => row_query = row_query.bind(n.as_f64()),
                     Value::String(s) => row_query = row_query.bind(s.as_str()),
-                    other => {
-                        return Err(Error::InsertFormatUnimplemented(
-                            other.clone(),
-                        ))
-                    }
+                    Value::Bool(b) => row_query = row_query.bind(b),
+                    // Everything else is just a json
+                    other => row_query = row_query.bind(other),
                 }
             }
             row_query.execute(self.get_pool()).await?;
@@ -168,6 +198,7 @@ impl UserDB {
 
     /// Remove all data from a table
     pub async fn remove_all_table_data(&self, table_name: &str) -> Result<()> {
+        self.check_table_exists(table_name).await?;
         sqlx::query(format!("DELETE FROM \"{}\"", table_name).as_str())
             .execute(self.get_pool())
             .await?;
@@ -179,6 +210,7 @@ impl UserDB {
         &self,
         table_name: &str,
     ) -> Result<Vec<RowJson>> {
+        self.check_table_exists(table_name).await?;
         let res = sqlx::query(
             format!("SELECT ROW_TO_JSON(\"{0}\") FROM \"{0}\"", table_name)
                 .as_str(),
@@ -236,6 +268,20 @@ mod tests {
             .unwrap()
             .contains(&secondary_table.name));
 
+        log::info!("create the same table again");
+
+        assert!(matches!(
+            db.create_table(&primary_table).await.unwrap_err(),
+            Error::TableAlreadyExists(name) if name == primary_table.name
+        ));
+
+        log::info!("get table names");
+
+        assert_eq!(
+            db.get_all_table_names().await.unwrap(),
+            vec![primary_table.name.clone(), secondary_table.name.clone()]
+        );
+
         log::info!("get metadata");
 
         let primary_meta = db
@@ -269,10 +315,60 @@ mod tests {
         log::info!("insert data");
 
         let primary_data = crate::tests::get_primary_data();
+        let secondary_data_partial = crate::tests::get_secondary_data_part();
+        let secondary_data_null = crate::tests::get_secondary_data_null();
+        let secondary_data = crate::tests::get_secondary_data();
+
+        // Concatenate secondary data into what's expected to be in the table
+        let secondary_data_partial_filled: Vec<RowJson> =
+            secondary_data_partial
+                .iter()
+                .cloned()
+                .map(|mut row| {
+                    row.insert("sick".to_string(), serde_json::Value::Null);
+                    row.insert("symptoms".to_string(), serde_json::Value::Null);
+                    row.insert(
+                        "locations".to_string(),
+                        serde_json::Value::Null,
+                    );
+                    row
+                })
+                .collect();
+        let mut secondary_data_full: Vec<RowJson> =
+            secondary_data_partial_filled.clone();
+        secondary_data_full.append(&mut secondary_data_null.clone());
+        secondary_data_full.append(&mut secondary_data.clone());
 
         db.insert_table_data(primary_table.name.as_str(), &primary_data)
             .await
             .unwrap();
+
+        db.insert_table_data(
+            secondary_table.name.as_str(),
+            &secondary_data_partial,
+        )
+        .await
+        .unwrap();
+
+        db.insert_table_data(
+            secondary_table.name.as_str(),
+            &secondary_data_null,
+        )
+        .await
+        .unwrap();
+
+        db.insert_table_data(secondary_table.name.as_str(), &secondary_data)
+            .await
+            .unwrap();
+
+        log::info!("insert empty data");
+
+        assert!(matches!(
+            db.insert_table_data(primary_table.name.as_str(), &[])
+                .await
+                .unwrap_err(),
+            Error::InsertEmptyData
+        ));
 
         log::info!("get data");
 
@@ -283,7 +379,18 @@ mod tests {
             primary_data
         );
 
+        assert_eq!(
+            db.get_table_data(secondary_table.name.as_str())
+                .await
+                .unwrap(),
+            secondary_data_full,
+        );
+
         log::info!("remove data");
+
+        db.remove_all_table_data(secondary_table.name.as_str())
+            .await
+            .unwrap();
 
         db.remove_all_table_data(primary_table.name.as_str())
             .await
@@ -297,6 +404,31 @@ mod tests {
                 .unwrap(),
             vec![]
         );
+
+        log::info!("remove table");
+
+        db.remove_table(secondary_table.name.as_str())
+            .await
+            .unwrap();
+
+        log::info!("get table names");
+
+        assert_eq!(
+            db.get_all_table_names().await.unwrap(),
+            vec![primary_table.name.clone()]
+        );
+
+        log::info!("create table again");
+
+        db.create_table(&secondary_table).await.unwrap();
+
+        log::info!("remove table that others reference");
+
+        assert!(matches!(
+            db.remove_table(primary_table.name.as_str()).await.unwrap_err(),
+            Error::Sqlx(sqlx::Error::Database(e))
+                if e.code().unwrap() == "2BP01"
+        ));
 
         // Remove test DB -----------------------------------------------------
         crate::tests::remove_test_db(&db).await;

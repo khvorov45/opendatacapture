@@ -159,7 +159,8 @@ mod tests {
             ColMeta::new()
                 .name("email")
                 .postgres_type("TEXT")
-                .not_null(true),
+                .not_null(true)
+                .unique(true),
         );
         TableMeta::new("primary", cols)
     }
@@ -174,7 +175,15 @@ mod tests {
                 .primary_key(true)
                 .foreign_key(ForeignKey::new("primary", "id")),
         );
-        cols.push(ColMeta::new().name("timepoint").postgres_type("INTEGER"));
+        cols.push(
+            ColMeta::new()
+                .name("timepoint")
+                .postgres_type("INTEGER")
+                .primary_key(true),
+        );
+        cols.push(ColMeta::new().name("sick").postgres_type("BOOLEAN"));
+        cols.push(ColMeta::new().name("symptoms").postgres_type("JSONB"));
+        cols.push(ColMeta::new().name("locations").postgres_type("JSONB"));
         TableMeta::new("secondary", cols)
     }
 
@@ -193,6 +202,86 @@ mod tests {
         row2.insert(
             "email".to_string(),
             serde_json::from_str("\"email2@example.com\"").unwrap(),
+        );
+        data.push(row2);
+        data
+    }
+
+    /// Secondary table partial data
+    pub fn get_secondary_data_part() -> Vec<RowJson> {
+        let mut data = Vec::new();
+        let mut row1 = RowJson::new();
+        row1.insert("id".to_string(), serde_json::from_str("1").unwrap());
+        row1.insert(
+            "timepoint".to_string(),
+            serde_json::from_str("1").unwrap(),
+        );
+        data.push(row1);
+        let mut row2 = RowJson::new();
+        row2.insert("id".to_string(), serde_json::from_str("1").unwrap());
+        row2.insert(
+            "timepoint".to_string(),
+            serde_json::from_str("2").unwrap(),
+        );
+        data.push(row2);
+        data
+    }
+
+    /// Secondary table data with explicit null values
+    pub fn get_secondary_data_null() -> Vec<RowJson> {
+        let mut data = Vec::new();
+        let mut row1 = RowJson::new();
+        row1.insert("id".to_string(), serde_json::from_str("1").unwrap());
+        row1.insert(
+            "timepoint".to_string(),
+            serde_json::from_str("3").unwrap(),
+        );
+        row1.insert("sick".to_string(), serde_json::from_str("null").unwrap());
+        row1.insert(
+            "symptoms".to_string(),
+            serde_json::from_str("null").unwrap(),
+        );
+        row1.insert(
+            "locations".to_string(),
+            serde_json::from_str("null").unwrap(),
+        );
+        data.push(row1);
+        data
+    }
+
+    /// Secondary table all-column data
+    pub fn get_secondary_data() -> Vec<RowJson> {
+        let mut data = Vec::new();
+        let mut row1 = RowJson::new();
+        row1.insert("id".to_string(), serde_json::from_str("2").unwrap());
+        row1.insert(
+            "timepoint".to_string(),
+            serde_json::from_str("1").unwrap(),
+        );
+        row1.insert("sick".to_string(), serde_json::from_str("false").unwrap());
+        row1.insert(
+            "symptoms".to_string(),
+            serde_json::from_str(r#"{"s1": true, "s2": false}"#).unwrap(),
+        );
+        row1.insert(
+            "locations".to_string(),
+            serde_json::from_str(r#"["l1", "l2"]"#).unwrap(),
+        );
+        data.push(row1);
+        let mut row2 = RowJson::new();
+        row2.insert("id".to_string(), serde_json::from_str("2").unwrap());
+        row2.insert(
+            "timepoint".to_string(),
+            serde_json::from_str("2").unwrap(),
+        );
+        row2.insert("sick".to_string(), serde_json::from_str("false").unwrap());
+        row2.insert(
+            "symptoms".to_string(),
+            serde_json::from_str(r#"{"s1": true, "s2": false}"#).unwrap(),
+        );
+        row2.insert(
+            "locations".to_string(),
+            serde_json::from_str(r#"["l1", "l2"]"#).unwrap(),
         );
         data.push(row2);
         data

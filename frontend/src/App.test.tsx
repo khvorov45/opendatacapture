@@ -4,6 +4,7 @@ import React from "react"
 import { render, fireEvent, waitForDomChange } from "@testing-library/react"
 import App from "./App"
 import { themeInit } from "./lib/theme"
+import httpStatusCodes from "http-status-codes"
 import axios from "axios"
 
 jest.mock("axios")
@@ -30,7 +31,10 @@ test("theme switching", () => {
 test("token update", async () => {
   localStorage.removeItem("token")
   // Login response
-  mockedAxios.post.mockResolvedValueOnce({ status: 200, data: "123" })
+  mockedAxios.post.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
+    data: "123",
+  })
   let user = {
     id: 1,
     email: "test@example.com",
@@ -38,9 +42,15 @@ test("token update", async () => {
     access: "Admin",
   }
   // Token validation response
-  mockedAxios.get.mockResolvedValueOnce({ data: user })
+  mockedAxios.get.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
+    data: user,
+  })
   // Project list response
-  mockedAxios.get.mockResolvedValueOnce({ data: [] })
+  mockedAxios.get.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
+    data: [],
+  })
   // Attempt to render the homepage
   const { getByTestId } = render(<App initPalette="dark" initToken={null} />)
   // Will only work if successfully redirected to login

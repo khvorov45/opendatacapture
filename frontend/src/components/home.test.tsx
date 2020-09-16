@@ -19,7 +19,10 @@ test("homepage with no token", () => {
 
 test("homepage with token and no projects", async () => {
   // Get projects
-  mockedAxios.get.mockResolvedValueOnce({ data: [] })
+  mockedAxios.get.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
+    data: [],
+  })
   const { getByTestId } = renderHome("123")
   await waitForDomChange()
   expect(getByTestId("homepage")).toBeInTheDocument()
@@ -31,6 +34,7 @@ test("homepage with token and no projects", async () => {
 test("homepage with token and some projects", async () => {
   // Get projects
   mockedAxios.get.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
     data: [{ user: 1, name: 2, created: new Date() }],
   })
   const { getByTestId } = renderHome("123")
@@ -44,6 +48,7 @@ test("homepage with token and some projects", async () => {
 test("project widget - click on project create", async () => {
   // Project list
   mockedAxios.get.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
     data: [{ user: 1, name: 2, created: new Date() }],
   })
   const { getByTestId } = render(<ProjectWidget token="123" />)
@@ -57,12 +62,14 @@ test("project widget - click on project create", async () => {
 })
 
 test("project widget - create project", async () => {
-  mockedAxios.put.mockResolvedValueOnce({ status: httpStatusCodes.OK })
+  mockedAxios.put.mockResolvedValueOnce({ status: httpStatusCodes.NO_CONTENT })
   mockedAxios.get
     .mockResolvedValueOnce({
+      status: httpStatusCodes.OK,
       data: [],
     })
     .mockResolvedValueOnce({
+      status: httpStatusCodes.OK,
       data: [{ user: 1, name: "newproject", created: new Date() }],
     })
   const { getByTestId, getByText } = render(<ProjectWidget token="123" />)
@@ -80,12 +87,14 @@ test("project widget - create project", async () => {
 })
 
 test("project widget - remove projects", async () => {
-  mockedAxios.delete.mockResolvedValue({ status: httpStatusCodes.OK })
+  mockedAxios.delete.mockResolvedValue({ status: httpStatusCodes.NO_CONTENT })
   mockedAxios.get
     .mockResolvedValueOnce({
+      status: httpStatusCodes.OK,
       data: [{ user: 1, name: 2, created: new Date() }],
     })
     .mockResolvedValueOnce({
+      status: httpStatusCodes.OK,
       data: [],
     })
   const { getByTestId, queryByTestId } = render(<ProjectWidget token="123" />)
@@ -103,7 +112,10 @@ test("project widget - remove projects", async () => {
 test("project widget - fail to get projects", async () => {
   mockedAxios.get
     .mockRejectedValueOnce(Error("failed to get projects"))
-    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce({
+      status: httpStatusCodes.OK,
+      data: [],
+    })
   const { getByTestId } = render(<ProjectWidget token="123" />)
   await waitForDomChange()
   expect(getByTestId("project-control-error")).toHaveTextContent(
@@ -115,11 +127,14 @@ test("project widget - fail to get projects", async () => {
 })
 
 test("project widget - project already exists", async () => {
-  mockedAxios.get.mockResolvedValueOnce([])
+  mockedAxios.get.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
+    data: [],
+  })
   mockedAxios.put
     .mockRejectedValueOnce(Error("ProjectAlreadyExists"))
     .mockRejectedValueOnce(Error("some other error"))
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK })
+    .mockResolvedValueOnce({ status: httpStatusCodes.NO_CONTENT })
   const { getByTestId } = render(<ProjectWidget token="123" />)
   await waitForDomChange()
   fireEvent.change(getByTestId("project-name-field") as HTMLInputElement, {
@@ -143,6 +158,7 @@ test("project widget - project already exists", async () => {
 test("project widget - fail to delete project", async () => {
   mockedAxios.delete.mockRejectedValueOnce(Error("some delete project error"))
   mockedAxios.get.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
     data: [{ user: 1, name: "prj", created: new Date() }],
   })
   const { getByTestId } = render(<ProjectWidget token="123" />)

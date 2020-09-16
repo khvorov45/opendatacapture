@@ -4,7 +4,7 @@ use db::user::table::RowJson;
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use warp::{Filter, Reply};
+use warp::{http::StatusCode, Filter, Reply};
 
 type DBRef = Arc<Mutex<AdminDB>>;
 
@@ -20,7 +20,14 @@ pub fn routes(
         .or(create_project(db.clone()))
         .or(get_user_projects(db.clone()))
         .or(delete_project(db.clone()))
-        .or(create_table(db))
+        .or(create_table(db.clone()))
+        .or(remove_table(db.clone()))
+        .or(get_table_names(db.clone()))
+        .or(get_all_meta(db.clone()))
+        .or(get_table_meta(db.clone()))
+        .or(get_table_data(db.clone()))
+        .or(insert_data(db.clone()))
+        .or(remove_all_user_table_data(db))
         .recover(handle_rejection)
         .boxed();
     if prefix.is_empty() {
@@ -43,7 +50,6 @@ pub fn get_cors() -> warp::cors::Builder {
 async fn handle_rejection(
     err: warp::Rejection,
 ) -> Result<impl warp::Reply, Infallible> {
-    use warp::http::StatusCode;
     let status;
     let message;
     log::debug!("recover filter error: {:?}", err);
@@ -54,13 +60,22 @@ async fn handle_rejection(
                 status = StatusCode::UNAUTHORIZED;
                 message = format!("{:?}", reason);
             }
-            Error::ProjectAlreadyExists(_, _) => {
+            Error::ProjectAlreadyExists(_, _)
+            | Error::TableAlreadyExists(_)
+            | Error::NoSuchColumns(_) => {
                 status = StatusCode::CONFLICT;
                 message = format!("{:?}", e)
             }
+            Error::NoSuchProject(_, _) | Error::NoSuchTable(_) => {
+                status = StatusCode::NOT_FOUND;
+                message = format!("{:?}", e);
+            }
+            // The rest are my errors but there shouldn't be anything the
+            // client can do to fix them, so log them
             _ => {
                 status = StatusCode::INTERNAL_SERVER_ERROR;
                 message = format!("{:?}", e);
+                log::error!("{}", message);
             }
         }
     // Not my errors
@@ -162,6 +177,11 @@ fn with_db(
     warp::any().map(move || db.clone())
 }
 
+/// Reply with the no content status
+fn reply_no_content() -> impl warp::Reply {
+    warp::reply::with_status(warp::reply(), StatusCode::NO_CONTENT)
+}
+
 // Routes ---------------------------------------------------------------------
 
 /// Health check
@@ -240,7 +260,7 @@ pub fn create_project(
                 let db = db.lock().await;
                 match db.create_project(user.id(), project_name.as_str()).await
                 {
-                    Ok(()) => Ok(warp::reply()),
+                    Ok(()) => Ok(reply_no_content()),
                     Err(e) => Err(warp::reject::custom(e)),
                 }
             },
@@ -262,7 +282,7 @@ pub fn delete_project(
                 let mut db = db.lock().await;
                 match db.remove_project(user.id(), project_name.as_str()).await
                 {
-                    Ok(()) => Ok(warp::reply()),
+                    Ok(()) => Ok(warp::reply::with_status(warp::reply(), StatusCode::NO_CONTENT)),
                     Err(e) => Err(warp::reject::custom(e)),
                 }
             },
@@ -323,7 +343,7 @@ pub fn create_table(
                   db: DBRef| async move {
                 match db.lock().await.create_user_table(&project, &table).await
                 {
-                    Ok(()) => Ok(warp::reply()),
+                    Ok(()) => Ok(reply_no_content()),
                     Err(e) => Err(warp::reject::custom(e)),
                 }
             },
@@ -349,7 +369,7 @@ pub fn remove_table(
                     .remove_user_table(&project, table_name.as_str())
                     .await
                 {
-                    Ok(()) => Ok(warp::reply()),
+                    Ok(()) => Ok(reply_no_content()),
                     Err(e) => Err(warp::reject::custom(e)),
                 }
             },
@@ -443,7 +463,7 @@ pub fn insert_data(
                         )
                         .await
                     {
-                        Ok(()) => Ok(warp::reply()),
+                        Ok(()) => Ok(reply_no_content()),
                         Err(e) => Err(warp::reject::custom(e)),
                     }
                 }
@@ -474,7 +494,7 @@ pub fn remove_all_user_table_data(
                         )
                         .await
                     {
-                        Ok(()) => Ok(warp::reply()),
+                        Ok(()) => Ok(reply_no_content()),
                         Err(e) => Err(warp::reject::custom(e)),
                     }
                 }
@@ -642,7 +662,10 @@ mod tests {
                 .header("Authorization", format!("Bearer {}", admin_token))
                 .reply(&create_project_filter)
                 .await;
-            assert_eq!(create_project_response.status(), StatusCode::OK);
+            assert_eq!(
+                create_project_response.status(),
+                StatusCode::NO_CONTENT
+            );
         }
 
         // Get projects
@@ -700,7 +723,7 @@ mod tests {
                 .body(serde_json::to_value(table.clone()).unwrap().to_string())
                 .reply(&filter)
                 .await;
-            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(response.status(), StatusCode::NO_CONTENT);
         }
 
         // Get table list
@@ -775,7 +798,7 @@ mod tests {
                 .body(serde_json::to_value(&data).unwrap().to_string())
                 .reply(&filter)
                 .await;
-            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(response.status(), StatusCode::NO_CONTENT);
         }
 
         // Get table data
@@ -813,7 +836,7 @@ mod tests {
                 .header("Authorization", format!("Bearer {}", admin_token))
                 .reply(&filter)
                 .await;
-            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(response.status(), StatusCode::NO_CONTENT);
         }
 
         // Remove table
@@ -831,7 +854,7 @@ mod tests {
                 .header("Authorization", format!("Bearer {}", admin_token))
                 .reply(&filter)
                 .await;
-            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(response.status(), StatusCode::NO_CONTENT);
         }
 
         // Delete projects
@@ -843,7 +866,10 @@ mod tests {
                 .header("Authorization", format!("Bearer {}", admin_token))
                 .reply(&delete_project_filter)
                 .await;
-            assert_eq!(delete_project_response.status(), StatusCode::OK);
+            assert_eq!(
+                delete_project_response.status(),
+                StatusCode::NO_CONTENT
+            );
             let get_projects_filter = get_user_projects(admindb_ref.clone());
             let get_projects_response = warp::test::request()
                 .method("GET")
@@ -985,7 +1011,22 @@ mod tests {
             assert_eq!(body, "HTTP method not allowed");
         }
 
-        // Creating the same project twice
+        // Delete a non-existent project
+        {
+            let resp = warp::test::request()
+                .method("DELETE")
+                .path("/delete/project/test_nonexistent")
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .reply(&routes)
+                .await;
+            assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+            assert_eq!(
+                serde_json::from_slice::<String>(&*resp.body()).unwrap(),
+                "NoSuchProject(1, \"test_nonexistent\")"
+            );
+        }
+
+        // Create a project that will be used later ---------------------------
         {
             warp::test::request()
                 .method("PUT")
@@ -993,6 +1034,10 @@ mod tests {
                 .header("Authorization", format!("Bearer {}", admin_token))
                 .reply(&routes)
                 .await;
+        }
+
+        // Creating the same project twice
+        {
             let resp = warp::test::request()
                 .method("PUT")
                 .path("/create/project/test")
@@ -1004,28 +1049,32 @@ mod tests {
                 serde_json::from_slice::<String>(&*resp.body()).unwrap(),
                 "ProjectAlreadyExists(1, \"test\")"
             );
+        }
+
+        log::info!("delete a non-existent table");
+        {
+            let resp = warp::test::request()
+                .method("DELETE")
+                .path("/project/test/remove/table/nonexistent")
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .reply(&routes)
+                .await;
+            assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+            assert_eq!(
+                serde_json::from_slice::<String>(&*resp.body()).unwrap(),
+                "NoSuchTable(\"nonexistent\")"
+            );
+        }
+
+        // Delete the project created earlier ---------------------------------
+        {
             let resp = warp::test::request()
                 .method("DELETE")
                 .path("/delete/project/test")
                 .header("Authorization", format!("Bearer {}", admin_token))
                 .reply(&routes)
                 .await;
-            assert_eq!(resp.status(), StatusCode::OK);
-        }
-
-        // Delete a non-existent project
-        {
-            let resp = warp::test::request()
-                .method("DELETE")
-                .path("/delete/project/test_nonexistent")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
-            assert_eq!(
-                serde_json::from_slice::<String>(&*resp.body()).unwrap(),
-                "NoSuchProject(1, \"test_nonexistent\")"
-            );
+            assert_eq!(resp.status(), StatusCode::NO_CONTENT);
         }
 
         // Token too old
