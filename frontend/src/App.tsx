@@ -45,15 +45,11 @@ export default function App({
     localStorage.setItem("token", tok)
   }
   const { auth } = useToken(token, tokenValidator)
-  const [currentProject, setCurrentProject] = useState<string | undefined>()
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Nav
-        handleThemeChange={handleThemeChange}
-        currentProject={currentProject}
-      />
       <Router>
+        <Nav handleThemeChange={handleThemeChange} />
         <Switch>
           <Route exact path="/login">
             {auth === AuthStatus.Ok ? (
@@ -66,9 +62,7 @@ export default function App({
             <Home token={token} />
           </AuthRoute>
           <AuthRoute path="/project/:name" auth={auth}>
-            <Project
-              onVisit={(projectName: string) => setCurrentProject(projectName)}
-            />
+            <Project />
           </AuthRoute>
         </Switch>
       </Router>

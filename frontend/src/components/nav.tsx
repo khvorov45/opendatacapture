@@ -2,6 +2,7 @@ import React from "react"
 import { AppBar, Toolbar, IconButton } from "@material-ui/core"
 import BrightnessMediumIcon from "@material-ui/icons/BrightnessMedium"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
+import { useLocation } from "react-router-dom"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -32,31 +33,33 @@ const useStyles = makeStyles((theme: Theme) =>
 
 export default function Nav({
   handleThemeChange,
-  currentProject,
 }: {
   handleThemeChange: () => void
-  currentProject?: string
 }) {
   const classes = useStyles()
+
   return (
     <AppBar position="relative" className={classes.nav}>
       <Toolbar className="toolbar">
-        <ProjectInfo name={currentProject} />
+        <ProjectInfo />
         <ThemeSwitch handleThemeChange={handleThemeChange} />
       </Toolbar>
     </AppBar>
   )
 }
 
-function ProjectInfo({ name }: { name?: string }) {
+function ProjectInfo() {
+  const location = useLocation()
   const classes = useStyles()
-  if (!name) {
+  if (!location.pathname.startsWith("/project")) {
     return <></>
   }
   return (
     <div className={classes.projectInfo}>
       <div className="label">Project</div>
-      <div className="name">{name}</div>
+      <div className="name">
+        {location.pathname.match(/^\/project\/(.*)\//)?.[1]}
+      </div>
     </div>
   )
 }

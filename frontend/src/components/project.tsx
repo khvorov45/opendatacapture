@@ -7,7 +7,7 @@ import {
 } from "@material-ui/core"
 import { Link, Redirect } from "react-router-dom"
 import makeStyles from "@material-ui/core/styles/makeStyles"
-import React, { useEffect, useState } from "react"
+import React, { useState } from "react"
 import { Route, useParams } from "react-router-dom"
 import { TableMeta, TableSpec } from "../lib/project"
 
@@ -28,15 +28,9 @@ const useStyles = makeStyles((theme: Theme) =>
   })
 )
 
-export default function ProjectPage({
-  onVisit,
-}: {
-  onVisit: (projectName: string) => void
-}) {
+export default function ProjectPage() {
   let { name } = useParams<{ name: string }>()
-  useEffect(() => {
-    onVisit?.(name)
-  }, [name, onVisit])
+
   let [tableSpec, setTableSpec] = useState<TableSpec>([])
   const classes = useStyles()
   return (
