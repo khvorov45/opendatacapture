@@ -124,6 +124,7 @@ test("project widget - remove projects", async () => {
 
 test("project widget - routing", async () => {
   mockedAxios.get.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
     data: [{ user: 1, name: "some-project", created: new Date() }],
   })
   const { getByText } = render(

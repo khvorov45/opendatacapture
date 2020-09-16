@@ -84,9 +84,9 @@ test("route to project page", async () => {
   }
   mockedAxios.get
     // Token validation
-    .mockResolvedValueOnce({ data: user })
+    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: user })
     // Project list
-    .mockResolvedValueOnce({ data: [project] })
+    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: [project] })
   const { getByTestId, getByText } = render(
     <App initPalette="dark" initToken="123" />
   )
