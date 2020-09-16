@@ -1,12 +1,31 @@
 import {
-  Drawer,
+  createStyles,
   List,
   ListItem,
   ListItemText,
-  Toolbar,
+  Theme,
 } from "@material-ui/core"
-import React, { useEffect } from "react"
+import makeStyles from "@material-ui/core/styles/makeStyles"
+import React, { useEffect, useState } from "react"
 import { useParams } from "react-router-dom"
+import { TableMeta, TableSpec } from "../lib/project"
+
+const useStyles = makeStyles((theme: Theme) =>
+  createStyles({
+    projectPage: {
+      display: "grid",
+      overflow: "auto",
+      gridTemplateColumns: "[sidebar] 1fr [main] 8fr",
+    },
+    sidebar: {
+      gridColumnStart: "sidebar",
+      backgroundColor: "var(--palette-sidebar)",
+    },
+    main: {
+      gridColumnStart: "main",
+    },
+  })
+)
 
 export default function ProjectPage({
   onVisit,
@@ -17,22 +36,42 @@ export default function ProjectPage({
   useEffect(() => {
     onVisit?.(name)
   }, [name, onVisit])
+  let [tableSpec, setTableSpec] = useState<TableSpec>([])
+  const classes = useStyles()
   return (
-    <div data-testid={`project-page-${name}`}>
-      <SideBar />
+    <div className={classes.projectPage} data-testid={`project-page-${name}`}>
+      <Sidebar />
+      <main className={classes.main}>
+        <div>main</div>
+        <TableCards tableSpec={tableSpec} />
+      </main>
     </div>
   )
 }
 
-function SideBar() {
+function Sidebar() {
+  const classes = useStyles()
   return (
-    <Drawer variant="permanent">
-      <Toolbar />
+    <div className={classes.sidebar}>
       <List>
         <ListItem button>
           <ListItemText primary="Tables" />
         </ListItem>
       </List>
-    </Drawer>
+    </div>
   )
+}
+
+function TableCards({ tableSpec }: { tableSpec: TableSpec }) {
+  return (
+    <>
+      {tableSpec.map((tableMeta) => (
+        <TableCard tableMeta={tableMeta} />
+      ))}
+    </>
+  )
+}
+
+function TableCard({ tableMeta }: { tableMeta: TableMeta }) {
+  return <>Table card for {tableMeta.name}</>
 }

@@ -6,7 +6,6 @@ import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
     nav: {
-      zIndex: theme.zIndex.drawer + 1,
       overflow: "auto",
       "& .toolbar": {
         display: "flex",

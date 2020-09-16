@@ -1,10 +1,12 @@
 :root {
   --palette-table-head: rgb(15, 15, 15);
+  --palette-sidebar: rgb(15, 15, 15);
   --palette-link: #61edff;
 }
 
 [theme="light"] {
   --palette-table-head: rgb(175, 175, 175);
+  --palette-sidebar: rgb(175, 175, 175);
   --palette-link: rgb(0, 17, 253);
 }
 
