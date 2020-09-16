@@ -10,6 +10,7 @@ import makeStyles from "@material-ui/core/styles/makeStyles"
 import React, { useState } from "react"
 import { Route, useParams } from "react-router-dom"
 import { TableMeta, TableSpec } from "../lib/project"
+import ButtonArray from "./button-array"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -37,12 +38,11 @@ export default function ProjectPage() {
     <div className={classes.projectPage} data-testid={`project-page-${name}`}>
       <Sidebar projectName={name} />
       <main className={classes.main}>
-        <div>main</div>
         <Route path={`/project/${name}`}>
           <Redirect to={`/project/${name}/tables`} />
         </Route>
         <Route path={`/project/${name}/tables`}>
-          <div>tables</div>
+          <TableControl />
           <TableCards tableSpec={tableSpec} />
         </Route>
       </main>
@@ -61,6 +61,10 @@ function Sidebar({ projectName }: { projectName: string }) {
       </List>
     </div>
   )
+}
+
+function TableControl() {
+  return <ButtonArray>table control</ButtonArray>
 }
 
 function TableCards({ tableSpec }: { tableSpec: TableSpec }) {

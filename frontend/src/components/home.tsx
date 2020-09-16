@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, ReactNode } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 import Add from "@material-ui/icons/Add"
 import Send from "@material-ui/icons/Send"
@@ -25,6 +25,7 @@ import {
   createProject,
 } from "../lib/project"
 import { StyledTableRow, StyledTableCell } from "./table"
+import ButtonArray from "./button-array"
 import { Link as RouterLink } from "react-router-dom"
 
 const useStyles = makeStyles((theme: Theme) =>
@@ -78,14 +79,6 @@ const useStyles = makeStyles((theme: Theme) =>
     centered: {
       display: "flex",
       justifyContent: "center",
-    },
-    buttonArray: {
-      display: "flex",
-      flexDirection: "column",
-      "& div.buttons": {
-        display: "flex",
-        alignItems: "center",
-      },
     },
     projectName: {
       textTransform: "none",
@@ -197,26 +190,6 @@ function ProjectControlButtons({
         <ProjectRefreshButton onClick={onRefresh} />
       )}
     </ButtonArray>
-  )
-}
-
-function ButtonArray({
-  errorMsg,
-  children,
-  errorTestId,
-}: {
-  errorMsg?: string
-  children: ReactNode
-  errorTestId?: string
-}) {
-  const classes = useStyles()
-  return (
-    <div className={classes.buttonArray}>
-      <div className="buttons">{children}</div>
-      <FormHelperText error={true} data-testid={errorTestId}>
-        {errorMsg}
-      </FormHelperText>
-    </div>
   )
 }
 
