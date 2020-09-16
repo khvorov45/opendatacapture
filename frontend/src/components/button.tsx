@@ -1,6 +1,7 @@
 import React, { ReactNode } from "react"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
-import { FormHelperText } from "@material-ui/core"
+import { FormHelperText, IconButton, useTheme } from "@material-ui/core"
+import Add from "@material-ui/icons/Add"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -15,7 +16,7 @@ const useStyles = makeStyles((theme: Theme) =>
   })
 )
 
-export default function ButtonArray({
+export function ButtonArray({
   errorMsg,
   children,
   errorTestId,
@@ -32,5 +33,20 @@ export default function ButtonArray({
         {errorMsg}
       </FormHelperText>
     </div>
+  )
+}
+
+export function CreateButton({
+  onClick,
+  dataTestId,
+}: {
+  onClick?: () => void
+  dataTestId?: string
+}) {
+  const theme = useTheme()
+  return (
+    <IconButton onClick={onClick} data-testid={dataTestId}>
+      <Add htmlColor={theme.palette.success.main} />
+    </IconButton>
   )
 }

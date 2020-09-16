@@ -10,7 +10,7 @@ import makeStyles from "@material-ui/core/styles/makeStyles"
 import React, { useState } from "react"
 import { Route, useParams } from "react-router-dom"
 import { TableMeta, TableSpec } from "../lib/project"
-import ButtonArray from "./button-array"
+import { ButtonArray } from "./button"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({

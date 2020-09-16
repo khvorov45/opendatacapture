@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
-import Add from "@material-ui/icons/Add"
 import Send from "@material-ui/icons/Send"
 import DeleteForever from "@material-ui/icons/DeleteForever"
 import Refresh from "@material-ui/icons/Refresh"
@@ -18,6 +17,7 @@ import {
   Button,
 } from "@material-ui/core"
 import { usePromiseTracker, trackPromise } from "react-promise-tracker"
+import { Link as RouterLink } from "react-router-dom"
 import {
   getUserProjects,
   Project,
@@ -25,8 +25,7 @@ import {
   createProject,
 } from "../lib/project"
 import { StyledTableRow, StyledTableCell } from "./table"
-import ButtonArray from "./button-array"
-import { Link as RouterLink } from "react-router-dom"
+import { ButtonArray, CreateButton } from "./button"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -183,7 +182,7 @@ function ProjectControlButtons({
   const { promiseInProgress } = usePromiseTracker({ area: "get-projects" })
   return (
     <ButtonArray errorMsg={errorMsg} errorTestId="project-control-error">
-      <ProjectCreateButton onClick={onCreate} />
+      <CreateButton onClick={onCreate} dataTestId="project-create-button" />
       {promiseInProgress ? (
         <CircularProgress />
       ) : (
@@ -303,15 +302,6 @@ function NoProjects() {
         No projects found
       </Typography>
     </div>
-  )
-}
-
-function ProjectCreateButton({ onClick }: { onClick?: () => void }) {
-  const theme = useTheme()
-  return (
-    <IconButton onClick={onClick} data-testid="project-create-button">
-      <Add htmlColor={theme.palette.success.main} />
-    </IconButton>
   )
 }
 
