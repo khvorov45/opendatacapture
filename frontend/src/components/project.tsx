@@ -5,12 +5,12 @@ import {
   ListItemText,
   Theme,
 } from "@material-ui/core"
-import { Link, Redirect } from "react-router-dom"
+import { Link, Redirect, useRouteMatch } from "react-router-dom"
 import makeStyles from "@material-ui/core/styles/makeStyles"
-import React, { useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import { Route, useParams } from "react-router-dom"
-import { TableMeta, TableSpec } from "../lib/project"
-import { ButtonArray } from "./button"
+import { getAllMeta, TableMeta, TableSpec } from "../lib/project"
+import { ButtonArray, CreateButton } from "./button"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -29,33 +29,24 @@ const useStyles = makeStyles((theme: Theme) =>
   })
 )
 
-export default function ProjectPage() {
+export default function ProjectPage({ token }: { token: string | null }) {
   let { name } = useParams<{ name: string }>()
-
-  let [tableSpec, setTableSpec] = useState<TableSpec>([])
   const classes = useStyles()
   return (
     <div className={classes.projectPage} data-testid={`project-page-${name}`}>
-      <Sidebar projectName={name} />
-      <main className={classes.main}>
-        <Route path={`/project/${name}`}>
-          <Redirect to={`/project/${name}/tables`} />
-        </Route>
-        <Route path={`/project/${name}/tables`}>
-          <TableControl />
-          <TableCards tableSpec={tableSpec} />
-        </Route>
-      </main>
+      <Sidebar />
+      {token ? <Main token={token} /> : <></>}
     </div>
   )
 }
 
-function Sidebar({ projectName }: { projectName: string }) {
+function Sidebar() {
+  const { url } = useRouteMatch()
   const classes = useStyles()
   return (
     <div className={classes.sidebar}>
       <List>
-        <ListItem button component={Link} to={`/project/${projectName}/tables`}>
+        <ListItem button component={Link} to={`${url}/tables`}>
           <ListItemText primary="Tables" />
         </ListItem>
       </List>
@@ -63,20 +54,81 @@ function Sidebar({ projectName }: { projectName: string }) {
   )
 }
 
-function TableControl() {
-  return <ButtonArray>table control</ButtonArray>
+function Main({ token }: { token: string }) {
+  const { url } = useRouteMatch()
+  const classes = useStyles()
+  return (
+    <main className={classes.main}>
+      <Route path={url}>
+        <Redirect to={`${url}/tables`} />
+      </Route>
+      <Route path={`${url}/tables`}>
+        <TablePanel token={token} />
+      </Route>
+    </main>
+  )
 }
 
-function TableCards({ tableSpec }: { tableSpec: TableSpec }) {
+function TablePanel({ token }: { token: string }) {
+  let { name } = useParams<{ name: string }>()
+
+  let [renderNew, setRenderNew] = useState(false)
+  let [tableSpec, setTableSpec] = useState<TableSpec>([])
+  let [errorMsg, setErrorMsg] = useState("")
+
+  useEffect(() => {
+    if (tableSpec.length === 0) {
+      setRenderNew(true)
+    }
+  }, [tableSpec])
+
+  const refreshTables = useCallback(() => {
+    getAllMeta(token, name)
+      .then((tables) => setTableSpec(tables))
+      .catch((e) => setErrorMsg(e.message))
+  }, [token, name])
+
+  useEffect(() => {
+    refreshTables()
+  }, [refreshTables])
+
   return (
     <>
-      {tableSpec.map((tableMeta) => (
-        <TableCard tableMeta={tableMeta} />
-      ))}
+      <TableControl onCreate={() => setRenderNew((old) => !old)} />
+      <TableCards tableSpec={tableSpec} renderNew={renderNew} />
     </>
+  )
+}
+
+function TableControl({ onCreate }: { onCreate: () => void }) {
+  return (
+    <ButtonArray>
+      <CreateButton onClick={onCreate} dataTestId="create-table-button" />
+    </ButtonArray>
+  )
+}
+
+function TableCards({
+  tableSpec,
+  renderNew,
+}: {
+  tableSpec: TableSpec
+  renderNew: boolean
+}) {
+  return (
+    <div>
+      {renderNew ? <NewTableForm /> : <></>}
+      {tableSpec.map((tableMeta) => (
+        <TableCard key={tableMeta.name} tableMeta={tableMeta} />
+      ))}
+    </div>
   )
 }
 
 function TableCard({ tableMeta }: { tableMeta: TableMeta }) {
   return <>Table card for {tableMeta.name}</>
+}
+
+function NewTableForm() {
+  return <div data-testid="new-table-form">New table form</div>
 }

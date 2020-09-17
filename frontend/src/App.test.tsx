@@ -1,11 +1,17 @@
 /* istanbul ignore file */
 
 import React from "react"
-import { render, fireEvent, waitForDomChange } from "@testing-library/react"
+import {
+  render,
+  fireEvent,
+  waitForDomChange,
+  wait,
+} from "@testing-library/react"
 import App from "./App"
 import { themeInit } from "./lib/theme"
 import httpStatusCodes from "http-status-codes"
 import axios from "axios"
+import { act } from "react-dom/test-utils"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
@@ -87,14 +93,18 @@ test("route to project page", async () => {
     .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: user })
     // Project list
     .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: [project] })
+    // Project metadata
+    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: [] })
   const { getByTestId, getByText } = render(
     <App initPalette="dark" initToken="123" />
   )
   await waitForDomChange()
   fireEvent.click(getByText("somename"))
-  // Check redirection
-  expect(getByTestId("project-page-somename")).toBeInTheDocument()
-  // Check that project info on nav updated
-  expect(getByText("Project")).toBeInTheDocument()
-  expect(getByText("somename")).toBeInTheDocument()
+  wait(() => {
+    // Check redirection
+    expect(getByTestId("project-page-somename")).toBeInTheDocument()
+    // Check that project info on nav updated
+    expect(getByText("Project")).toBeInTheDocument()
+    expect(getByText("somename")).toBeInTheDocument()
+  })
 })

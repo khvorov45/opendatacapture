@@ -62,7 +62,7 @@ export default function App({
             <Home token={token} />
           </AuthRoute>
           <AuthRoute path="/project/:name" auth={auth}>
-            <Project />
+            <Project token={token} />
           </AuthRoute>
         </Switch>
       </Router>
