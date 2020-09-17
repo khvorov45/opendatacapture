@@ -10,7 +10,7 @@ import { Link, Redirect, useRouteMatch } from "react-router-dom"
 import makeStyles from "@material-ui/core/styles/makeStyles"
 import React, { useCallback, useEffect, useState } from "react"
 import { Route, useParams } from "react-router-dom"
-import { getAllMeta, TableMeta, TableSpec } from "../lib/project"
+import { ColMeta, getAllMeta, TableMeta, TableSpec } from "../lib/project"
 import { ButtonArray, CreateButton } from "./button"
 
 const useStyles = makeStyles((theme: Theme) =>
@@ -137,6 +137,22 @@ function TableCard({ tableMeta }: { tableMeta: TableMeta }) {
 
 function NewTableForm() {
   const [name, setName] = useState("")
+  const defaultCol = {
+    name: "",
+    postgres_type: "",
+    not_null: false,
+    unique: false,
+    primary_key: false,
+    foreign_key: null,
+  }
+  const [cols, setCols] = useState<ColMeta[]>([defaultCol])
+
+  function setColName(value: string, i: number) {
+    // This is extremely memory-efficient, I swear
+    const newCols = [...cols]
+    newCols[i].name = value
+    setCols(newCols)
+  }
 
   return (
     <div data-testid="new-table-form">
@@ -145,6 +161,27 @@ function NewTableForm() {
         label="New table name..."
         value={name}
         onChange={(e) => setName(e.target.value)}
+      />
+      {cols.map((c, i) => (
+        <ColumnEntry key={i} onNameChange={(value) => setColName(value, i)} />
+      ))}
+    </div>
+  )
+}
+
+function ColumnEntry({
+  onNameChange,
+}: {
+  onNameChange: (value: string) => void
+}) {
+  return (
+    <div>
+      <TextField
+        inputProps={{ "data-testid": "new-column-name-field" }}
+        label="New column name..."
+        onChange={(e) => {
+          onNameChange(e.target.value)
+        }}
       />
     </div>
   )
