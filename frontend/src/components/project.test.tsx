@@ -10,9 +10,9 @@ function renderProjectPage() {
     <BrowserRouter>
       <Switch>
         <Route exact path="/">
-          <Redirect to="/projects/some-project" />
+          <Redirect to="/project/some-project" />
         </Route>
-        <Route path="/projects/:name">
+        <Route path="/project/:name">
           <ProjectPage token="123" />
         </Route>
       </Switch>

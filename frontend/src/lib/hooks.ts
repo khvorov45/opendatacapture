@@ -1,5 +1,6 @@
 import { User } from "../lib/auth"
 import { useState, useEffect } from "react"
+import { useLocation } from "react-router-dom"
 
 export enum AuthStatus {
   InProgress,
@@ -26,4 +27,15 @@ export function useToken(
       .catch((e) => setAuth(AuthStatus.Err))
   }, [token, tokenValidator])
   return { user: user, auth: auth }
+}
+
+export function useProjectName(): string {
+  const location = useLocation()
+  const match = location.pathname.match(/^\/project\/([^/]*)/)
+  if (!match || !match[1]) {
+    throw Error(
+      `incorrect location for useProjectName hook: ${location.pathname}`
+    )
+  }
+  return match[1]
 }

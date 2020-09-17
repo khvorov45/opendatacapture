@@ -3,6 +3,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  TextField,
   Theme,
 } from "@material-ui/core"
 import { Link, Redirect, useRouteMatch } from "react-router-dom"
@@ -11,6 +12,7 @@ import React, { useCallback, useEffect, useState } from "react"
 import { Route, useParams } from "react-router-dom"
 import { getAllMeta, TableMeta, TableSpec } from "../lib/project"
 import { ButtonArray, CreateButton } from "./button"
+import { useProjectName } from "../lib/hooks"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -70,7 +72,7 @@ function Main({ token }: { token: string }) {
 }
 
 function TablePanel({ token }: { token: string }) {
-  let { name } = useParams<{ name: string }>()
+  let projectName = useProjectName()
 
   let [renderNew, setRenderNew] = useState(false)
   let [tableSpec, setTableSpec] = useState<TableSpec>([])
@@ -83,10 +85,10 @@ function TablePanel({ token }: { token: string }) {
   }, [tableSpec])
 
   const refreshTables = useCallback(() => {
-    getAllMeta(token, name)
+    getAllMeta(token, projectName)
       .then((tables) => setTableSpec(tables))
       .catch((e) => setErrorMsg(e.message))
-  }, [token, name])
+  }, [token, projectName])
 
   useEffect(() => {
     refreshTables()
@@ -130,5 +132,16 @@ function TableCard({ tableMeta }: { tableMeta: TableMeta }) {
 }
 
 function NewTableForm() {
-  return <div data-testid="new-table-form">New table form</div>
+  const [name, setName] = useState("")
+
+  return (
+    <div data-testid="new-table-form">
+      <TextField
+        inputProps={{ "data-testid": "new-table-name-field" }}
+        label="New table name..."
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+    </div>
+  )
 }
