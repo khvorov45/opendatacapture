@@ -58,6 +58,7 @@ function Sidebar() {
 
 function Main({ token }: { token: string }) {
   const { url } = useRouteMatch()
+  const { name } = useParams<{ name: string }>()
   const classes = useStyles()
   return (
     <main className={classes.main}>
@@ -65,15 +66,19 @@ function Main({ token }: { token: string }) {
         <Redirect to={`${url}/tables`} />
       </Route>
       <Route path={`${url}/tables`}>
-        <TablePanel token={token} />
+        <TablePanel token={token} projectName={name} />
       </Route>
     </main>
   )
 }
 
-function TablePanel({ token }: { token: string }) {
-  let projectName = useProjectName()
-
+function TablePanel({
+  token,
+  projectName,
+}: {
+  token: string
+  projectName: string
+}) {
   let [renderNew, setRenderNew] = useState(false)
   let [tableSpec, setTableSpec] = useState<TableSpec>([])
   let [errorMsg, setErrorMsg] = useState("")

@@ -28,14 +28,3 @@ export function useToken(
   }, [token, tokenValidator])
   return { user: user, auth: auth }
 }
-
-export function useProjectName(): string {
-  const location = useLocation()
-  const match = location.pathname.match(/^\/project\/([^/]*)/)
-  if (!match || !match[1]) {
-    throw Error(
-      `incorrect location for useProjectName hook: ${location.pathname}`
-    )
-  }
-  return match[1]
-}

@@ -58,7 +58,7 @@ function ProjectInfo() {
     <div className={classes.projectInfo}>
       <div className="label">Project</div>
       <div className="name">
-        {location.pathname.match(/^\/project\/(.*)\//)?.[1]}
+        {location.pathname.match(/^\/project\/([^/]*)/)?.[1]}
       </div>
     </div>
   )
