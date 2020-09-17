@@ -12,7 +12,6 @@ import React, { useCallback, useEffect, useState } from "react"
 import { Route, useParams } from "react-router-dom"
 import { getAllMeta, TableMeta, TableSpec } from "../lib/project"
 import { ButtonArray, CreateButton } from "./button"
-import { useProjectName } from "../lib/hooks"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
