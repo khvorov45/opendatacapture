@@ -1,5 +1,5 @@
 import React from "react"
-import { AppBar, Toolbar, IconButton } from "@material-ui/core"
+import { IconButton } from "@material-ui/core"
 import BrightnessMediumIcon from "@material-ui/icons/BrightnessMedium"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 import { useLocation } from "react-router-dom"
@@ -8,9 +8,9 @@ const useStyles = makeStyles((theme: Theme) =>
   createStyles({
     nav: {
       overflow: "auto",
-      "& .toolbar": {
-        display: "flex",
-      },
+      display: "flex",
+      backgroundColor: "var(--palette-table-head)",
+      borderBottom: `1px solid ${theme.palette.divider}`,
     },
     themeswitch: {
       marginLeft: "auto",
@@ -39,12 +39,10 @@ export default function Nav({
   const classes = useStyles()
 
   return (
-    <AppBar position="relative" className={classes.nav}>
-      <Toolbar className="toolbar">
-        <ProjectInfo />
-        <ThemeSwitch handleThemeChange={handleThemeChange} />
-      </Toolbar>
-    </AppBar>
+    <div className={classes.nav}>
+      <ProjectInfo />
+      <ThemeSwitch handleThemeChange={handleThemeChange} />
+    </div>
   )
 }
 
