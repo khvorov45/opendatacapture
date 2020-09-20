@@ -23,6 +23,7 @@ const useStyles = makeStyles((theme: Theme) =>
     sidebar: {
       gridColumnStart: "sidebar",
       backgroundColor: "var(--palette-sidebar)",
+      borderRight: `1px solid ${theme.palette.divider}`,
     },
     main: {
       gridColumnStart: "main",
