@@ -1,10 +1,12 @@
 import {
   createStyles,
+  IconButton,
   List,
   ListItem,
   ListItemText,
   TextField,
   Theme,
+  useTheme,
 } from "@material-ui/core"
 import { Link, Redirect, useRouteMatch } from "react-router-dom"
 import makeStyles from "@material-ui/core/styles/makeStyles"
@@ -12,6 +14,8 @@ import React, { useCallback, useEffect, useState } from "react"
 import { Route, useParams } from "react-router-dom"
 import { ColMeta, getAllMeta, TableMeta, TableSpec } from "../lib/project"
 import { ButtonArray, CreateButton } from "./button"
+import Check from "@material-ui/icons/Check"
+import Clear from "@material-ui/icons/Clear"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -43,6 +47,9 @@ const useStyles = makeStyles((theme: Theme) =>
       flexDirection: "column",
       maxWidth: "200px",
       padding: "10px",
+      "& .buttons": {
+        marginTop: "10px",
+      },
     },
   })
 )
@@ -173,6 +180,7 @@ function NewTableForm() {
     setCols(newCols)
   }
   const classes = useStyles()
+  const theme = useTheme()
   return (
     <div className={classes.newTableForm} data-testid="new-table-form">
       <TextField
@@ -184,6 +192,14 @@ function NewTableForm() {
       {cols.map((c, i) => (
         <ColumnEntry key={i} onNameChange={(value) => setColName(value, i)} />
       ))}
+      <ButtonArray center className={"buttons"}>
+        <IconButton data-testid="create-table-button">
+          <Check htmlColor={theme.palette.success.main} />
+        </IconButton>
+        <IconButton data-testid="clear-table-button">
+          <Clear htmlColor={theme.palette.error.main} />
+        </IconButton>
+      </ButtonArray>
     </div>
   )
 }

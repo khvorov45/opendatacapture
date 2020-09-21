@@ -11,6 +11,9 @@ const useStyles = makeStyles((theme: Theme) =>
       "& div.buttons": {
         display: "flex",
         alignItems: "center",
+        "&.center": {
+          justifyContent: "center",
+        },
       },
     },
   })
@@ -21,18 +24,20 @@ export function ButtonArray({
   children,
   errorTestId,
   className,
+  center,
 }: {
   errorMsg?: string
   children: ReactNode
   errorTestId?: string
   className?: string
+  center?: boolean
 }) {
   const classes = useStyles()
   return (
     <div
       className={`${classes.buttonArray}${className ? ` ${className}` : ""}`}
     >
-      <div className="buttons">{children}</div>
+      <div className={`buttons${center ? " center" : ""}`}>{children}</div>
       <FormHelperText error={true} data-testid={errorTestId}>
         {errorMsg}
       </FormHelperText>
