@@ -1,5 +1,6 @@
 import {
   createStyles,
+  Divider,
   IconButton,
   List,
   ListItem,
@@ -16,6 +17,7 @@ import { ColMeta, getAllMeta, TableMeta, TableSpec } from "../lib/project"
 import { ButtonArray, CreateButton } from "./button"
 import Check from "@material-ui/icons/Check"
 import Clear from "@material-ui/icons/Clear"
+import { NamedDivider } from "./divider"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -45,10 +47,14 @@ const useStyles = makeStyles((theme: Theme) =>
     newTableForm: {
       display: "flex",
       flexDirection: "column",
+      justifyContent: "center",
       maxWidth: "250px",
-      padding: "10px",
-      "& .buttons": {
-        marginTop: "10px",
+      "&>.padded": {
+        margin: "auto",
+        justifyContent: "center",
+        paddingLeft: "10px",
+        paddingRight: "10px",
+        paddingBottom: "10px",
       },
     },
     columnEntry: {
@@ -194,19 +200,25 @@ function NewTableForm() {
   const theme = useTheme()
   return (
     <div className={classes.newTableForm} data-testid="new-table-form">
-      <TextField
-        inputProps={{ "data-testid": "new-table-name-field" }}
-        label="Table name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      {cols.map((c, i) => (
-        <ColumnEntry
-          key={i}
-          onNameChange={(value) => setColName(value, i)}
-          onTypeChange={(value) => setColType(value, i)}
+      <div className="padded">
+        <TextField
+          inputProps={{ "data-testid": "new-table-name-field" }}
+          label="Table name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
         />
-      ))}
+      </div>
+      <NamedDivider name="Columns" />
+      <div className="padded">
+        {cols.map((c, i) => (
+          <ColumnEntry
+            key={i}
+            onNameChange={(value) => setColName(value, i)}
+            onTypeChange={(value) => setColType(value, i)}
+          />
+        ))}
+      </div>
+      <NamedDivider name="" />
       <ButtonArray center className={"buttons"}>
         <IconButton data-testid="create-table-button">
           <Check htmlColor={theme.palette.success.main} />
