@@ -1,6 +1,5 @@
 import { User } from "../lib/auth"
 import { useState, useEffect } from "react"
-import { useLocation } from "react-router-dom"
 
 export enum AuthStatus {
   InProgress,

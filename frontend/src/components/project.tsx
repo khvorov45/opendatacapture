@@ -1,6 +1,5 @@
 import {
   createStyles,
-  Divider,
   List,
   ListItem,
   ListItemText,
