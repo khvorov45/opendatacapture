@@ -1,6 +1,8 @@
 import {
+  Checkbox,
   createStyles,
   FormControl,
+  FormControlLabel,
   IconButton,
   InputLabel,
   List,
@@ -51,7 +53,7 @@ const useStyles = makeStyles((theme: Theme) =>
       display: "flex",
       flexDirection: "column",
       justifyContent: "center",
-      maxWidth: "250px",
+      maxWidth: "350px",
       "&>.padded": {
         margin: "auto",
         justifyContent: "center",
@@ -62,7 +64,12 @@ const useStyles = makeStyles((theme: Theme) =>
     },
     columnEntry: {
       display: "flex",
+      flexDirection: "column",
       "&>*": {
+        display: "flex",
+        alignSelf: "center",
+      },
+      "&>.nametype>*": {
         minWidth: 80,
         marginRight: 5,
       },
@@ -199,6 +206,21 @@ function NewTableForm() {
     newCols[i].postgres_type = value
     setCols(newCols)
   }
+  function setColPK(value: boolean, i: number) {
+    const newCols = [...cols]
+    newCols[i].primary_key = value
+    setCols(newCols)
+  }
+  function setColNN(value: boolean, i: number) {
+    const newCols = [...cols]
+    newCols[i].not_null = value
+    setCols(newCols)
+  }
+  function setColUnique(value: boolean, i: number) {
+    const newCols = [...cols]
+    newCols[i].unique = value
+    setCols(newCols)
+  }
 
   const classes = useStyles()
   const theme = useTheme()
@@ -219,6 +241,9 @@ function NewTableForm() {
             key={i}
             onNameChange={(value) => setColName(value, i)}
             onTypeChange={(value) => setColType(value, i)}
+            onPKChange={(value) => setColPK(value, i)}
+            onNNChange={(value) => setColNN(value, i)}
+            onUniqueChange={(value) => setColUnique(value, i)}
           />
         ))}
       </div>
@@ -238,42 +263,93 @@ function NewTableForm() {
 function ColumnEntry({
   onNameChange,
   onTypeChange,
+  onPKChange,
+  onNNChange,
+  onUniqueChange,
 }: {
   onNameChange: (value: string) => void
   onTypeChange: (value: string) => void
+  onPKChange: (value: boolean) => void
+  onNNChange: (value: boolean) => void
+  onUniqueChange: (value: boolean) => void
 }) {
   const classes = useStyles()
   const allowedTypes = ["int", "text"]
   const [type, setType] = useState("")
-  const handleTypeChange = (event: React.ChangeEvent<{ value: unknown }>) => {
+  function handleTypeChange(event: React.ChangeEvent<{ value: unknown }>) {
     const newType = event.target.value as string
     setType(newType)
     onTypeChange(newType)
   }
+  const [primaryKey, setPrimaryKey] = useState(false)
+  function handlePKChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const newPK = !primaryKey
+    setPrimaryKey(newPK)
+    onPKChange(newPK)
+  }
+  const [notNull, setNotNull] = useState(false)
+  function handleNNChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const newNN = !notNull
+    setNotNull(newNN)
+    onNNChange(newNN)
+  }
+  const [unique, setUnique] = useState(false)
+  function handleUniqueChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const newU = !unique
+    setUnique(newU)
+    onUniqueChange(newU)
+  }
   return (
     <div className={classes.columnEntry}>
-      <TextField
-        inputProps={{ "data-testid": "new-column-name-field" }}
-        label="Name"
-        onChange={(e) => {
-          onNameChange(e.target.value)
-        }}
-      />
-      <FormControl>
-        <InputLabel id="type-select-label">Type</InputLabel>
-        <Select
-          labelId="type-select-label"
-          id="type-select"
-          value={type}
-          onChange={handleTypeChange}
-        >
-          {allowedTypes.map((t) => (
-            <MenuItem key={t} value={t}>
-              {t}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <div className="nametype">
+        <TextField
+          inputProps={{ "data-testid": "new-column-name-field" }}
+          label="Name"
+          onChange={(e) => {
+            onNameChange(e.target.value)
+          }}
+        />
+        <FormControl>
+          <InputLabel id="type-select-label">Type</InputLabel>
+          <Select
+            labelId="type-select-label"
+            id="type-select"
+            value={type}
+            onChange={handleTypeChange}
+          >
+            {allowedTypes.map((t) => (
+              <MenuItem key={t} value={t}>
+                {t}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </div>
+
+      <div>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={primaryKey}
+              onChange={handlePKChange}
+              name="PK"
+            />
+          }
+          label="Primary key"
+        />
+        <FormControlLabel
+          control={
+            <Checkbox checked={notNull} onChange={handleNNChange} name="NN" />
+          }
+          label="Not null"
+        />
+        <FormControlLabel
+          control={
+            <Checkbox checked={unique} onChange={handleUniqueChange} name="U" />
+          }
+          label="Unique"
+        />
+      </div>
     </div>
   )
 }
