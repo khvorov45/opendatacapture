@@ -1,10 +1,13 @@
 import {
   createStyles,
-  Divider,
+  FormControl,
   IconButton,
+  InputLabel,
   List,
   ListItem,
   ListItemText,
+  MenuItem,
+  Select,
   TextField,
   Theme,
   useTheme,
@@ -60,6 +63,7 @@ const useStyles = makeStyles((theme: Theme) =>
     columnEntry: {
       display: "flex",
       "&>*": {
+        minWidth: 80,
         marginRight: 5,
       },
     },
@@ -239,6 +243,13 @@ function ColumnEntry({
   onTypeChange: (value: string) => void
 }) {
   const classes = useStyles()
+  const allowedTypes = ["int", "text"]
+  const [type, setType] = useState("")
+  const handleTypeChange = (event: React.ChangeEvent<{ value: unknown }>) => {
+    const newType = event.target.value as string
+    setType(newType)
+    onTypeChange(newType)
+  }
   return (
     <div className={classes.columnEntry}>
       <TextField
@@ -248,13 +259,21 @@ function ColumnEntry({
           onNameChange(e.target.value)
         }}
       />
-      <TextField
-        inputProps={{ "data-testid": "new-column-type-field" }}
-        label="Type"
-        onChange={(e) => {
-          onTypeChange(e.target.value)
-        }}
-      />
+      <FormControl>
+        <InputLabel id="type-select-label">Type</InputLabel>
+        <Select
+          labelId="type-select-label"
+          id="type-select"
+          value={type}
+          onChange={handleTypeChange}
+        >
+          {allowedTypes.map((t) => (
+            <MenuItem key={t} value={t}>
+              {t}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
     </div>
   )
 }
