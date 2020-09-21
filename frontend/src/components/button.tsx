@@ -20,14 +20,18 @@ export function ButtonArray({
   errorMsg,
   children,
   errorTestId,
+  className,
 }: {
   errorMsg?: string
   children: ReactNode
   errorTestId?: string
+  className?: string
 }) {
   const classes = useStyles()
   return (
-    <div className={classes.buttonArray}>
+    <div
+      className={`${classes.buttonArray}${className ? ` ${className}` : ""}`}
+    >
       <div className="buttons">{children}</div>
       <FormHelperText error={true} data-testid={errorTestId}>
         {errorMsg}

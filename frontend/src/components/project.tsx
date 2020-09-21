@@ -1,5 +1,6 @@
 import {
   createStyles,
+  Divider,
   List,
   ListItem,
   ListItemText,
@@ -27,6 +28,22 @@ const useStyles = makeStyles((theme: Theme) =>
     },
     main: {
       gridColumnStart: "main",
+    },
+    tableControl: {
+      borderBottom: `1px solid ${theme.palette.divider}`,
+    },
+    tableCards: {
+      display: "flex",
+      "&>*": {
+        borderRight: `1px solid ${theme.palette.divider}`,
+        borderBottom: `1px solid ${theme.palette.divider}`,
+      },
+    },
+    newTableForm: {
+      display: "flex",
+      flexDirection: "column",
+      maxWidth: "200px",
+      padding: "10px",
     },
   })
 )
@@ -108,8 +125,9 @@ function TablePanel({
 }
 
 function TableControl({ onCreate }: { onCreate: () => void }) {
+  const classes = useStyles()
   return (
-    <ButtonArray>
+    <ButtonArray className={classes.tableControl}>
       <CreateButton onClick={onCreate} dataTestId="create-table-button" />
     </ButtonArray>
   )
@@ -122,8 +140,9 @@ function TableCards({
   tableSpec: TableSpec
   renderNew: boolean
 }) {
+  const classes = useStyles()
   return (
-    <div>
+    <div className={classes.tableCards}>
       {renderNew ? <NewTableForm /> : <></>}
       {tableSpec.map((tableMeta) => (
         <TableCard key={tableMeta.name} tableMeta={tableMeta} />
@@ -154,9 +173,9 @@ function NewTableForm() {
     newCols[i].name = value
     setCols(newCols)
   }
-
+  const classes = useStyles()
   return (
-    <div data-testid="new-table-form">
+    <div className={classes.newTableForm} data-testid="new-table-form">
       <TextField
         inputProps={{ "data-testid": "new-table-name-field" }}
         label="New table name..."
