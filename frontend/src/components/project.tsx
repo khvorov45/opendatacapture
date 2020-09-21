@@ -9,16 +9,22 @@ import {
   ListItem,
   ListItemText,
   MenuItem,
-  Select,
+  Select as MaterialSelect,
   TextField,
   Theme,
   useTheme,
 } from "@material-ui/core"
 import { Link, Redirect, useRouteMatch } from "react-router-dom"
 import makeStyles from "@material-ui/core/styles/makeStyles"
-import React, { useCallback, useEffect, useState } from "react"
+import React, { ReactNode, useCallback, useEffect, useState } from "react"
 import { Route, useParams } from "react-router-dom"
-import { ColMeta, getAllMeta, TableMeta, TableSpec } from "../lib/project"
+import {
+  ColMeta,
+  ForeignKey,
+  getAllMeta,
+  TableMeta,
+  TableSpec,
+} from "../lib/project"
 import { ButtonArray, CreateButton } from "./button"
 import Check from "@material-ui/icons/Check"
 import Clear from "@material-ui/icons/Clear"
@@ -69,10 +75,15 @@ const useStyles = makeStyles((theme: Theme) =>
         display: "flex",
         alignSelf: "center",
       },
-      "&>.nametype>*": {
-        minWidth: 80,
-        marginRight: 5,
+      "&>*>*": {
+        marginRight: 16,
       },
+      "&>*>*:last-child": {
+        marginRight: 0,
+      },
+    },
+    select: {
+      minWidth: 80,
     },
   })
 )
@@ -221,6 +232,11 @@ function NewTableForm() {
     newCols[i].unique = value
     setCols(newCols)
   }
+  function setColForeignKey(value: ForeignKey | null, i: number) {
+    const newCols = [...cols]
+    newCols[i].foreign_key = value
+    setCols(newCols)
+  }
 
   const classes = useStyles()
   const theme = useTheme()
@@ -244,6 +260,7 @@ function NewTableForm() {
             onPKChange={(value) => setColPK(value, i)}
             onNNChange={(value) => setColNN(value, i)}
             onUniqueChange={(value) => setColUnique(value, i)}
+            onFKChange={(value) => setColForeignKey(value, i)}
           />
         ))}
       </div>
@@ -266,18 +283,19 @@ function ColumnEntry({
   onPKChange,
   onNNChange,
   onUniqueChange,
+  onFKChange,
 }: {
   onNameChange: (value: string) => void
   onTypeChange: (value: string) => void
   onPKChange: (value: boolean) => void
   onNNChange: (value: boolean) => void
   onUniqueChange: (value: boolean) => void
+  onFKChange: (value: ForeignKey | null) => void
 }) {
   const classes = useStyles()
   const allowedTypes = ["int", "text"]
   const [type, setType] = useState("")
-  function handleTypeChange(event: React.ChangeEvent<{ value: unknown }>) {
-    const newType = event.target.value as string
+  function handleTypeChange(newType: string) {
     setType(newType)
     onTypeChange(newType)
   }
@@ -299,6 +317,21 @@ function ColumnEntry({
     setUnique(newU)
     onUniqueChange(newU)
   }
+  const [foreignKey, setForeignKey] = useState(false)
+  function handleFKChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const newFK = !foreignKey
+    setForeignKey(newFK)
+  }
+  const [foreignTable, setForeignTable] = useState("")
+  function handleForeignTableChange(newTable: string) {
+    setForeignTable(newTable)
+    onFKChange({ table: newTable, column: foreignColumn })
+  }
+  const [foreignColumn, setForeignColumn] = useState("")
+  function handleForeignColumnChange(newCol: string) {
+    setForeignColumn(newCol)
+    onFKChange({ table: foreignTable, column: newCol })
+  }
   return (
     <div className={classes.columnEntry}>
       <div className="nametype">
@@ -309,21 +342,13 @@ function ColumnEntry({
             onNameChange(e.target.value)
           }}
         />
-        <FormControl>
-          <InputLabel id="type-select-label">Type</InputLabel>
-          <Select
-            labelId="type-select-label"
-            id="type-select"
-            value={type}
-            onChange={handleTypeChange}
-          >
-            {allowedTypes.map((t) => (
-              <MenuItem key={t} value={t}>
-                {t}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <Select id="type" value={type} onChange={handleTypeChange} label="Type">
+          {allowedTypes.map((t) => (
+            <MenuItem key={t} value={t}>
+              {t}
+            </MenuItem>
+          ))}
+        </Select>
       </div>
 
       <div>
@@ -350,6 +375,64 @@ function ColumnEntry({
           label="Unique"
         />
       </div>
+
+      <div>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={foreignKey}
+              onChange={handleFKChange}
+              name="FK"
+            />
+          }
+          label="Foreign key"
+        />
+        <Select
+          id="fk-table"
+          value={foreignTable}
+          onChange={handleForeignTableChange}
+          label="Table"
+        >
+          <MenuItem value="a">A</MenuItem>
+        </Select>
+        <Select
+          id="fk-column"
+          value={foreignColumn}
+          onChange={handleForeignColumnChange}
+          label="Column"
+        >
+          <MenuItem value="a">C</MenuItem>
+        </Select>
+      </div>
     </div>
+  )
+}
+
+function Select({
+  children,
+  value,
+  onChange,
+  id,
+  label,
+}: {
+  children: ReactNode
+  value: string
+  onChange: (value: string) => void
+  id: string
+  label: string
+}) {
+  const classes = useStyles()
+  return (
+    <FormControl className={classes.select}>
+      <InputLabel id={id + "-select-label"}>{label}</InputLabel>
+      <MaterialSelect
+        labelId={id + "-select-label"}
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value as string)}
+      >
+        {children}
+      </MaterialSelect>
+    </FormControl>
   )
 }
