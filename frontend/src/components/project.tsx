@@ -45,10 +45,16 @@ const useStyles = makeStyles((theme: Theme) =>
     newTableForm: {
       display: "flex",
       flexDirection: "column",
-      maxWidth: "200px",
+      maxWidth: "250px",
       padding: "10px",
       "& .buttons": {
         marginTop: "10px",
+      },
+    },
+    columnEntry: {
+      display: "flex",
+      "&>*": {
+        marginRight: 5,
       },
     },
   })
@@ -174,23 +180,32 @@ function NewTableForm() {
   const [cols, setCols] = useState<ColMeta[]>([defaultCol])
 
   function setColName(value: string, i: number) {
-    // This is extremely memory-efficient, I swear
     const newCols = [...cols]
     newCols[i].name = value
     setCols(newCols)
   }
+  function setColType(value: string, i: number) {
+    const newCols = [...cols]
+    newCols[i].postgres_type = value
+    setCols(newCols)
+  }
+
   const classes = useStyles()
   const theme = useTheme()
   return (
     <div className={classes.newTableForm} data-testid="new-table-form">
       <TextField
         inputProps={{ "data-testid": "new-table-name-field" }}
-        label="New table name..."
+        label="Table name"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
       {cols.map((c, i) => (
-        <ColumnEntry key={i} onNameChange={(value) => setColName(value, i)} />
+        <ColumnEntry
+          key={i}
+          onNameChange={(value) => setColName(value, i)}
+          onTypeChange={(value) => setColType(value, i)}
+        />
       ))}
       <ButtonArray center className={"buttons"}>
         <IconButton data-testid="create-table-button">
@@ -206,16 +221,26 @@ function NewTableForm() {
 
 function ColumnEntry({
   onNameChange,
+  onTypeChange,
 }: {
   onNameChange: (value: string) => void
+  onTypeChange: (value: string) => void
 }) {
+  const classes = useStyles()
   return (
-    <div>
+    <div className={classes.columnEntry}>
       <TextField
         inputProps={{ "data-testid": "new-column-name-field" }}
-        label="New column name..."
+        label="Name"
         onChange={(e) => {
           onNameChange(e.target.value)
+        }}
+      />
+      <TextField
+        inputProps={{ "data-testid": "new-column-type-field" }}
+        label="Type"
+        onChange={(e) => {
+          onTypeChange(e.target.value)
         }}
       />
     </div>
