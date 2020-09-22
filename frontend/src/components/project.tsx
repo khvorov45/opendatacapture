@@ -212,7 +212,30 @@ function TableCards({
 }
 
 function TableCard({ tableMeta }: { tableMeta: TableMeta }) {
-  return <>Table card for {tableMeta.name}</>
+  const classes = useStyles()
+  return (
+    <div
+      className={`${classes.newTableForm}`}
+      data-testid={`table-card-${tableMeta.name}`}
+    >
+      <div className="padded">
+        <TextField
+          inputProps={{
+            "data-testid": `table-card-name-field-${tableMeta.name}`,
+          }}
+          label="Table name"
+          value={tableMeta.name}
+          InputProps={{
+            readOnly: true,
+          }}
+        />
+      </div>
+      <NamedDivider name="Columns" />
+      <div className="padded">
+        {tableMeta.cols.map((c, i) => `column ${c.name}`)}
+      </div>
+    </div>
+  )
 }
 
 function NewTableForm({
