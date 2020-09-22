@@ -58,11 +58,9 @@ const useStyles = makeStyles((theme: Theme) =>
     newTableForm: {
       display: "flex",
       flexDirection: "column",
-      justifyContent: "center",
       maxWidth: "350px",
       "&>.padded": {
         margin: "auto",
-        justifyContent: "center",
         paddingLeft: "10px",
         paddingRight: "10px",
         paddingBottom: "10px",
@@ -73,7 +71,6 @@ const useStyles = makeStyles((theme: Theme) =>
       flexDirection: "column",
       "&>*": {
         display: "flex",
-        alignSelf: "center",
       },
       "&>*>*": {
         marginRight: 16,
@@ -260,6 +257,9 @@ function NewTableForm() {
             onFKChange={(value) => setColForeignKey(value, i)}
           />
         ))}
+      </div>
+      <div>
+        <CreateButton />
       </div>
       <NamedDivider name="" />
       <ButtonArray center className={"buttons"}>
