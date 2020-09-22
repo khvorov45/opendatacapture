@@ -158,9 +158,15 @@ function TablePanel({
     refreshTables()
   }, [refreshTables])
 
+  const classes = useStyles()
   return (
     <>
-      <TableControl onCreate={() => setRenderNew((old) => !old)} />
+      <ButtonArray className={classes.tableControl} errorMsg={errorMsg}>
+        <CreateButton
+          onClick={() => setRenderNew((old) => !old)}
+          dataTestId="create-table-button"
+        />
+      </ButtonArray>
       <TableCards
         tableSpec={tableSpec}
         renderNew={renderNew}
@@ -169,15 +175,6 @@ function TablePanel({
         onSubmitNew={refreshTables}
       />
     </>
-  )
-}
-
-function TableControl({ onCreate }: { onCreate: () => void }) {
-  const classes = useStyles()
-  return (
-    <ButtonArray className={classes.tableControl}>
-      <CreateButton onClick={onCreate} dataTestId="create-table-button" />
-    </ButtonArray>
   )
 }
 
