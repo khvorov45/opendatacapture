@@ -9,11 +9,10 @@ const useStyles = makeStyles((theme: Theme) =>
     nav: {
       overflow: "auto",
       display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
       backgroundColor: "var(--palette-table-head)",
       borderBottom: `1px solid ${theme.palette.divider}`,
-    },
-    themeswitch: {
-      marginLeft: "auto",
     },
     projectInfo: {
       display: "flex",
@@ -40,8 +39,13 @@ export default function Nav({
 
   return (
     <div className={classes.nav}>
-      <ProjectInfo />
-      <ThemeSwitch handleThemeChange={handleThemeChange} />
+      <div></div>
+      <div>
+        <ProjectInfo />
+      </div>
+      <div>
+        <ThemeSwitch handleThemeChange={handleThemeChange} />
+      </div>
     </div>
   )
 }
@@ -65,11 +69,7 @@ function ProjectInfo() {
 function ThemeSwitch({ handleThemeChange }: { handleThemeChange: () => void }) {
   const classes = useStyles()
   return (
-    <IconButton
-      className={classes.themeswitch}
-      data-testid="themeswitch"
-      onClick={handleThemeChange}
-    >
+    <IconButton data-testid="themeswitch" onClick={handleThemeChange}>
       <BrightnessMediumIcon />
     </IconButton>
   )
