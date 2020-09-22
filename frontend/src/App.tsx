@@ -18,6 +18,10 @@ function createThemeFromPalette(palette: "dark" | "light"): Theme {
   return createMuiTheme({
     palette: {
       type: palette,
+      background: {
+        paper: "var(--palette-bg)",
+        default: "var(--palette-bg)",
+      },
     },
   })
 }
