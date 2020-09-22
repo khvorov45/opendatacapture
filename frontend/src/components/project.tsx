@@ -346,11 +346,17 @@ function NewTableForm({
           <ColumnEntry
             key={i}
             tableSpec={tableSpec}
+            name={cols[i].name}
             onNameChange={(value) => setColName(value, i)}
+            type={cols[i].postgres_type}
             onTypeChange={(value) => setColType(value, i)}
+            primaryKey={cols[i].primary_key}
             onPKChange={(value) => setColPK(value, i)}
+            notNull={cols[i].not_null}
             onNNChange={(value) => setColNN(value, i)}
+            unique={cols[i].unique}
             onUniqueChange={(value) => setColUnique(value, i)}
+            foreignKey={cols[i].foreign_key}
             onFKChange={(value) => setColForeignKey(value, i)}
             onRemove={() => removeCol(i)}
           />
@@ -374,52 +380,49 @@ function NewTableForm({
 
 function ColumnEntry({
   tableSpec,
+  name,
   onNameChange,
+  type,
   onTypeChange,
+  primaryKey,
   onPKChange,
+  notNull,
   onNNChange,
+  unique,
   onUniqueChange,
+  foreignKey,
   onFKChange,
   onRemove,
 }: {
   tableSpec: TableSpec
+  name: string
   onNameChange: (value: string) => void
+  type: string
   onTypeChange: (value: string) => void
+  primaryKey: boolean
   onPKChange: (value: boolean) => void
+  notNull: boolean
   onNNChange: (value: boolean) => void
+  unique: boolean
   onUniqueChange: (value: boolean) => void
+  foreignKey: ForeignKey | null
   onFKChange: (value: ForeignKey | null) => void
   onRemove: () => void
 }) {
   const allowedTypes = ["int", "text"]
-  const [type, setType] = useState("")
-  function handleTypeChange(newType: string) {
-    setType(newType)
-    onTypeChange(newType)
-  }
-  const [primaryKey, setPrimaryKey] = useState(false)
-  function handlePKChange(newPK: boolean) {
-    setPrimaryKey(newPK)
-    onPKChange(newPK)
-  }
-  const [notNull, setNotNull] = useState(false)
-  function handleNNChange(newNN: boolean) {
-    setNotNull(newNN)
-    onNNChange(newNN)
-  }
-  const [unique, setUnique] = useState(false)
-  function handleUniqueChange(newU: boolean) {
-    setUnique(newU)
-    onUniqueChange(newU)
-  }
-  const [foreignKey, setForeignKey] = useState(false)
+
+  const [foreignKeyCheckbox, setForeignKeyCheckbox] = useState(
+    foreignKey !== null
+  )
   function handleFKChange(newFK: boolean) {
-    setForeignKey(newFK)
+    setForeignKeyCheckbox(newFK)
     if (!newFK) {
       onFKChange(null)
     }
   }
-  const [foreignTable, setForeignTable] = useState("")
+  const [foreignTable, setForeignTable] = useState(
+    foreignKey ? foreignKey.table : ""
+  )
   function handleForeignTableChange(newTable: string) {
     setForeignTable(newTable)
     // Auto-fill column if there is only one option
@@ -433,7 +436,9 @@ function ColumnEntry({
     }
     onFKChange({ table: newTable, column: newColumn })
   }
-  const [foreignColumn, setForeignColumn] = useState("")
+  const [foreignColumn, setForeignColumn] = useState(
+    foreignKey ? foreignKey.column : ""
+  )
   function handleForeignColumnChange(newCol: string) {
     setForeignColumn(newCol)
     onFKChange({ table: foreignTable, column: newCol })
@@ -451,11 +456,12 @@ function ColumnEntry({
         <TextField
           inputProps={{ "data-testid": "new-column-name-field" }}
           label="Name"
+          value={name}
           onChange={(e) => {
             onNameChange(e.target.value)
           }}
         />
-        <Select id="type" value={type} onChange={handleTypeChange} label="Type">
+        <Select id="type" value={type} onChange={onTypeChange} label="Type">
           {allowedTypes.map((t) => (
             <MenuItem key={t} value={t}>
               {t}
@@ -467,18 +473,18 @@ function ColumnEntry({
       <div>
         <Checkbox
           checked={primaryKey}
-          onChange={handlePKChange}
+          onChange={onPKChange}
           label="Primary key"
         />
         <Checkbox
           checked={notNull}
-          onChange={handleNNChange}
+          onChange={onNNChange}
           label="Not null"
           hidden={primaryKey}
         />
         <Checkbox
           checked={unique}
-          onChange={handleUniqueChange}
+          onChange={onUniqueChange}
           label="Unique"
           hidden={primaryKey}
         />
@@ -486,7 +492,7 @@ function ColumnEntry({
 
       <div>
         <Checkbox
-          checked={foreignKey}
+          checked={foreignKeyCheckbox}
           onChange={handleFKChange}
           label="Foreign key"
         />
