@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 import { Button, FormHelperText, IconButton, useTheme } from "@material-ui/core"
 import Add from "@material-ui/icons/Add"
+import Refresh from "@material-ui/icons/Refresh"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -85,5 +86,19 @@ export function ButtonLink({
     >
       {children}
     </Button>
+  )
+}
+
+export function RefreshButton({
+  onClick,
+  dataTestId,
+}: {
+  onClick?: () => void
+  dataTestId?: string
+}) {
+  return (
+    <IconButton onClick={onClick} data-testid={dataTestId}>
+      <Refresh />
+    </IconButton>
   )
 }

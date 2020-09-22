@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 import Send from "@material-ui/icons/Send"
 import DeleteForever from "@material-ui/icons/DeleteForever"
-import Refresh from "@material-ui/icons/Refresh"
 import {
   IconButton,
   useTheme,
@@ -25,7 +24,7 @@ import {
   createProject,
 } from "../lib/project"
 import { StyledTableRow, StyledTableCell } from "./table"
-import { ButtonArray, CreateButton } from "./button"
+import { ButtonArray, CreateButton, RefreshButton } from "./button"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -186,7 +185,10 @@ function ProjectControlButtons({
       {promiseInProgress ? (
         <CircularProgress />
       ) : (
-        <ProjectRefreshButton onClick={onRefresh} />
+        <RefreshButton
+          onClick={onRefresh}
+          dataTestId="project-refresh-button"
+        />
       )}
     </ButtonArray>
   )
@@ -302,14 +304,6 @@ function NoProjects() {
         No projects found
       </Typography>
     </div>
-  )
-}
-
-function ProjectRefreshButton({ onClick }: { onClick?: () => void }) {
-  return (
-    <IconButton onClick={onClick} data-testid="project-refresh-button">
-      <Refresh />
-    </IconButton>
   )
 }
 
