@@ -56,6 +56,7 @@ const useStyles = makeStyles((theme: Theme) =>
     },
     tableCards: {
       display: "flex",
+      overflow: "auto",
       "&>*": {
         borderRight: `1px solid ${theme.palette.divider}`,
         borderBottom: `1px solid ${theme.palette.divider}`,
@@ -205,13 +206,23 @@ function TableCards({
         noDisplay={!renderNew}
       />
       {tableSpec.map((tableMeta) => (
-        <TableCard key={tableMeta.name} tableMeta={tableMeta} />
+        <TableCard
+          key={tableMeta.name}
+          tableMeta={tableMeta}
+          tableSpec={tableSpec}
+        />
       ))}
     </div>
   )
 }
 
-function TableCard({ tableMeta }: { tableMeta: TableMeta }) {
+function TableCard({
+  tableMeta,
+  tableSpec,
+}: {
+  tableMeta: TableMeta
+  tableSpec: TableSpec
+}) {
   const classes = useStyles()
   return (
     <div
@@ -232,7 +243,25 @@ function TableCard({ tableMeta }: { tableMeta: TableMeta }) {
       </div>
       <NamedDivider name="Columns" />
       <div className="padded">
-        {tableMeta.cols.map((c, i) => `column ${c.name}`)}
+        {tableMeta.cols.map((c, i) => (
+          <ColumnEntry
+            key={i}
+            tableSpec={tableSpec}
+            name={tableMeta.cols[i].name}
+            onNameChange={(value) => {}}
+            type={tableMeta.cols[i].postgres_type}
+            onTypeChange={(value) => {}}
+            primaryKey={tableMeta.cols[i].primary_key}
+            onPKChange={(value) => {}}
+            notNull={tableMeta.cols[i].not_null}
+            onNNChange={(value) => {}}
+            unique={tableMeta.cols[i].unique}
+            onUniqueChange={(value) => {}}
+            foreignKey={tableMeta.cols[i].foreign_key}
+            onFKChange={(value) => {}}
+            onRemove={() => {}}
+          />
+        ))}
       </div>
     </div>
   )
@@ -409,7 +438,7 @@ function ColumnEntry({
   onFKChange: (value: ForeignKey | null) => void
   onRemove: () => void
 }) {
-  const allowedTypes = ["int", "text"]
+  const allowedTypes = ["integer", "text"]
 
   const [foreignKeyCheckbox, setForeignKeyCheckbox] = useState(
     foreignKey !== null
