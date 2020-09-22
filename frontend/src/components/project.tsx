@@ -56,6 +56,7 @@ const useStyles = makeStyles((theme: Theme) =>
     },
     tableCards: {
       display: "flex",
+      flexDirection: "column",
       overflow: "auto",
       "&>*": {
         borderRight: `1px solid ${theme.palette.divider}`,
