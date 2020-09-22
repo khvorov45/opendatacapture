@@ -114,7 +114,6 @@ function Sidebar() {
 function Main({ token }: { token: string }) {
   const { url } = useRouteMatch()
   const { name } = useParams<{ name: string }>()
-  const classes = useStyles()
   return (
     <main>
       <Route path={url}>

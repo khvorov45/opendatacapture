@@ -67,7 +67,6 @@ function ProjectInfo() {
 }
 
 function ThemeSwitch({ handleThemeChange }: { handleThemeChange: () => void }) {
-  const classes = useStyles()
   return (
     <IconButton data-testid="themeswitch" onClick={handleThemeChange}>
       <BrightnessMediumIcon />
