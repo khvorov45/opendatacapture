@@ -525,7 +525,7 @@ function ColumnEntry({
           value={foreignTable}
           onChange={handleForeignTableChange}
           label="Table"
-          hidden={!foreignKey}
+          hidden={!foreignKeyCheckbox}
         >
           {tableSpec
             .filter((t) => t.cols.some((c) => c.primary_key))
@@ -540,7 +540,7 @@ function ColumnEntry({
           value={foreignColumn}
           onChange={handleForeignColumnChange}
           label="Column"
-          hidden={!foreignKey}
+          hidden={!foreignKeyCheckbox}
         >
           {tableSpec
             .find((t) => t.name === foreignTable)
