@@ -1,7 +1,13 @@
 import React, { ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
-import { Button, FormHelperText, IconButton, useTheme } from "@material-ui/core"
+import {
+  Button,
+  CircularProgress,
+  FormHelperText,
+  IconButton,
+  useTheme,
+} from "@material-ui/core"
 import Add from "@material-ui/icons/Add"
 import Refresh from "@material-ui/icons/Refresh"
 
@@ -92,10 +98,15 @@ export function ButtonLink({
 export function RefreshButton({
   onClick,
   dataTestId,
+  inProgress,
 }: {
   onClick?: () => void
   dataTestId?: string
+  inProgress?: boolean
 }) {
+  if (inProgress) {
+    return <CircularProgress />
+  }
   return (
     <IconButton onClick={onClick} data-testid={dataTestId}>
       <Refresh />

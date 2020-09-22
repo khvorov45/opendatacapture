@@ -182,14 +182,11 @@ function ProjectControlButtons({
   return (
     <ButtonArray errorMsg={errorMsg} errorTestId="project-control-error">
       <CreateButton onClick={onCreate} dataTestId="project-create-button" />
-      {promiseInProgress ? (
-        <CircularProgress />
-      ) : (
-        <RefreshButton
-          onClick={onRefresh}
-          dataTestId="project-refresh-button"
-        />
-      )}
+      <RefreshButton
+        onClick={onRefresh}
+        dataTestId="project-refresh-button"
+        inProgress={promiseInProgress}
+      />
     </ButtonArray>
   )
 }
