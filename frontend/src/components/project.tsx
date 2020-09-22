@@ -197,16 +197,13 @@ function TableCards({
   const classes = useStyles()
   return (
     <div className={classes.tableCards}>
-      {renderNew ? (
-        <NewTableForm
-          token={token}
-          projectName={projectName}
-          onSubmit={onSubmitNew}
-          tableSpec={tableSpec}
-        />
-      ) : (
-        <></>
-      )}
+      <NewTableForm
+        token={token}
+        projectName={projectName}
+        onSubmit={onSubmitNew}
+        tableSpec={tableSpec}
+        noDisplay={!renderNew}
+      />
       {tableSpec.map((tableMeta) => (
         <TableCard key={tableMeta.name} tableMeta={tableMeta} />
       ))}
@@ -223,11 +220,13 @@ function NewTableForm({
   projectName,
   onSubmit,
   tableSpec,
+  noDisplay,
 }: {
   token: string
   projectName: string
   onSubmit: () => void
   tableSpec: TableSpec
+  noDisplay: boolean
 }) {
   const [name, setName] = useState("")
   const defaultCol = {
@@ -306,7 +305,10 @@ function NewTableForm({
   const classes = useStyles()
   const theme = useTheme()
   return (
-    <div className={classes.newTableForm} data-testid="new-table-form">
+    <div
+      className={`${classes.newTableForm}${noDisplay ? " nodisplay" : ""}`}
+      data-testid="new-table-form"
+    >
       <div className="padded">
         <TextField
           inputProps={{ "data-testid": "new-table-name-field" }}

@@ -27,9 +27,9 @@ test("basic functionality - no initial tables", async () => {
   expect(getByText("Tables")).toBeInTheDocument()
 
   // Open and close the new table form
-  expect(getByTestId("new-table-form")).toBeInTheDocument()
+  expect(getByTestId("new-table-form")).not.toHaveClass("nodisplay")
   fireEvent.click(getByTestId("create-table-button"))
-  expect(queryByTestId("new-table-form")).not.toBeInTheDocument()
+  expect(queryByTestId("new-table-form")).toHaveClass("nodisplay")
   fireEvent.click(getByTestId("create-table-button"))
-  expect(getByTestId("new-table-form")).toBeInTheDocument()
+  expect(getByTestId("new-table-form")).not.toHaveClass("nodisplay")
 })
