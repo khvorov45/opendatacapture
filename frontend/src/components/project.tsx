@@ -29,7 +29,7 @@ import {
   TableMeta,
   TableSpec,
 } from "../lib/project"
-import { ButtonArray, ButtonLink, CreateButton } from "./button"
+import { ButtonArray, ButtonLink, CreateButton, RefreshButton } from "./button"
 import Check from "@material-ui/icons/Check"
 import Clear from "@material-ui/icons/Clear"
 import Remove from "@material-ui/icons/Remove"
@@ -166,6 +166,7 @@ function TablePanel({
           onClick={() => setRenderNew((old) => !old)}
           dataTestId="create-table-button"
         />
+        <RefreshButton onClick={refreshTables} />
       </ButtonArray>
       <TableCards
         tableSpec={tableSpec}
