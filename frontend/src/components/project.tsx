@@ -337,7 +337,7 @@ function NewTableForm({
   function handleClear() {
     setErrorMsg("")
     setName("")
-    setCols([])
+    setCols([defaultCol])
   }
 
   const [errorMsg, setErrorMsg] = useState("")
@@ -387,6 +387,7 @@ function NewTableForm({
             onUniqueChange={(value) => setColUnique(value, i)}
             foreignKey={cols[i].foreign_key}
             onFKChange={(value) => setColForeignKey(value, i)}
+            noDisplay={removed.includes(i)}
             onRemove={() => removeCol(i)}
           />
         ))}
@@ -421,6 +422,7 @@ function ColumnEntry({
   onUniqueChange,
   foreignKey,
   onFKChange,
+  noDisplay,
   onRemove,
 }: {
   tableSpec: TableSpec
@@ -436,6 +438,7 @@ function ColumnEntry({
   onUniqueChange: (value: boolean) => void
   foreignKey: ForeignKey | null
   onFKChange: (value: ForeignKey | null) => void
+  noDisplay?: boolean
   onRemove: () => void
 }) {
   const allowedTypes = ["integer", "text"]
@@ -456,7 +459,7 @@ function ColumnEntry({
     setForeignTable(newTable)
     // Auto-fill column if there is only one option
     let primaryKeys = tableSpec
-      .find((t) => t.name == newTable)
+      .find((t) => t.name === newTable)
       ?.cols.filter((c) => c.primary_key)
     let newColumn = foreignColumn
     if (primaryKeys?.length === 1) {
@@ -472,15 +475,11 @@ function ColumnEntry({
     setForeignColumn(newCol)
     onFKChange({ table: foreignTable, column: newCol })
   }
-  const [removed, setRemoved] = useState(false)
-  function handleRemove() {
-    setRemoved(true)
-    onRemove()
-  }
+
   const classes = useStyles()
   const theme = useTheme()
   return (
-    <div className={`${classes.columnEntry}${removed ? " nodisplay" : ""}`}>
+    <div className={`${classes.columnEntry}${noDisplay ? " nodisplay" : ""}`}>
       <div>
         <TextField
           inputProps={{ "data-testid": "new-column-name-field" }}
@@ -548,7 +547,7 @@ function ColumnEntry({
           hidden={!foreignKey}
         >
           {tableSpec
-            .find((t) => t.name == foreignTable)
+            .find((t) => t.name === foreignTable)
             ?.cols.filter((c) => c.primary_key)
             .map((c) => (
               <MenuItem key={c.name} value={c.name}>
@@ -558,7 +557,7 @@ function ColumnEntry({
         </Select>
       </div>
       <div className="delete">
-        <IconButton onClick={(e) => handleRemove()}>
+        <IconButton onClick={(e) => onRemove()}>
           <Remove htmlColor={theme.palette.error.main} />
         </IconButton>
       </div>
