@@ -202,6 +202,7 @@ function TableCards({
           token={token}
           projectName={projectName}
           onSubmit={onSubmitNew}
+          tableSpec={tableSpec}
         />
       ) : (
         <></>
@@ -221,10 +222,12 @@ function NewTableForm({
   token,
   projectName,
   onSubmit,
+  tableSpec,
 }: {
   token: string
   projectName: string
   onSubmit: () => void
+  tableSpec: TableSpec
 }) {
   const [name, setName] = useState("")
   const defaultCol = {
@@ -317,6 +320,7 @@ function NewTableForm({
         {cols.map((c, i) => (
           <ColumnEntry
             key={i}
+            tableSpec={tableSpec}
             onNameChange={(value) => setColName(value, i)}
             onTypeChange={(value) => setColType(value, i)}
             onPKChange={(value) => setColPK(value, i)}
@@ -344,6 +348,7 @@ function NewTableForm({
 }
 
 function ColumnEntry({
+  tableSpec,
   onNameChange,
   onTypeChange,
   onPKChange,
@@ -352,6 +357,7 @@ function ColumnEntry({
   onFKChange,
   onRemove,
 }: {
+  tableSpec: TableSpec
   onNameChange: (value: string) => void
   onTypeChange: (value: string) => void
   onPKChange: (value: boolean) => void
@@ -457,7 +463,13 @@ function ColumnEntry({
           label="Table"
           hidden={!foreignKey}
         >
-          <MenuItem value="a">A</MenuItem>
+          {tableSpec
+            .filter((t) => t.cols.some((c) => c.primary_key))
+            .map((t) => (
+              <MenuItem key={t.name} value={t.name}>
+                {t.name}
+              </MenuItem>
+            ))}
         </Select>
         <Select
           id="fk-column"
