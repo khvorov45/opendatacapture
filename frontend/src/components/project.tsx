@@ -397,7 +397,16 @@ function ColumnEntry({
   const [foreignTable, setForeignTable] = useState("")
   function handleForeignTableChange(newTable: string) {
     setForeignTable(newTable)
-    onFKChange({ table: newTable, column: foreignColumn })
+    // Auto-fill column if there is only one option
+    let primaryKeys = tableSpec
+      .find((t) => t.name == newTable)
+      ?.cols.filter((c) => c.primary_key)
+    let newColumn = foreignColumn
+    if (primaryKeys?.length === 1) {
+      newColumn = primaryKeys[0].name
+      setForeignColumn(newColumn)
+    }
+    onFKChange({ table: newTable, column: newColumn })
   }
   const [foreignColumn, setForeignColumn] = useState("")
   function handleForeignColumnChange(newCol: string) {
