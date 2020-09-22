@@ -31,6 +31,7 @@ import {
 import { ButtonArray, ButtonLink, CreateButton } from "./button"
 import Check from "@material-ui/icons/Check"
 import Clear from "@material-ui/icons/Clear"
+import Remove from "@material-ui/icons/Remove"
 import { NamedDivider } from "./divider"
 
 const useStyles = makeStyles((theme: Theme) =>
@@ -39,6 +40,9 @@ const useStyles = makeStyles((theme: Theme) =>
       overflow: "auto",
       "& .hidden": {
         visibility: "hidden",
+      },
+      "& .nodisplay": {
+        display: "none",
       },
     },
     sidebar: {
@@ -71,6 +75,9 @@ const useStyles = makeStyles((theme: Theme) =>
       flexDirection: "column",
       "&>*": {
         display: "flex",
+      },
+      "&>.delete": {
+        justifyContent: "flex-end",
       },
       "&>*>*": {
         marginRight: 16,
@@ -231,6 +238,18 @@ function NewTableForm() {
     newCols[i].foreign_key = value
     setCols(newCols)
   }
+  function addCol() {
+    const newCols = [...cols]
+    newCols.push(defaultCol)
+    setCols(newCols)
+  }
+
+  const [removed, setRemoved] = useState<number[]>([])
+  function removeCol(i: number) {
+    const newRemoved = [...removed]
+    newRemoved.push(i)
+    setRemoved(newRemoved)
+  }
 
   const classes = useStyles()
   const theme = useTheme()
@@ -255,11 +274,12 @@ function NewTableForm() {
             onNNChange={(value) => setColNN(value, i)}
             onUniqueChange={(value) => setColUnique(value, i)}
             onFKChange={(value) => setColForeignKey(value, i)}
+            onRemove={() => removeCol(i)}
           />
         ))}
       </div>
       <div>
-        <CreateButton />
+        <CreateButton onClick={addCol} />
       </div>
       <NamedDivider name="" />
       <ButtonArray center className={"buttons"}>
@@ -281,6 +301,7 @@ function ColumnEntry({
   onNNChange,
   onUniqueChange,
   onFKChange,
+  onRemove,
 }: {
   onNameChange: (value: string) => void
   onTypeChange: (value: string) => void
@@ -288,8 +309,8 @@ function ColumnEntry({
   onNNChange: (value: boolean) => void
   onUniqueChange: (value: boolean) => void
   onFKChange: (value: ForeignKey | null) => void
+  onRemove: () => void
 }) {
-  const classes = useStyles()
   const allowedTypes = ["int", "text"]
   const [type, setType] = useState("")
   function handleTypeChange(newType: string) {
@@ -328,8 +349,15 @@ function ColumnEntry({
     setForeignColumn(newCol)
     onFKChange({ table: foreignTable, column: newCol })
   }
+  const [removed, setRemoved] = useState(false)
+  function handleRemove() {
+    setRemoved(true)
+    onRemove()
+  }
+  const classes = useStyles()
+  const theme = useTheme()
   return (
-    <div className={classes.columnEntry}>
+    <div className={`${classes.columnEntry}${removed ? " nodisplay" : ""}`}>
       <div>
         <TextField
           inputProps={{ "data-testid": "new-column-name-field" }}
@@ -391,6 +419,11 @@ function ColumnEntry({
         >
           <MenuItem value="a">C</MenuItem>
         </Select>
+      </div>
+      <div className="delete">
+        <IconButton onClick={(e) => handleRemove()}>
+          <Remove htmlColor={theme.palette.error.main} />
+        </IconButton>
       </div>
     </div>
   )
