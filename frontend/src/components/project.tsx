@@ -283,7 +283,7 @@ function NewTableForm() {
       </div>
       <NamedDivider name="" />
       <ButtonArray center className={"buttons"}>
-        <IconButton data-testid="create-table-button">
+        <IconButton data-testid="submit-table-button">
           <Check htmlColor={theme.palette.success.main} />
         </IconButton>
         <IconButton data-testid="clear-table-button">
