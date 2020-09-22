@@ -5,16 +5,13 @@ import {
   FormControlLabel,
   IconButton,
   InputLabel,
-  List,
-  ListItem,
-  ListItemText,
   MenuItem,
   Select as MaterialSelect,
   TextField,
   Theme,
   useTheme,
 } from "@material-ui/core"
-import { Link, Redirect, useRouteMatch } from "react-router-dom"
+import { Redirect, useRouteMatch } from "react-router-dom"
 import makeStyles from "@material-ui/core/styles/makeStyles"
 import React, {
   ChangeEvent,
@@ -31,7 +28,7 @@ import {
   TableMeta,
   TableSpec,
 } from "../lib/project"
-import { ButtonArray, CreateButton } from "./button"
+import { ButtonArray, ButtonLink, CreateButton } from "./button"
 import Check from "@material-ui/icons/Check"
 import Clear from "@material-ui/icons/Clear"
 import { NamedDivider } from "./divider"
@@ -39,20 +36,14 @@ import { NamedDivider } from "./divider"
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
     projectPage: {
-      display: "grid",
       overflow: "auto",
-      gridTemplateColumns: "[sidebar] 1fr [main] 8fr",
       "& .hidden": {
         visibility: "hidden",
       },
     },
     sidebar: {
-      gridColumnStart: "sidebar",
       backgroundColor: "var(--palette-sidebar)",
       borderRight: `1px solid ${theme.palette.divider}`,
-    },
-    main: {
-      gridColumnStart: "main",
     },
     tableControl: {
       borderBottom: `1px solid ${theme.palette.divider}`,
@@ -113,11 +104,9 @@ function Sidebar() {
   const classes = useStyles()
   return (
     <div className={classes.sidebar}>
-      <List>
-        <ListItem button component={Link} to={`${url}/tables`}>
-          <ListItemText primary="Tables" />
-        </ListItem>
-      </List>
+      <ButtonLink active={true} to={`${url}/tables`}>
+        Tables
+      </ButtonLink>
     </div>
   )
 }
@@ -127,7 +116,7 @@ function Main({ token }: { token: string }) {
   const { name } = useParams<{ name: string }>()
   const classes = useStyles()
   return (
-    <main className={classes.main}>
+    <main>
       <Route path={url}>
         <Redirect to={`${url}/tables`} />
       </Route>

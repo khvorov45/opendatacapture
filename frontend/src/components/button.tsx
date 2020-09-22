@@ -1,6 +1,7 @@
 import React, { ReactNode } from "react"
+import { Link } from "react-router-dom"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
-import { FormHelperText, IconButton, useTheme } from "@material-ui/core"
+import { Button, FormHelperText, IconButton, useTheme } from "@material-ui/core"
 import Add from "@material-ui/icons/Add"
 
 const useStyles = makeStyles((theme: Theme) =>
@@ -14,6 +15,12 @@ const useStyles = makeStyles((theme: Theme) =>
         "&.center": {
           justifyContent: "center",
         },
+      },
+    },
+    link: {
+      textTransform: "none",
+      "&.active": {
+        backgroundColor: theme.palette.primary.dark,
       },
     },
   })
@@ -57,5 +64,26 @@ export function CreateButton({
     <IconButton onClick={onClick} data-testid={dataTestId}>
       <Add htmlColor={theme.palette.success.main} />
     </IconButton>
+  )
+}
+
+export function ButtonLink({
+  children,
+  active,
+  to,
+}: {
+  children: ReactNode
+  active: boolean
+  to: string
+}) {
+  const classes = useStyles()
+  return (
+    <Button
+      className={`${classes.link}${active ? " active" : ""}`}
+      component={Link}
+      to={to}
+    >
+      {children}
+    </Button>
   )
 }
