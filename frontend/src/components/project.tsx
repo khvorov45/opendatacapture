@@ -36,6 +36,9 @@ const useStyles = makeStyles((theme: Theme) =>
       display: "grid",
       overflow: "auto",
       gridTemplateColumns: "[sidebar] 1fr [main] 8fr",
+      "& .hidden": {
+        visibility: "hidden",
+      },
     },
     sidebar: {
       gridColumnStart: "sidebar",
@@ -321,6 +324,9 @@ function ColumnEntry({
   function handleFKChange(event: React.ChangeEvent<HTMLInputElement>) {
     const newFK = !foreignKey
     setForeignKey(newFK)
+    if (!newFK) {
+      onFKChange(null)
+    }
   }
   const [foreignTable, setForeignTable] = useState("")
   function handleForeignTableChange(newTable: string) {
@@ -392,6 +398,7 @@ function ColumnEntry({
           value={foreignTable}
           onChange={handleForeignTableChange}
           label="Table"
+          hidden={!foreignKey}
         >
           <MenuItem value="a">A</MenuItem>
         </Select>
@@ -400,6 +407,7 @@ function ColumnEntry({
           value={foreignColumn}
           onChange={handleForeignColumnChange}
           label="Column"
+          hidden={!foreignKey}
         >
           <MenuItem value="a">C</MenuItem>
         </Select>
@@ -414,16 +422,18 @@ function Select({
   onChange,
   id,
   label,
+  hidden,
 }: {
   children: ReactNode
   value: string
   onChange: (value: string) => void
   id: string
   label: string
+  hidden?: boolean
 }) {
   const classes = useStyles()
   return (
-    <FormControl className={classes.select}>
+    <FormControl className={`${classes.select}${hidden ? " hidden" : ""}`}>
       <InputLabel id={id + "-select-label"}>{label}</InputLabel>
       <MaterialSelect
         labelId={id + "-select-label"}
