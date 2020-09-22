@@ -1,5 +1,5 @@
 import {
-  Checkbox,
+  Checkbox as MaterialCheckbox,
   createStyles,
   FormControl,
   FormControlLabel,
@@ -16,7 +16,13 @@ import {
 } from "@material-ui/core"
 import { Link, Redirect, useRouteMatch } from "react-router-dom"
 import makeStyles from "@material-ui/core/styles/makeStyles"
-import React, { ReactNode, useCallback, useEffect, useState } from "react"
+import React, {
+  ChangeEvent,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useState,
+} from "react"
 import { Route, useParams } from "react-router-dom"
 import {
   ColMeta,
@@ -303,26 +309,22 @@ function ColumnEntry({
     onTypeChange(newType)
   }
   const [primaryKey, setPrimaryKey] = useState(false)
-  function handlePKChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const newPK = !primaryKey
+  function handlePKChange(newPK: boolean) {
     setPrimaryKey(newPK)
     onPKChange(newPK)
   }
   const [notNull, setNotNull] = useState(false)
-  function handleNNChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const newNN = !notNull
+  function handleNNChange(newNN: boolean) {
     setNotNull(newNN)
     onNNChange(newNN)
   }
   const [unique, setUnique] = useState(false)
-  function handleUniqueChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const newU = !unique
+  function handleUniqueChange(newU: boolean) {
     setUnique(newU)
     onUniqueChange(newU)
   }
   const [foreignKey, setForeignKey] = useState(false)
-  function handleFKChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const newFK = !foreignKey
+  function handleFKChange(newFK: boolean) {
     setForeignKey(newFK)
     if (!newFK) {
       onFKChange(null)
@@ -340,7 +342,7 @@ function ColumnEntry({
   }
   return (
     <div className={classes.columnEntry}>
-      <div className="nametype">
+      <div>
         <TextField
           inputProps={{ "data-testid": "new-column-name-field" }}
           label="Name"
@@ -358,39 +360,29 @@ function ColumnEntry({
       </div>
 
       <div>
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={primaryKey}
-              onChange={handlePKChange}
-              name="PK"
-            />
-          }
+        <Checkbox
+          checked={primaryKey}
+          onChange={handlePKChange}
           label="Primary key"
         />
-        <FormControlLabel
-          control={
-            <Checkbox checked={notNull} onChange={handleNNChange} name="NN" />
-          }
+        <Checkbox
+          checked={notNull}
+          onChange={handleNNChange}
           label="Not null"
+          hidden={primaryKey}
         />
-        <FormControlLabel
-          control={
-            <Checkbox checked={unique} onChange={handleUniqueChange} name="U" />
-          }
+        <Checkbox
+          checked={unique}
+          onChange={handleUniqueChange}
           label="Unique"
+          hidden={primaryKey}
         />
       </div>
 
       <div>
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={foreignKey}
-              onChange={handleFKChange}
-              name="FK"
-            />
-          }
+        <Checkbox
+          checked={foreignKey}
+          onChange={handleFKChange}
           label="Foreign key"
         />
         <Select
@@ -444,5 +436,32 @@ function Select({
         {children}
       </MaterialSelect>
     </FormControl>
+  )
+}
+
+function Checkbox({
+  checked,
+  onChange,
+  label,
+  hidden,
+}: {
+  checked: boolean
+  onChange: (value: boolean) => void
+  label: string
+  hidden?: boolean
+}) {
+  return (
+    <FormControlLabel
+      className={`${hidden ? "hidden" : ""}`}
+      control={
+        <MaterialCheckbox
+          checked={checked}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            onChange(e.target.checked)
+          }
+        />
+      }
+      label={label}
+    />
   )
 }
