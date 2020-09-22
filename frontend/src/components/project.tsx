@@ -327,11 +327,10 @@ function NewTableForm({
     setCols(newCols)
   }
 
-  const [removed, setRemoved] = useState<number[]>([])
   function removeCol(i: number) {
-    const newRemoved = [...removed]
-    newRemoved.push(i)
-    setRemoved(newRemoved)
+    const newCols = [...cols]
+    newCols.splice(i, 1)
+    setCols(newCols)
   }
 
   function handleClear() {
@@ -344,7 +343,7 @@ function NewTableForm({
   function handleSubmit() {
     const tableMeta = {
       name: name,
-      cols: cols.filter((c, i) => !removed.includes(i)),
+      cols: cols,
     }
     createTable(token, projectName, tableMeta)
       .then(() => {
@@ -387,7 +386,6 @@ function NewTableForm({
             onUniqueChange={(value) => setColUnique(value, i)}
             foreignKey={cols[i].foreign_key}
             onFKChange={(value) => setColForeignKey(value, i)}
-            noDisplay={removed.includes(i)}
             onRemove={() => removeCol(i)}
           />
         ))}
@@ -422,7 +420,6 @@ function ColumnEntry({
   onUniqueChange,
   foreignKey,
   onFKChange,
-  noDisplay,
   onRemove,
 }: {
   tableSpec: TableSpec
@@ -438,7 +435,6 @@ function ColumnEntry({
   onUniqueChange: (value: boolean) => void
   foreignKey: ForeignKey | null
   onFKChange: (value: ForeignKey | null) => void
-  noDisplay?: boolean
   onRemove: () => void
 }) {
   const allowedTypes = ["integer", "text"]
@@ -479,7 +475,7 @@ function ColumnEntry({
   const classes = useStyles()
   const theme = useTheme()
   return (
-    <div className={`${classes.columnEntry}${noDisplay ? " nodisplay" : ""}`}>
+    <div className={classes.columnEntry}>
       <div>
         <TextField
           inputProps={{ "data-testid": "new-column-name-field" }}
