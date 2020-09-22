@@ -62,7 +62,7 @@ const useStyles = makeStyles((theme: Theme) =>
     newTableForm: {
       display: "flex",
       flexDirection: "column",
-      maxWidth: "350px",
+      width: "350px",
       "&>.padded": {
         margin: "auto",
         paddingLeft: "10px",
@@ -251,6 +251,11 @@ function NewTableForm() {
     setRemoved(newRemoved)
   }
 
+  function handleClear() {
+    setName("")
+    setCols([])
+  }
+
   const classes = useStyles()
   const theme = useTheme()
   return (
@@ -286,7 +291,7 @@ function NewTableForm() {
         <IconButton data-testid="submit-table-button">
           <Check htmlColor={theme.palette.success.main} />
         </IconButton>
-        <IconButton data-testid="clear-table-button">
+        <IconButton onClick={handleClear} data-testid="clear-table-button">
           <Clear htmlColor={theme.palette.error.main} />
         </IconButton>
       </ButtonArray>
