@@ -34,6 +34,7 @@ import Check from "@material-ui/icons/Check"
 import Clear from "@material-ui/icons/Clear"
 import Remove from "@material-ui/icons/Remove"
 import { NamedDivider } from "./divider"
+import { trackPromise, usePromiseTracker } from "react-promise-tracker"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -148,8 +149,9 @@ function TablePanel({
     }
   }, [tableSpec])
 
+  const { promiseInProgress } = usePromiseTracker({ area: "getAllMeta" })
   const refreshTables = useCallback(() => {
-    getAllMeta(token, projectName)
+    trackPromise(getAllMeta(token, projectName), "getAllMeta")
       .then((tables) => setTableSpec(tables))
       .catch((e) => setErrorMsg(e.message))
   }, [token, projectName])
@@ -166,7 +168,7 @@ function TablePanel({
           onClick={() => setRenderNew((old) => !old)}
           dataTestId="create-table-button"
         />
-        <RefreshButton onClick={refreshTables} />
+        <RefreshButton onClick={refreshTables} inProgress={promiseInProgress} />
       </ButtonArray>
       <TableCards
         tableSpec={tableSpec}
