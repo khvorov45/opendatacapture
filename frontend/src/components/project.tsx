@@ -23,6 +23,7 @@ import React, {
 import { Route, useParams } from "react-router-dom"
 import {
   ColMeta,
+  createTable,
   ForeignKey,
   getAllMeta,
   TableMeta,
@@ -160,7 +161,13 @@ function TablePanel({
   return (
     <>
       <TableControl onCreate={() => setRenderNew((old) => !old)} />
-      <TableCards tableSpec={tableSpec} renderNew={renderNew} />
+      <TableCards
+        tableSpec={tableSpec}
+        renderNew={renderNew}
+        token={token}
+        projectName={projectName}
+        onSubmitNew={refreshTables}
+      />
     </>
   )
 }
@@ -177,14 +184,28 @@ function TableControl({ onCreate }: { onCreate: () => void }) {
 function TableCards({
   tableSpec,
   renderNew,
+  token,
+  projectName,
+  onSubmitNew,
 }: {
   tableSpec: TableSpec
   renderNew: boolean
+  token: string
+  projectName: string
+  onSubmitNew: () => void
 }) {
   const classes = useStyles()
   return (
     <div className={classes.tableCards}>
-      {renderNew ? <NewTableForm /> : <></>}
+      {renderNew ? (
+        <NewTableForm
+          token={token}
+          projectName={projectName}
+          onSubmit={onSubmitNew}
+        />
+      ) : (
+        <></>
+      )}
       {tableSpec.map((tableMeta) => (
         <TableCard key={tableMeta.name} tableMeta={tableMeta} />
       ))}
@@ -196,7 +217,15 @@ function TableCard({ tableMeta }: { tableMeta: TableMeta }) {
   return <>Table card for {tableMeta.name}</>
 }
 
-function NewTableForm() {
+function NewTableForm({
+  token,
+  projectName,
+  onSubmit,
+}: {
+  token: string
+  projectName: string
+  onSubmit: () => void
+}) {
   const [name, setName] = useState("")
   const defaultCol = {
     name: "",
@@ -252,8 +281,23 @@ function NewTableForm() {
   }
 
   function handleClear() {
+    setErrorMsg("")
     setName("")
     setCols([])
+  }
+
+  const [errorMsg, setErrorMsg] = useState("")
+  function handleSubmit() {
+    const tableMeta = {
+      name: name,
+      cols: cols.filter((c, i) => !removed.includes(i)),
+    }
+    createTable(token, projectName, tableMeta)
+      .then(() => {
+        handleClear()
+        onSubmit()
+      })
+      .catch((e) => setErrorMsg(e.message))
   }
 
   const classes = useStyles()
@@ -287,8 +331,8 @@ function NewTableForm() {
         <CreateButton onClick={addCol} />
       </div>
       <NamedDivider name="" />
-      <ButtonArray center className={"buttons"}>
-        <IconButton data-testid="submit-table-button">
+      <ButtonArray center className={"buttons"} errorMsg={errorMsg}>
+        <IconButton onClick={handleSubmit} data-testid="submit-table-button">
           <Check htmlColor={theme.palette.success.main} />
         </IconButton>
         <IconButton onClick={handleClear} data-testid="clear-table-button">
