@@ -478,7 +478,14 @@ function ColumnEntry({
           label="Column"
           hidden={!foreignKey}
         >
-          <MenuItem value="a">C</MenuItem>
+          {tableSpec
+            .find((t) => t.name == foreignTable)
+            ?.cols.filter((c) => c.primary_key)
+            .map((c) => (
+              <MenuItem key={c.name} value={c.name}>
+                {c.name}
+              </MenuItem>
+            ))}
         </Select>
       </div>
       <div className="delete">
