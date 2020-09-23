@@ -405,6 +405,24 @@ function NewTableForm({
     setCols([defaultCol])
   }
 
+  const isViable = useCallback(() => {
+    if (name === "") {
+      return false
+    }
+    if (cols.length === 0) {
+      return false
+    }
+    const namedCols = cols.filter((c) => c.name !== "")
+    if (namedCols.length === 0) {
+      return false
+    }
+    const typedCols = namedCols.filter((c) => c.postgres_type !== "")
+    if (typedCols.length === 0) {
+      return false
+    }
+    return true
+  }, [cols, name])
+
   const [errorMsg, setErrorMsg] = useState("")
   function handleSubmit() {
     const tableMeta = {
@@ -460,7 +478,11 @@ function NewTableForm({
       </div>
       <NamedDivider name="" />
       <ButtonArray center className={"buttons"} errorMsg={errorMsg}>
-        <IconButton onClick={handleSubmit} data-testid="submit-table-button">
+        <IconButton
+          onClick={handleSubmit}
+          data-testid="submit-table-button"
+          disabled={!isViable()}
+        >
           <Check htmlColor={theme.palette.success.main} />
         </IconButton>
         <IconButton onClick={handleClear} data-testid="clear-table-button">
