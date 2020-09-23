@@ -26,10 +26,17 @@ import {
   createTable,
   ForeignKey,
   getAllMeta,
+  removeTable,
   TableMeta,
   TableSpec,
 } from "../lib/project"
-import { ButtonArray, ButtonLink, CreateButton, RefreshButton } from "./button"
+import {
+  ButtonArray,
+  ButtonLink,
+  CreateButton,
+  DeleteButton,
+  RefreshButton,
+} from "./button"
 import Check from "@material-ui/icons/Check"
 import Clear from "@material-ui/icons/Clear"
 import Remove from "@material-ui/icons/Remove"
@@ -77,6 +84,7 @@ const useStyles = makeStyles((theme: Theme) =>
         paddingBottom: "10px",
       },
       "&>.head": {
+        display: "flex",
         paddingTop: 5,
       },
       "&>.cols": {
@@ -189,20 +197,38 @@ function TablePanel({
         tableSpec={tableSpec ?? []}
         noDisplay={!renderNew}
       />
-      <TableCards tableSpec={tableSpec ?? []} />
+      <TableCards
+        tableSpec={tableSpec ?? []}
+        token={token}
+        projectName={projectName}
+        onDelete={refreshTables}
+      />
     </div>
   )
 }
 
-function TableCards({ tableSpec }: { tableSpec: TableSpec }) {
+function TableCards({
+  token,
+  projectName,
+  tableSpec,
+  onDelete,
+}: {
+  token: string
+  projectName: string
+  tableSpec: TableSpec
+  onDelete: () => void
+}) {
   const classes = useStyles()
   return (
     <div className={classes.tableCards}>
       {tableSpec.map((tableMeta) => (
         <TableCard
           key={tableMeta.name}
+          token={token}
+          projectName={projectName}
           tableMeta={tableMeta}
           tableSpec={tableSpec}
+          onDelete={onDelete}
         />
       ))}
     </div>
@@ -210,17 +236,36 @@ function TableCards({ tableSpec }: { tableSpec: TableSpec }) {
 }
 
 function TableCard({
+  token,
+  projectName,
   tableMeta,
   tableSpec,
+  onDelete,
 }: {
+  token: string
+  projectName: string
   tableMeta: TableMeta
   tableSpec: TableSpec
+  onDelete: () => void
 }) {
   const classes = useStyles()
   const [editable, setEditable] = useState(false)
+  const [errorMsg, setErrorMsg] = useState("")
+  const [deleted, setDeleted] = useState(false)
+  function handleDelete() {
+    removeTable(token, projectName, tableMeta.name)
+      .then(() => {
+        setDeleted(true)
+        setErrorMsg("")
+        onDelete()
+      })
+      .catch((e) => {
+        setErrorMsg(e.message)
+      })
+  }
   return (
     <div
-      className={`${classes.tableCard}`}
+      className={`${classes.tableCard}${deleted ? " nodisplay" : ""}`}
       data-testid={`table-card-${tableMeta.name}`}
     >
       <div className="padded head">
@@ -230,9 +275,12 @@ function TableCard({
           disabled={!editable}
           onChange={(name) => {}}
         />
-        <IconButton onClick={(e) => setEditable((old) => !old)}>
-          <Edit />
-        </IconButton>
+        <ButtonArray errorMsg={errorMsg}>
+          <IconButton onClick={(e) => setEditable((old) => !old)}>
+            <Edit />
+          </IconButton>
+          <DeleteButton onClick={handleDelete} />
+        </ButtonArray>
       </div>
       <NamedDivider name="Columns" />
       <div className="padded cols">

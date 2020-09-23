@@ -10,6 +10,7 @@ import {
 } from "@material-ui/core"
 import Add from "@material-ui/icons/Add"
 import Refresh from "@material-ui/icons/Refresh"
+import DeleteForever from "@material-ui/icons/DeleteForever"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -110,6 +111,15 @@ export function RefreshButton({
   return (
     <IconButton onClick={onClick} data-testid={dataTestId}>
       <Refresh />
+    </IconButton>
+  )
+}
+
+export function DeleteButton({ onClick }: { onClick: () => void }) {
+  const theme = useTheme()
+  return (
+    <IconButton onClick={(e) => onClick()}>
+      <DeleteForever htmlColor={theme.palette.error.main} />
     </IconButton>
   )
 }
