@@ -178,40 +178,22 @@ function TablePanel({
         />
         <RefreshButton onClick={refreshTables} inProgress={promiseInProgress} />
       </ButtonArray>
-      <TableCards
-        tableSpec={tableSpec}
-        renderNew={renderNew}
+      <NewTableForm
         token={token}
         projectName={projectName}
-        onSubmitNew={refreshTables}
+        onSubmit={refreshTables}
+        tableSpec={tableSpec}
+        noDisplay={!renderNew}
       />
+      <TableCards tableSpec={tableSpec} />
     </>
   )
 }
 
-function TableCards({
-  tableSpec,
-  renderNew,
-  token,
-  projectName,
-  onSubmitNew,
-}: {
-  tableSpec: TableSpec
-  renderNew: boolean
-  token: string
-  projectName: string
-  onSubmitNew: () => void
-}) {
+function TableCards({ tableSpec }: { tableSpec: TableSpec }) {
   const classes = useStyles()
   return (
     <div className={classes.tableCards}>
-      <NewTableForm
-        token={token}
-        projectName={projectName}
-        onSubmit={onSubmitNew}
-        tableSpec={tableSpec}
-        noDisplay={!renderNew}
-      />
       {tableSpec.map((tableMeta) => (
         <TableCard
           key={tableMeta.name}
