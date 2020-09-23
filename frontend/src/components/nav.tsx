@@ -22,7 +22,6 @@ const useStyles = makeStyles((theme: Theme) =>
       display: "flex",
       flexDirection: "column",
       height: 48,
-      backgroundColor: "var(--palette-bg-highlight)",
       "& *": {
         margin: "auto",
       },
