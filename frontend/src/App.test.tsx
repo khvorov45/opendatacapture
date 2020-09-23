@@ -99,12 +99,12 @@ test("route to project page", async () => {
     <App initPalette="dark" initToken="123" />
   )
   await waitForDomChange()
+  expect(getByTestId("nav-project-info")).toHaveClass("nodisplay")
   fireEvent.click(getByText("somename"))
   wait(() => {
     // Check redirection
     expect(getByTestId("project-page-somename")).toBeInTheDocument()
     // Check that project info on nav updated
-    expect(getByText("Project")).toBeInTheDocument()
-    expect(getByText("somename")).toBeInTheDocument()
+    expect(getByTestId("nav-project-info")).not.toHaveClass("nodisplay")
   })
 })

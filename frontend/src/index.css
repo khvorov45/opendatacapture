@@ -13,6 +13,14 @@
   --palette-link: rgb(0, 17, 253);
 }
 
+/* Hiding elements */
+.hidden {
+  visibility: hidden;
+}
+.nodisplay {
+  display: none;
+}
+
 body {
   /* Auto-generated */
   margin: 0;

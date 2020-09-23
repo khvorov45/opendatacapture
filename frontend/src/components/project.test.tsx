@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 import React from "react"
-import { fireEvent, render } from "@testing-library/react"
+import { fireEvent, render, waitForDomChange } from "@testing-library/react"
 import { BrowserRouter, Redirect, Route, Switch } from "react-router-dom"
 
 import ProjectPage from "./project"
@@ -22,6 +22,7 @@ function renderProjectPage() {
 
 test("basic functionality - no initial tables", async () => {
   let { getByTestId, queryByTestId, getByText } = renderProjectPage()
+  await waitForDomChange()
 
   // Sidebar links
   expect(getByText("Tables")).toBeInTheDocument()

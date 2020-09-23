@@ -27,6 +27,7 @@ const useStyles = makeStyles((theme: Theme) =>
     },
     link: {
       textTransform: "none",
+      borderRadius: 0,
       "&.active": {
         backgroundColor: "var(--palette-bg-highlight)",
       },
@@ -79,15 +80,19 @@ export function ButtonLink({
   children,
   active,
   to,
+  className,
 }: {
   children: ReactNode
   active: boolean
   to: string
+  className?: string
 }) {
   const classes = useStyles()
   return (
     <Button
-      className={`${classes.link}${active ? " active" : ""}`}
+      className={`${classes.link}${active ? " active" : ""}${
+        className ? " " + className : ""
+      }`}
       component={Link}
       to={to}
     >
