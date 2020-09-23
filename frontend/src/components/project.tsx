@@ -33,6 +33,7 @@ import { ButtonArray, ButtonLink, CreateButton, RefreshButton } from "./button"
 import Check from "@material-ui/icons/Check"
 import Clear from "@material-ui/icons/Clear"
 import Remove from "@material-ui/icons/Remove"
+import Edit from "@material-ui/icons/Edit"
 import { NamedDivider } from "./divider"
 import { trackPromise, usePromiseTracker } from "react-promise-tracker"
 
@@ -151,11 +152,11 @@ function TablePanel({
   projectName: string
 }) {
   let [renderNew, setRenderNew] = useState(false)
-  let [tableSpec, setTableSpec] = useState<TableSpec>([])
+  let [tableSpec, setTableSpec] = useState<TableSpec | null>(null)
   let [errorMsg, setErrorMsg] = useState("")
 
   useEffect(() => {
-    if (tableSpec.length === 0) {
+    if (tableSpec?.length === 0) {
       setRenderNew(true)
     }
   }, [tableSpec])
@@ -185,10 +186,10 @@ function TablePanel({
         token={token}
         projectName={projectName}
         onSubmit={refreshTables}
-        tableSpec={tableSpec}
+        tableSpec={tableSpec ?? []}
         noDisplay={!renderNew}
       />
-      <TableCards tableSpec={tableSpec} />
+      <TableCards tableSpec={tableSpec ?? []} />
     </div>
   )
 }
@@ -216,6 +217,7 @@ function TableCard({
   tableSpec: TableSpec
 }) {
   const classes = useStyles()
+  const [editable, setEditable] = useState(false)
   return (
     <div
       className={`${classes.tableCard}`}
@@ -225,9 +227,12 @@ function TableCard({
         <TableHead
           inputTestId={`table-card-name-field-${tableMeta.name}`}
           value={tableMeta.name}
-          disabled={true}
+          disabled={!editable}
           onChange={(name) => {}}
         />
+        <IconButton onClick={(e) => setEditable((old) => !old)}>
+          <Edit />
+        </IconButton>
       </div>
       <NamedDivider name="Columns" />
       <div className="padded cols">
@@ -235,7 +240,7 @@ function TableCard({
           <ColumnEntry
             key={i}
             tableSpec={tableSpec}
-            readOnly={true}
+            readOnly={!editable}
             name={tableMeta.cols[i].name}
             onNameChange={(value) => {}}
             type={tableMeta.cols[i].postgres_type}
@@ -579,7 +584,7 @@ function ColumnEntry({
             ))}
         </Select>
       </div>
-      <div className={`delete${readOnly ? " nodisplay" : ""}`}>
+      <div className={`delete${readOnly ? " hidden" : ""}`}>
         <IconButton onClick={(e) => onRemove()}>
           <Remove htmlColor={theme.palette.error.main} />
         </IconButton>
