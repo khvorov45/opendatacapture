@@ -1,6 +1,7 @@
 :root {
   --palette-bg: rgb(0, 0, 0);
   --palette-bg-alt: rgb(30, 30, 30);
+  --palette-bg-highlight: #303f9f;
   --palette-link: #61edff;
   --palette-border: rgb(127, 127, 127);
 }
@@ -8,6 +9,7 @@
 [theme="light"] {
   --palette-bg: rgb(255, 255, 255);
   --palette-bg-alt: rgb(225, 225, 225);
+  --palette-bg-highlight: #7986cb;
   --palette-link: rgb(0, 17, 253);
 }
 

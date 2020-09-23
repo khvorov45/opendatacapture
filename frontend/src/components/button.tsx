@@ -28,7 +28,7 @@ const useStyles = makeStyles((theme: Theme) =>
     link: {
       textTransform: "none",
       "&.active": {
-        backgroundColor: theme.palette.primary.dark,
+        backgroundColor: "var(--palette-bg-highlight)",
       },
     },
   })
