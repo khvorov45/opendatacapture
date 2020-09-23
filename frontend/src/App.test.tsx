@@ -95,16 +95,29 @@ test("route to project page", async () => {
     .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: [project] })
     // Project metadata
     .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: [] })
+    // Project list
+    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: [project] })
   const { getByTestId, getByText } = render(
     <App initPalette="dark" initToken="123" />
   )
   await waitForDomChange()
   expect(getByTestId("nav-project-info")).toHaveClass("nodisplay")
   fireEvent.click(getByText("somename"))
-  wait(() => {
+  await wait(() => {
     // Check redirection
     expect(getByTestId("project-page-somename")).toBeInTheDocument()
     // Check that project info on nav updated
     expect(getByTestId("nav-project-info")).not.toHaveClass("nodisplay")
   })
+
+  // Go back
+  fireEvent.click(getByText("Projects"))
+  await waitForDomChange()
+
+  // Project info should disappear
+  expect(getByTestId("nav-project-info")).toHaveClass("nodisplay")
+
+  // We should be at the project list
+  expect(getByTestId("homepage")).toBeInTheDocument()
+  expect(getByTestId("home-link")).toHaveClass("active")
 })

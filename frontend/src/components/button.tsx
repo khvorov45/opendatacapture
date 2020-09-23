@@ -81,15 +81,18 @@ export function ButtonLink({
   active,
   to,
   className,
+  dataTestId,
 }: {
   children: ReactNode
   active: boolean
   to: string
   className?: string
+  dataTestId?: string
 }) {
   const classes = useStyles()
   return (
     <Button
+      data-testid={dataTestId}
       className={`${classes.link}${active ? " active" : ""}${
         className ? " " + className : ""
       }`}

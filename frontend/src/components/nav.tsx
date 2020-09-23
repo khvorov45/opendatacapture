@@ -47,7 +47,12 @@ export default function Nav({
   return (
     <div className={classes.nav}>
       <div>
-        <ButtonLink className="link" active={location.pathname === "/"} to="/">
+        <ButtonLink
+          dataTestId="home-link"
+          className="link"
+          active={location.pathname === "/"}
+          to="/"
+        >
           Projects
         </ButtonLink>
       </div>
@@ -65,7 +70,6 @@ function ProjectInfo() {
   const location = useLocation()
   const classes = useStyles()
   const show = location.pathname.startsWith("/project")
-  console.log(show)
   return (
     <div
       className={`${classes.projectInfo}${show ? "" : " nodisplay"}`}
