@@ -11,7 +11,7 @@ const useStyles = makeStyles((theme: Theme) =>
       display: "flex",
       justifyContent: "space-between",
       alignItems: "center",
-      backgroundColor: "var(--palette-table-head)",
+      backgroundColor: "var(--palette-bg-alt)",
       borderBottom: `1px solid ${theme.palette.divider}`,
     },
     projectInfo: {

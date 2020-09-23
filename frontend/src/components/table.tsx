@@ -7,7 +7,7 @@ export const StyledTableCell = withStyles((theme: Theme) =>
       border: "0px",
     },
     head: {
-      backgroundColor: "var(--palette-table-head)",
+      backgroundColor: "var(--palette-bg-alt)",
     },
   })
 )(TableCell)

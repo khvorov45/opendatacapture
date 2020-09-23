@@ -48,8 +48,8 @@ const useStyles = makeStyles((theme: Theme) =>
       },
     },
     sidebar: {
-      backgroundColor: "var(--palette-sidebar)",
-      borderRight: `1px solid ${theme.palette.divider}`,
+      backgroundColor: "var(--palette-bg-alt)",
+      borderBottom: `1px solid ${theme.palette.divider}`,
     },
     tableControl: {
       borderBottom: `1px solid ${theme.palette.divider}`,
