@@ -237,9 +237,7 @@ function TableCard({
           }}
           label="Table name"
           value={tableMeta.name}
-          InputProps={{
-            readOnly: true,
-          }}
+          disabled={true}
         />
       </div>
       <NamedDivider name="Columns" />
@@ -248,6 +246,7 @@ function TableCard({
           <ColumnEntry
             key={i}
             tableSpec={tableSpec}
+            readOnly={true}
             name={tableMeta.cols[i].name}
             onNameChange={(value) => {}}
             type={tableMeta.cols[i].postgres_type}
@@ -409,6 +408,7 @@ function NewTableForm({
 
 function ColumnEntry({
   tableSpec,
+  readOnly,
   name,
   onNameChange,
   type,
@@ -424,6 +424,7 @@ function ColumnEntry({
   onRemove,
 }: {
   tableSpec: TableSpec
+  readOnly?: boolean
   name: string
   onNameChange: (value: string) => void
   type: string
@@ -485,8 +486,15 @@ function ColumnEntry({
           onChange={(e) => {
             onNameChange(e.target.value)
           }}
+          disabled={readOnly}
         />
-        <Select id="type" value={type} onChange={onTypeChange} label="Type">
+        <Select
+          id="type"
+          value={type}
+          onChange={onTypeChange}
+          label="Type"
+          readOnly={readOnly}
+        >
           {allowedTypes.map((t) => (
             <MenuItem key={t} value={t}>
               {t}
@@ -500,18 +508,21 @@ function ColumnEntry({
           checked={primaryKey}
           onChange={onPKChange}
           label="Primary key"
+          readOnly={readOnly}
         />
         <Checkbox
           checked={notNull}
           onChange={onNNChange}
           label="Not null"
           hidden={primaryKey}
+          readOnly={readOnly}
         />
         <Checkbox
           checked={unique}
           onChange={onUniqueChange}
           label="Unique"
           hidden={primaryKey}
+          readOnly={readOnly}
         />
       </div>
 
@@ -520,6 +531,7 @@ function ColumnEntry({
           checked={foreignKeyCheckbox}
           onChange={handleFKChange}
           label="Foreign key"
+          readOnly={readOnly}
         />
         <Select
           id="fk-table"
@@ -527,6 +539,7 @@ function ColumnEntry({
           onChange={handleForeignTableChange}
           label="Table"
           hidden={!foreignKeyCheckbox}
+          readOnly={readOnly}
         >
           {tableSpec
             .filter((t) => t.cols.some((c) => c.primary_key))
@@ -542,6 +555,7 @@ function ColumnEntry({
           onChange={handleForeignColumnChange}
           label="Column"
           hidden={!foreignKeyCheckbox}
+          readOnly={readOnly}
         >
           {tableSpec
             .find((t) => t.name === foreignTable)
@@ -553,7 +567,7 @@ function ColumnEntry({
             ))}
         </Select>
       </div>
-      <div className="delete">
+      <div className={`delete${readOnly ? " nodisplay" : ""}`}>
         <IconButton onClick={(e) => onRemove()}>
           <Remove htmlColor={theme.palette.error.main} />
         </IconButton>
@@ -569,6 +583,7 @@ function Select({
   id,
   label,
   hidden,
+  readOnly,
 }: {
   children: ReactNode
   value: string
@@ -576,6 +591,7 @@ function Select({
   id: string
   label: string
   hidden?: boolean
+  readOnly?: boolean
 }) {
   const classes = useStyles()
   return (
@@ -586,6 +602,7 @@ function Select({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value as string)}
+        disabled={readOnly}
       >
         {children}
       </MaterialSelect>
@@ -598,11 +615,13 @@ function Checkbox({
   onChange,
   label,
   hidden,
+  readOnly,
 }: {
   checked: boolean
   onChange: (value: boolean) => void
   label: string
   hidden?: boolean
+  readOnly?: boolean
 }) {
   return (
     <FormControlLabel
@@ -613,6 +632,7 @@ function Checkbox({
           onChange={(e: ChangeEvent<HTMLInputElement>) =>
             onChange(e.target.checked)
           }
+          disabled={readOnly}
         />
       }
       label={label}
