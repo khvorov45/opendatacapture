@@ -51,20 +51,19 @@ const useStyles = makeStyles((theme: Theme) =>
       backgroundColor: "var(--palette-bg-alt)",
       borderBottom: `1px solid ${theme.palette.divider}`,
     },
+    tablePanel: {
+      "&>*": {
+        margin: "auto",
+      },
+    },
     tableControl: {
       borderBottom: `1px solid ${theme.palette.divider}`,
     },
     tableCards: {
       display: "flex",
-      flexDirection: "column",
+      flexWrap: "wrap",
+      justifyContent: "center",
       overflow: "auto",
-      "&>*": {
-        borderRight: `1px solid ${theme.palette.divider}`,
-        borderBottom: `2px solid var(--palette-border)`,
-      },
-      "&>*:nth-child(even)": {
-        backgroundColor: "var(--palette-bg-alt)",
-      },
     },
     tableCard: {
       display: "flex",
@@ -79,6 +78,10 @@ const useStyles = makeStyles((theme: Theme) =>
       "&>.head": {
         paddingTop: 5,
       },
+      "&>.cols": {
+        flexGrow: 1,
+      },
+      border: `1px solid ${theme.palette.divider}`,
     },
     columnEntry: {
       display: "flex",
@@ -170,8 +173,8 @@ function TablePanel({
 
   const classes = useStyles()
   return (
-    <>
-      <ButtonArray className={classes.tableControl} errorMsg={errorMsg}>
+    <div className={classes.tablePanel}>
+      <ButtonArray className={classes.tableControl} errorMsg={errorMsg} center>
         <CreateButton
           onClick={() => setRenderNew((old) => !old)}
           dataTestId="create-table-button"
@@ -186,7 +189,7 @@ function TablePanel({
         noDisplay={!renderNew}
       />
       <TableCards tableSpec={tableSpec} />
-    </>
+    </div>
   )
 }
 
@@ -227,7 +230,7 @@ function TableCard({
         />
       </div>
       <NamedDivider name="Columns" />
-      <div className="padded">
+      <div className="padded cols">
         {tableMeta.cols.map((c, i) => (
           <ColumnEntry
             key={i}
