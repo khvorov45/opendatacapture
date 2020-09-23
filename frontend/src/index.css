@@ -2,6 +2,7 @@
   --palette-bg: rgb(0, 0, 0);
   --palette-bg-alt: rgb(30, 30, 30);
   --palette-link: #61edff;
+  --palette-border: rgb(127, 127, 127);
 }
 
 [theme="light"] {

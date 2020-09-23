@@ -60,7 +60,10 @@ const useStyles = makeStyles((theme: Theme) =>
       overflow: "auto",
       "&>*": {
         borderRight: `1px solid ${theme.palette.divider}`,
-        borderBottom: `1px solid ${theme.palette.divider}`,
+        borderBottom: `2px solid var(--palette-border)`,
+      },
+      "&>*:nth-child(even)": {
+        backgroundColor: "var(--palette-bg-alt)",
       },
     },
     tableCard: {
@@ -72,6 +75,9 @@ const useStyles = makeStyles((theme: Theme) =>
         paddingLeft: "10px",
         paddingRight: "10px",
         paddingBottom: "10px",
+      },
+      "&>.head": {
+        paddingTop: 5,
       },
     },
     columnEntry: {
@@ -230,14 +236,12 @@ function TableCard({
       className={`${classes.tableCard}`}
       data-testid={`table-card-${tableMeta.name}`}
     >
-      <div className="padded">
-        <TextField
-          inputProps={{
-            "data-testid": `table-card-name-field-${tableMeta.name}`,
-          }}
-          label="Table name"
+      <div className="padded head">
+        <TableHead
+          inputTestId={`table-card-name-field-${tableMeta.name}`}
           value={tableMeta.name}
           disabled={true}
+          onChange={(name) => {}}
         />
       </div>
       <NamedDivider name="Columns" />
@@ -264,6 +268,30 @@ function TableCard({
         ))}
       </div>
     </div>
+  )
+}
+
+function TableHead({
+  inputTestId,
+  disabled,
+  value,
+  onChange,
+}: {
+  inputTestId: string
+  disabled?: boolean
+  value: string
+  onChange: (s: string) => void
+}) {
+  return (
+    <TextField
+      inputProps={{
+        "data-testid": inputTestId,
+      }}
+      label="Table name"
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+    />
   )
 }
 
@@ -361,11 +389,10 @@ function NewTableForm({
       data-testid="new-table-form"
     >
       <div className="padded">
-        <TextField
-          inputProps={{ "data-testid": "new-table-name-field" }}
-          label="Table name"
+        <TableHead
+          inputTestId="new-table-name-field"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(newname) => setName(newname)}
         />
       </div>
       <NamedDivider name="Columns" />
