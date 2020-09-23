@@ -63,7 +63,7 @@ const useStyles = makeStyles((theme: Theme) =>
         borderBottom: `1px solid ${theme.palette.divider}`,
       },
     },
-    newTableForm: {
+    tableCard: {
       display: "flex",
       flexDirection: "column",
       width: "350px",
@@ -227,7 +227,7 @@ function TableCard({
   const classes = useStyles()
   return (
     <div
-      className={`${classes.newTableForm}`}
+      className={`${classes.tableCard}`}
       data-testid={`table-card-${tableMeta.name}`}
     >
       <div className="padded">
@@ -358,7 +358,7 @@ function NewTableForm({
   const theme = useTheme()
   return (
     <div
-      className={`${classes.newTableForm}${noDisplay ? " nodisplay" : ""}`}
+      className={`${classes.tableCard}${noDisplay ? " nodisplay" : ""}`}
       data-testid="new-table-form"
     >
       <div className="padded">
