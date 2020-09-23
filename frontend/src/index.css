@@ -15,10 +15,10 @@
 
 /* Hiding elements */
 .hidden {
-  visibility: hidden;
+  visibility: hidden !important;
 }
 .nodisplay {
-  display: none;
+  display: none !important;
 }
 
 body {

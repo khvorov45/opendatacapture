@@ -21,6 +21,8 @@ const useStyles = makeStyles((theme: Theme) =>
     projectInfo: {
       display: "flex",
       flexDirection: "column",
+      height: 48,
+      backgroundColor: "var(--palette-bg-highlight)",
       "& *": {
         margin: "auto",
       },
@@ -40,12 +42,12 @@ export default function Nav({
 }: {
   handleThemeChange: () => void
 }) {
+  const location = useLocation()
   const classes = useStyles()
-
   return (
     <div className={classes.nav}>
       <div>
-        <ButtonLink className="link" active to="/">
+        <ButtonLink className="link" active={location.pathname === "/"} to="/">
           Projects
         </ButtonLink>
       </div>
@@ -63,6 +65,7 @@ function ProjectInfo() {
   const location = useLocation()
   const classes = useStyles()
   const show = location.pathname.startsWith("/project")
+  console.log(show)
   return (
     <div
       className={`${classes.projectInfo}${show ? "" : " nodisplay"}`}
