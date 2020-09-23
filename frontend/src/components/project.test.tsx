@@ -1,9 +1,14 @@
 /* istanbul ignore file */
 import React from "react"
+import httpStatusCodes from "http-status-codes"
 import { fireEvent, render, waitForDomChange } from "@testing-library/react"
 import { BrowserRouter, Redirect, Route, Switch } from "react-router-dom"
 
 import ProjectPage from "./project"
+
+import axios from "axios"
+jest.mock("axios")
+const mockedAxios = axios as jest.Mocked<typeof axios>
 
 function renderProjectPage() {
   return render(
@@ -20,7 +25,10 @@ function renderProjectPage() {
   )
 }
 
-test("basic functionality - no initial tables", async () => {
+test("table panel functionality - no initial tables", async () => {
+  // List of projects
+  mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: [] })
+
   let { getByTestId, queryByTestId, getByText } = renderProjectPage()
   await waitForDomChange()
 
