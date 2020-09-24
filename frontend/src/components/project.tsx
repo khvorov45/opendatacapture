@@ -603,6 +603,7 @@ function ColumnEntry({
           onChange={onPKChange}
           label="Primary key"
           readOnly={readOnly}
+          dataTestId={"primary-key"}
         />
         <Checkbox
           checked={notNull}
@@ -610,6 +611,7 @@ function ColumnEntry({
           label="Not null"
           hidden={primaryKey}
           readOnly={readOnly}
+          dataTestId={"not-null"}
         />
         <Checkbox
           checked={unique}
@@ -617,6 +619,7 @@ function ColumnEntry({
           label="Unique"
           hidden={primaryKey}
           readOnly={readOnly}
+          dataTestId={"unique"}
         />
       </div>
 
@@ -626,6 +629,7 @@ function ColumnEntry({
           onChange={handleFKChange}
           label="Foreign key"
           readOnly={readOnly}
+          dataTestId={"foreign-key"}
         />
         <Select
           id="fk-table"

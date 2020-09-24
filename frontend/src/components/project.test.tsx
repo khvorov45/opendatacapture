@@ -34,16 +34,28 @@ function renderProjectPage() {
 function performSelectAction(selectElement: HTMLElement, value: string) {
   fireEvent.mouseDown(within(selectElement).getByRole("button"))
   // Find the material ui popover
-  const popover = document.querySelector<HTMLElement>('[role="presentation"')
-  if (!popover) {
+  // Note that it will hang around for some reason, even after the click
+  // I'm guessing it's to mess with me
+  const popovers = document.querySelectorAll<HTMLElement>(
+    '[role="presentation"]'
+  )
+  if (popovers.length == 0) {
     throw Error("no popover from material ui")
   }
-  fireEvent.click(within(popover).getByText(value))
+  // The last popover is the one we want
+  fireEvent.click(within(popovers[popovers.length - 1]).getByText(value))
+}
+
+function performCheckboxClick(checkboxElement: HTMLElement) {
+  const input = checkboxElement.querySelector('input[type="checkbox"]')
+  if (!input) {
+    throw Error("no checkbox input")
+  }
+  fireEvent.click(input)
 }
 
 function fillColumnEntry(columnEntry: HTMLElement, column: ColMeta) {
   const select = within(columnEntry)
-
   // Name
   fireEvent.change(select.getByTestId(`new-column-name-field`), {
     target: { value: column.name },
@@ -55,17 +67,17 @@ function fillColumnEntry(columnEntry: HTMLElement, column: ColMeta) {
   )
   // Checkboxes
   if (column.primary_key) {
-    fireEvent.click(select.getByText("Primary key"))
+    performCheckboxClick(select.getByTestId("primary-key"))
   }
   if (column.not_null) {
-    fireEvent.click(select.getByText("Not null"))
+    performCheckboxClick(select.getByTestId("not-null"))
   }
   if (column.unique) {
-    fireEvent.click(select.getByText("Unique"))
+    performCheckboxClick(select.getByTestId("unique"))
   }
   if (column.foreign_key) {
     // Checkbox
-    fireEvent.click(select.getByText("Foreing key"))
+    performCheckboxClick(select.getByTestId("foreing-key"))
     // Table
     performSelectAction(
       select.getByTestId(`foreign-table-select`),
@@ -97,10 +109,10 @@ function fillTableForm(form: HTMLElement, table: TableMeta) {
 }
 
 test("table panel functionality - no initial tables", async () => {
-  // List of projects
+  // List of tables
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: [] })
 
-  let { getByTestId, queryByTestId, getByText, getByRole } = renderProjectPage()
+  let { getByTestId, getByText, queryByTestId } = renderProjectPage()
   await waitForDomChange()
 
   // Sidebar links
@@ -113,6 +125,10 @@ test("table panel functionality - no initial tables", async () => {
   expect(newTableForm).toHaveClass("nodisplay")
   fireEvent.click(getByTestId("create-table-button"))
   expect(newTableForm).not.toHaveClass("nodisplay")
+
+  // Submit button should be disabled
+  const tableSubmit = getByTestId("submit-table-button")
+  expect(tableSubmit).toBeDisabled()
 
   // Create a table
   const table1: TableMeta = {
@@ -137,4 +153,42 @@ test("table panel functionality - no initial tables", async () => {
     ],
   }
   fillTableForm(newTableForm, table1)
+
+  // Submit button should now be enabled
+  expect(tableSubmit).not.toBeDisabled()
+
+  // Create table response
+  let createTables = mockedAxios.put.mockImplementation(
+    async (url, data, config) => {
+      return { status: httpStatusCodes.NO_CONTENT }
+    }
+  )
+
+  // Refresh tables response
+  mockedAxios.get.mockResolvedValue({
+    status: httpStatusCodes.OK,
+    data: [table1],
+  })
+
+  // There should be no table cards
+  expect(queryByTestId(`table-card-${table1.name}`)).not.toBeInTheDocument()
+
+  // Submit table
+  fireEvent.click(tableSubmit)
+  await waitForDomChange()
+  expect(createTables).toHaveBeenCalledWith(
+    expect.anything(),
+    table1,
+    expect.anything()
+  )
+
+  // Now there should be a table card
+  expect(getByTestId(`table-card-${table1.name}`)).toBeInTheDocument()
+
+  // The table form should still be visible
+  expect(newTableForm).not.toHaveClass("nodisplay")
+  // And empty
+  expect(within(newTableForm).getByTestId("new-table-name-field")).toHaveValue(
+    ""
+  )
 })
