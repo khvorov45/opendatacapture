@@ -302,6 +302,7 @@ function TableCard({
             foreignKey={tableMeta.cols[i].foreign_key}
             onFKChange={(value) => {}}
             onRemove={() => {}}
+            dataTestId={`table-${tableMeta.name}-column-entry-${i}`}
           />
         ))}
       </div>
@@ -470,11 +471,12 @@ function NewTableForm({
             foreignKey={cols[i].foreign_key}
             onFKChange={(value) => setColForeignKey(value, i)}
             onRemove={() => removeCol(i)}
+            dataTestId={`new-column-entry-${i}`}
           />
         ))}
       </div>
       <div>
-        <CreateButton onClick={addCol} />
+        <CreateButton dataTestId={"add-column"} onClick={addCol} />
       </div>
       <NamedDivider name="" />
       <ButtonArray center className={"buttons"} errorMsg={errorMsg}>
@@ -509,6 +511,7 @@ function ColumnEntry({
   foreignKey,
   onFKChange,
   onRemove,
+  dataTestId,
 }: {
   tableSpec: TableSpec
   readOnly?: boolean
@@ -525,6 +528,7 @@ function ColumnEntry({
   foreignKey: ForeignKey | null
   onFKChange: (value: ForeignKey | null) => void
   onRemove: () => void
+  dataTestId: string
 }) {
   const allowedTypes = ["integer", "text"]
 
@@ -564,10 +568,12 @@ function ColumnEntry({
   const classes = useStyles()
   const theme = useTheme()
   return (
-    <div className={classes.columnEntry}>
+    <div className={classes.columnEntry} data-testid={dataTestId}>
       <div>
         <TextField
-          inputProps={{ "data-testid": "new-column-name-field" }}
+          inputProps={{
+            "data-testid": "new-column-name-field",
+          }}
           label="Name"
           value={name}
           onChange={(e) => {
@@ -581,6 +587,7 @@ function ColumnEntry({
           onChange={onTypeChange}
           label="Type"
           readOnly={readOnly}
+          dataTestId={"new-column-type-select"}
         >
           {allowedTypes.map((t) => (
             <MenuItem key={t} value={t}>
@@ -627,6 +634,7 @@ function ColumnEntry({
           label="Table"
           hidden={!foreignKeyCheckbox}
           readOnly={readOnly}
+          dataTestId={"foreign-table-select"}
         >
           {tableSpec
             .filter((t) => t.cols.some((c) => c.primary_key))
@@ -643,6 +651,7 @@ function ColumnEntry({
           label="Column"
           hidden={!foreignKeyCheckbox}
           readOnly={readOnly}
+          dataTestId={"foreign-column-select"}
         >
           {tableSpec
             .find((t) => t.name === foreignTable)
@@ -671,6 +680,7 @@ function Select({
   label,
   hidden,
   readOnly,
+  dataTestId,
 }: {
   children: ReactNode
   value: string
@@ -679,12 +689,14 @@ function Select({
   label: string
   hidden?: boolean
   readOnly?: boolean
+  dataTestId?: string
 }) {
   const classes = useStyles()
   return (
     <FormControl className={`${classes.select}${hidden ? " hidden" : ""}`}>
       <InputLabel id={id + "-select-label"}>{label}</InputLabel>
       <MaterialSelect
+        data-testid={dataTestId}
         labelId={id + "-select-label"}
         id={id}
         value={value}
@@ -703,12 +715,14 @@ function Checkbox({
   label,
   hidden,
   readOnly,
+  dataTestId,
 }: {
   checked: boolean
   onChange: (value: boolean) => void
   label: string
   hidden?: boolean
   readOnly?: boolean
+  dataTestId?: string
 }) {
   return (
     <FormControlLabel
@@ -720,6 +734,7 @@ function Checkbox({
             onChange(e.target.checked)
           }
           disabled={readOnly}
+          data-testid={dataTestId}
         />
       }
       label={label}
