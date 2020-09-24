@@ -77,7 +77,7 @@ function fillColumnEntry(columnEntry: HTMLElement, column: ColMeta) {
   }
   if (column.foreign_key) {
     // Checkbox
-    performCheckboxClick(select.getByTestId("foreing-key"))
+    performCheckboxClick(select.getByTestId("foreign-key"))
     // Table
     performSelectAction(
       select.getByTestId(`foreign-table-select`),
@@ -191,4 +191,46 @@ test("table panel functionality - no initial tables", async () => {
   expect(within(newTableForm).getByTestId("new-table-name-field")).toHaveValue(
     ""
   )
+
+  // Create another table
+  const table2: TableMeta = {
+    name: "newtable2",
+    cols: [
+      {
+        name: "id",
+        postgres_type: "integer",
+        primary_key: true,
+        not_null: false,
+        unique: false,
+        foreign_key: { table: table1.name, column: table1.cols[0].name },
+      },
+      {
+        name: "timepoint",
+        postgres_type: "text",
+        primary_key: true,
+        not_null: false,
+        unique: false,
+        foreign_key: null,
+      },
+    ],
+  }
+  fillTableForm(newTableForm, table2)
+
+  // Refresh tables response
+  mockedAxios.get.mockResolvedValue({
+    status: httpStatusCodes.OK,
+    data: [table1, table2],
+  })
+
+  fireEvent.click(tableSubmit)
+  await waitForDomChange()
+  expect(createTables).toHaveBeenCalledWith(
+    expect.anything(),
+    table2,
+    expect.anything()
+  )
+
+  // There should be another table card
+  expect(getByTestId(`table-card-${table1.name}`)).toBeInTheDocument()
+  expect(getByTestId(`table-card-${table2.name}`)).toBeInTheDocument()
 })
