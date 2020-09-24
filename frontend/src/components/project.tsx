@@ -654,7 +654,7 @@ function ColumnEntry({
           onChange={handleForeignColumnChange}
           label="Column"
           hidden={!foreignKeyCheckbox}
-          readOnly={readOnly}
+          readOnly={readOnly || foreignTable === ""}
           dataTestId={"foreign-column-select"}
         >
           {tableSpec

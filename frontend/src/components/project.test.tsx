@@ -152,6 +152,20 @@ const table2: TableMeta = {
   ],
 }
 
+const table3: TableMeta = {
+  name: "newtable3",
+  cols: [
+    {
+      name: "id",
+      postgres_type: "integer",
+      primary_key: false,
+      not_null: false,
+      unique: false,
+      foreign_key: null,
+    },
+  ],
+}
+
 test("table panel functionality - no initial tables", async () => {
   // List of tables
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: [] })
@@ -252,4 +266,34 @@ test("table panel - some initial tables", async () => {
   // Table cards should be present
   expect(getByTestId(`table-card-${table1.name}`)).toBeInTheDocument()
   expect(getByTestId(`table-card-${table2.name}`)).toBeInTheDocument()
+})
+
+test("table panel - FK behavior", async () => {
+  // List of tables
+  mockedAxios.get.mockResolvedValue({
+    status: httpStatusCodes.OK,
+    data: [table1, table2, table3],
+  })
+
+  let { getByTestId, getAllByRole } = renderProjectPage()
+  await waitForDomChange()
+
+  fireEvent.click(getByTestId("create-table-button"))
+  const newTableForm = getByTestId("new-table-form")
+  performCheckboxClick(within(newTableForm).getByTestId("foreign-key"))
+  const foreignTable = within(newTableForm).getByTestId("foreign-table-select")
+  const foreignColumn = within(newTableForm).getByTestId(
+    "foreign-column-select"
+  )
+  // Foreign column selection should be disabled
+  expect(within(foreignColumn).getByRole("button")).toHaveAttribute(
+    "aria-disabled"
+  )
+  // Only the first two tables should be available
+  fireEvent.mouseDown(within(foreignTable).getByRole("button"))
+  const popovers = getAllByRole("presentation")
+  const popover = popovers[popovers.length - 1]
+  expect(within(popover).getByText(table1.name)).toBeInTheDocument()
+  expect(within(popover).getByText(table2.name)).toBeInTheDocument()
+  expect(within(popover).queryByText(table3.name)).not.toBeInTheDocument()
 })
