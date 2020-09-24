@@ -296,4 +296,7 @@ test("table panel - FK behavior", async () => {
   expect(within(popover).getByText(table1.name)).toBeInTheDocument()
   expect(within(popover).getByText(table2.name)).toBeInTheDocument()
   expect(within(popover).queryByText(table3.name)).not.toBeInTheDocument()
+
+  // Select the first table
+  fireEvent.click(within(popover).getByText(table1.name))
 })
