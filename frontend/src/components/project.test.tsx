@@ -108,6 +108,50 @@ function fillTableForm(form: HTMLElement, table: TableMeta) {
   })
 }
 
+const table1: TableMeta = {
+  name: "newtable",
+  cols: [
+    {
+      name: "id",
+      postgres_type: "integer",
+      primary_key: true,
+      not_null: false,
+      unique: false,
+      foreign_key: null,
+    },
+    {
+      name: "email",
+      postgres_type: "text",
+      primary_key: false,
+      not_null: true,
+      unique: true,
+      foreign_key: null,
+    },
+  ],
+}
+
+const table2: TableMeta = {
+  name: "newtable2",
+  cols: [
+    {
+      name: "id",
+      postgres_type: "integer",
+      primary_key: true,
+      not_null: false,
+      unique: false,
+      foreign_key: { table: table1.name, column: table1.cols[0].name },
+    },
+    {
+      name: "timepoint",
+      postgres_type: "text",
+      primary_key: true,
+      not_null: false,
+      unique: false,
+      foreign_key: null,
+    },
+  ],
+}
+
 test("table panel functionality - no initial tables", async () => {
   // List of tables
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: [] })
@@ -131,27 +175,6 @@ test("table panel functionality - no initial tables", async () => {
   expect(tableSubmit).toBeDisabled()
 
   // Create a table
-  const table1: TableMeta = {
-    name: "newtable",
-    cols: [
-      {
-        name: "id",
-        postgres_type: "integer",
-        primary_key: true,
-        not_null: false,
-        unique: false,
-        foreign_key: null,
-      },
-      {
-        name: "email",
-        postgres_type: "text",
-        primary_key: false,
-        not_null: true,
-        unique: true,
-        foreign_key: null,
-      },
-    ],
-  }
   fillTableForm(newTableForm, table1)
 
   // Submit button should now be enabled
@@ -193,27 +216,6 @@ test("table panel functionality - no initial tables", async () => {
   )
 
   // Create another table
-  const table2: TableMeta = {
-    name: "newtable2",
-    cols: [
-      {
-        name: "id",
-        postgres_type: "integer",
-        primary_key: true,
-        not_null: false,
-        unique: false,
-        foreign_key: { table: table1.name, column: table1.cols[0].name },
-      },
-      {
-        name: "timepoint",
-        postgres_type: "text",
-        primary_key: true,
-        not_null: false,
-        unique: false,
-        foreign_key: null,
-      },
-    ],
-  }
   fillTableForm(newTableForm, table2)
 
   // Refresh tables response
@@ -233,4 +235,18 @@ test("table panel functionality - no initial tables", async () => {
   // There should be another table card
   expect(getByTestId(`table-card-${table1.name}`)).toBeInTheDocument()
   expect(getByTestId(`table-card-${table2.name}`)).toBeInTheDocument()
+})
+
+test("table panel - some initial tables", async () => {
+  // List of tables
+  mockedAxios.get.mockResolvedValue({
+    status: httpStatusCodes.OK,
+    data: [table1, table2],
+  })
+
+  let { getByTestId } = renderProjectPage()
+  await waitForDomChange()
+
+  // Table form should be closed
+  expect(getByTestId("new-table-form")).toHaveClass("nodisplay")
 })
