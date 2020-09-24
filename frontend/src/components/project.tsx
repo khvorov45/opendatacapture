@@ -541,6 +541,10 @@ function ColumnEntry({
       onFKChange(null)
     }
   }
+
+  const availableForeignTables = useCallback(() => {
+    return tableSpec.filter((t) => t.cols.some((c) => c.primary_key))
+  }, [tableSpec])
   const [foreignTable, setForeignTable] = useState(
     foreignKey ? foreignKey.table : ""
   )
@@ -557,6 +561,14 @@ function ColumnEntry({
     }
     onFKChange({ table: newTable, column: newColumn })
   }
+
+  const availableForeignColumns = useCallback(() => {
+    const table = tableSpec.find((t) => t.name === foreignTable)
+    if (!table) {
+      return []
+    }
+    return table.cols.filter((c) => c.primary_key)
+  }, [tableSpec, foreignTable])
   const [foreignColumn, setForeignColumn] = useState(
     foreignKey ? foreignKey.column : ""
   )
@@ -628,7 +640,7 @@ function ColumnEntry({
           checked={foreignKeyCheckbox}
           onChange={handleFKChange}
           label="Foreign key"
-          readOnly={readOnly}
+          readOnly={readOnly || availableForeignTables().length === 0}
           dataTestId={"foreign-key"}
         />
         <Select
@@ -637,7 +649,7 @@ function ColumnEntry({
           onChange={handleForeignTableChange}
           label="Table"
           hidden={!foreignKeyCheckbox}
-          readOnly={readOnly}
+          readOnly={readOnly || availableForeignTables().length === 0}
           dataTestId={"foreign-table-select"}
         >
           {tableSpec
@@ -654,7 +666,7 @@ function ColumnEntry({
           onChange={handleForeignColumnChange}
           label="Column"
           hidden={!foreignKeyCheckbox}
-          readOnly={readOnly || foreignTable === ""}
+          readOnly={readOnly || availableForeignColumns().length === 0}
           dataTestId={"foreign-column-select"}
         >
           {tableSpec
