@@ -249,6 +249,7 @@ test("table panel - some initial tables", async () => {
 
   // Table form should be closed
   expect(getByTestId("new-table-form")).toHaveClass("nodisplay")
+  // Table cards should be present
   expect(getByTestId(`table-card-${table1.name}`)).toBeInTheDocument()
   expect(getByTestId(`table-card-${table2.name}`)).toBeInTheDocument()
 })
