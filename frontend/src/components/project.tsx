@@ -532,6 +532,7 @@ function ColumnEntry({
 }) {
   const allowedTypes = ["integer", "text"]
 
+  // Foreign key checkbox
   const [foreignKeyCheckbox, setForeignKeyCheckbox] = useState(
     foreignKey !== null
   )
@@ -542,39 +543,31 @@ function ColumnEntry({
     }
   }
 
+  // Foreign key table/column selection
   const availableForeignTables = useCallback(() => {
-    return tableSpec.filter((t) => t.cols.some((c) => c.primary_key))
+    // Single-column foreign key can only refer to a single-column primary key
+    return tableSpec.filter(
+      (t) => t.cols.filter((c) => c.primary_key).length === 1
+    )
   }, [tableSpec])
   const [foreignTable, setForeignTable] = useState(
     foreignKey ? foreignKey.table : ""
   )
-  function handleForeignTableChange(newTable: string) {
-    setForeignTable(newTable)
-    // Auto-fill column if there is only one option
-    let primaryKeys = tableSpec
-      .find((t) => t.name === newTable)
-      ?.cols.filter((c) => c.primary_key)
-    let newColumn = foreignColumn
-    if (primaryKeys?.length === 1) {
-      newColumn = primaryKeys[0].name
-      setForeignColumn(newColumn)
-    }
-    onFKChange({ table: newTable, column: newColumn })
-  }
-
-  const availableForeignColumns = useCallback(() => {
-    const table = tableSpec.find((t) => t.name === foreignTable)
-    if (!table) {
-      return []
-    }
-    return table.cols.filter((c) => c.primary_key)
-  }, [tableSpec, foreignTable])
   const [foreignColumn, setForeignColumn] = useState(
     foreignKey ? foreignKey.column : ""
   )
-  function handleForeignColumnChange(newCol: string) {
-    setForeignColumn(newCol)
-    onFKChange({ table: foreignTable, column: newCol })
+  function handleForeignTableChange(newTable: string) {
+    // There is only one column option per available table with my constraints
+    const newForeignColumn = tableSpec
+      .find((t) => t.name === newTable)
+      ?.cols.find((c) => c.primary_key)
+    // We can't possibly not find a column considering the constraints on
+    // available foreign tables
+    if (newForeignColumn) {
+      setForeignTable(newTable)
+      setForeignColumn(newForeignColumn.name)
+      onFKChange({ table: newTable, column: newForeignColumn.name })
+    }
   }
 
   const classes = useStyles()
@@ -652,31 +645,21 @@ function ColumnEntry({
           readOnly={readOnly || availableForeignTables().length === 0}
           dataTestId={"foreign-table-select"}
         >
-          {tableSpec
-            .filter((t) => t.cols.some((c) => c.primary_key))
-            .map((t) => (
-              <MenuItem key={t.name} value={t.name}>
-                {t.name}
-              </MenuItem>
-            ))}
+          {availableForeignTables().map((t) => (
+            <MenuItem key={t.name} value={t.name}>
+              {t.name}
+            </MenuItem>
+          ))}
         </Select>
         <Select
           id="fk-column"
           value={foreignColumn}
-          onChange={handleForeignColumnChange}
           label="Column"
           hidden={!foreignKeyCheckbox}
-          readOnly={readOnly || availableForeignColumns().length === 0}
+          readOnly={true}
           dataTestId={"foreign-column-select"}
         >
-          {tableSpec
-            .find((t) => t.name === foreignTable)
-            ?.cols.filter((c) => c.primary_key)
-            .map((c) => (
-              <MenuItem key={c.name} value={c.name}>
-                {c.name}
-              </MenuItem>
-            ))}
+          <MenuItem value={foreignColumn}>{foreignColumn}</MenuItem>
         </Select>
       </div>
       <div className={`delete${readOnly ? " hidden" : ""}`}>
@@ -700,7 +683,7 @@ function Select({
 }: {
   children: ReactNode
   value: string
-  onChange: (value: string) => void
+  onChange?: (value: string) => void
   id: string
   label: string
   hidden?: boolean
@@ -716,7 +699,7 @@ function Select({
         labelId={id + "-select-label"}
         id={id}
         value={value}
-        onChange={(e) => onChange(e.target.value as string)}
+        onChange={(e) => onChange?.(e.target.value as string)}
         disabled={readOnly}
       >
         {children}

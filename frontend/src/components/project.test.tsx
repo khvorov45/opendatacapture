@@ -83,11 +83,8 @@ function fillColumnEntry(columnEntry: HTMLElement, column: ColMeta) {
       select.getByTestId(`foreign-table-select`),
       column.foreign_key.table
     )
-    // Column
-    performSelectAction(
-      select.getByTestId(`foreign-column-select`),
-      column.foreign_key.column
-    )
+    // No need to select a column since there could only be one choice per
+    // table which is selected automatically and the input is always disabled
   }
 }
 
@@ -130,6 +127,7 @@ const table1: TableMeta = {
   ],
 }
 
+// Compound primary key
 const table2: TableMeta = {
   name: "newtable2",
   cols: [
@@ -152,6 +150,7 @@ const table2: TableMeta = {
   ],
 }
 
+// No primary key
 const table3: TableMeta = {
   name: "newtable3",
   cols: [
@@ -160,7 +159,7 @@ const table3: TableMeta = {
       postgres_type: "integer",
       primary_key: false,
       not_null: false,
-      unique: false,
+      unique: true,
       foreign_key: null,
     },
   ],
@@ -289,14 +288,11 @@ test("table panel - FK behavior", async () => {
   expect(within(foreignColumn).getByRole("button")).toHaveAttribute(
     "aria-disabled"
   )
-  // Only the first two tables should be available
+  // Only the first table should be available
   fireEvent.mouseDown(within(foreignTable).getByRole("button"))
   const popovers = getAllByRole("presentation")
   const popover = popovers[popovers.length - 1]
   expect(within(popover).getByText(table1.name)).toBeInTheDocument()
-  expect(within(popover).getByText(table2.name)).toBeInTheDocument()
+  expect(within(popover).queryByText(table2.name)).not.toBeInTheDocument()
   expect(within(popover).queryByText(table3.name)).not.toBeInTheDocument()
-
-  // Select the first table
-  fireEvent.click(within(popover).getByText(table1.name))
 })
