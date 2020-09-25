@@ -452,6 +452,7 @@ function NewTableForm({
     }
     createTable(token, projectName, tableMeta)
       .then(() => {
+        setErrorMsg("")
         handleClear()
         onSubmit()
       })
