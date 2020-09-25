@@ -507,6 +507,7 @@ function NewTableForm({
           onClick={handleSubmit}
           dataTestId="submit-table-button"
           disabled={!isViable()}
+          inProgress={promiseInProgress}
         >
           <Check
             htmlColor={

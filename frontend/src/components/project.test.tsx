@@ -238,7 +238,9 @@ test("table panel functionality - no initial tables", async () => {
     data: [table1, table2],
   })
 
-  fireEvent.click(tableSubmit)
+  // Need to get again because it gets replaced with a spinner and then
+  // re-rendered
+  fireEvent.click(getByTestId("submit-table-button"))
   await waitForDomChange()
   expect(createTables).toHaveBeenCalledWith(
     expect.anything(),
