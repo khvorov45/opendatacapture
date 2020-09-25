@@ -70,11 +70,13 @@ export function IconButtonWithProgress({
   onClick,
   dataTestId,
   inProgress,
+  disabled,
 }: {
   children: ReactNode
   onClick?: () => void
   dataTestId?: string
   inProgress?: boolean
+  disabled?: boolean
 }) {
   const classes = useStyles()
   if (inProgress) {
@@ -85,7 +87,7 @@ export function IconButtonWithProgress({
     )
   }
   return (
-    <IconButton onClick={onClick} data-testid={dataTestId}>
+    <IconButton onClick={onClick} data-testid={dataTestId} disabled={disabled}>
       {children}
     </IconButton>
   )

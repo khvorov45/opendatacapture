@@ -35,6 +35,7 @@ import {
   ButtonLink,
   CreateButton,
   DeleteButton,
+  IconButtonWithProgress,
   RefreshButton,
 } from "./button"
 import Check from "@material-ui/icons/Check"
@@ -445,12 +446,13 @@ function NewTableForm({
   }, [cols, name])
 
   const [errorMsg, setErrorMsg] = useState("")
+  const { promiseInProgress } = usePromiseTracker({ area: "submit-table" })
   function handleSubmit() {
     const tableMeta = {
       name: name,
       cols: cols,
     }
-    createTable(token, projectName, tableMeta)
+    trackPromise(createTable(token, projectName, tableMeta), "submit-table")
       .then(() => {
         setErrorMsg("")
         handleClear()
@@ -501,13 +503,19 @@ function NewTableForm({
       </div>
       <NamedDivider name="" />
       <ButtonArray center className={"buttons"} errorMsg={errorMsg}>
-        <IconButton
+        <IconButtonWithProgress
           onClick={handleSubmit}
-          data-testid="submit-table-button"
+          dataTestId="submit-table-button"
           disabled={!isViable()}
         >
-          <Check htmlColor={theme.palette.success.main} />
-        </IconButton>
+          <Check
+            htmlColor={
+              isViable()
+                ? theme.palette.success.main
+                : theme.palette.text.disabled
+            }
+          />
+        </IconButtonWithProgress>
         <IconButton onClick={handleClear} data-testid="clear-table-button">
           <Clear htmlColor={theme.palette.error.main} />
         </IconButton>
