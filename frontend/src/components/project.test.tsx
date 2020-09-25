@@ -13,6 +13,7 @@ import ProjectPage from "./project"
 
 import axios from "axios"
 import { ColMeta, TableMeta } from "../lib/project"
+import { API_ROOT } from "../lib/config"
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
@@ -248,6 +249,29 @@ test("table panel functionality - no initial tables", async () => {
   // There should be another table card
   expect(getByTestId(`table-card-${table1.name}`)).toBeInTheDocument()
   expect(getByTestId(`table-card-${table2.name}`)).toBeInTheDocument()
+
+  // Delete a table
+  const deleteTable = mockedAxios.delete.mockImplementation(
+    async (url, config) => {
+      return { status: httpStatusCodes.NO_CONTENT }
+    }
+  )
+  mockedAxios.get.mockResolvedValue({
+    status: httpStatusCodes.OK,
+    data: [table1],
+  })
+  fireEvent.click(
+    within(getByTestId(`table-card-${table2.name}`)).getByTestId(
+      "delete-table-button"
+    )
+  )
+  await waitForDomChange()
+  expect(deleteTable).toHaveBeenCalledWith(
+    `${API_ROOT}/project/some-project/remove/table/${table2.name}`,
+    expect.anything()
+  )
+  expect(queryByTestId(`table-card-${table2.name}`)).not.toBeInTheDocument()
+  expect(getByTestId(`table-card-${table1.name}`)).toBeInTheDocument()
 })
 
 test("table panel - some initial tables", async () => {
