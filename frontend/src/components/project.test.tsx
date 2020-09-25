@@ -311,3 +311,31 @@ test("table panel - project refresh error", async () => {
   await waitForDomChange()
   expect(getByTestId("refresh-tables-error")).toHaveTextContent("")
 })
+
+test("table panel - table delete error", async () => {
+  mockedAxios.get
+    // On load
+    .mockResolvedValueOnce({
+      status: httpStatusCodes.OK,
+      data: [table1],
+    })
+    // On successful delete
+    .mockResolvedValueOnce({
+      status: httpStatusCodes.OK,
+      data: [],
+    })
+  mockedAxios.delete
+    .mockRejectedValueOnce(Error("some delete error"))
+    .mockResolvedValueOnce({
+      status: httpStatusCodes.NO_CONTENT,
+    })
+  let { getByTestId, getByText, queryByTestId } = renderProjectPage()
+  await waitForDomChange()
+  let table1card = getByTestId(`table-card-${table1.name}`)
+  fireEvent.click(within(table1card).getByTestId("delete-table-button"))
+  await waitForDomChange()
+  expect(getByText("some delete error")).toBeInTheDocument()
+  fireEvent.click(within(table1card).getByTestId("delete-table-button"))
+  await waitForDomChange()
+  expect(queryByTestId(`table-card-${table1.name}`)).not.toBeInTheDocument()
+})

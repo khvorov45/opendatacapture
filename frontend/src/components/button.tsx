@@ -32,6 +32,10 @@ const useStyles = makeStyles((theme: Theme) =>
         backgroundColor: "var(--palette-bg-highlight)",
       },
     },
+    buttonContainer: {
+      width: 48,
+      height: 48,
+    },
   })
 )
 
@@ -58,6 +62,32 @@ export function ButtonArray({
         {errorMsg}
       </FormHelperText>
     </div>
+  )
+}
+
+export function IconButtonWithProgress({
+  children,
+  onClick,
+  dataTestId,
+  inProgress,
+}: {
+  children: ReactNode
+  onClick?: () => void
+  dataTestId?: string
+  inProgress?: boolean
+}) {
+  const classes = useStyles()
+  if (inProgress) {
+    return (
+      <div className={classes.buttonContainer}>
+        <CircularProgress />
+      </div>
+    )
+  }
+  return (
+    <IconButton onClick={onClick} data-testid={dataTestId}>
+      {children}
+    </IconButton>
   )
 }
 
@@ -113,21 +143,34 @@ export function RefreshButton({
   dataTestId?: string
   inProgress?: boolean
 }) {
-  if (inProgress) {
-    return <CircularProgress />
-  }
   return (
-    <IconButton onClick={onClick} data-testid={dataTestId}>
+    <IconButtonWithProgress
+      onClick={onClick}
+      dataTestId={dataTestId}
+      inProgress={inProgress}
+    >
       <Refresh />
-    </IconButton>
+    </IconButtonWithProgress>
   )
 }
 
-export function DeleteButton({ onClick }: { onClick: () => void }) {
+export function DeleteButton({
+  onClick,
+  dataTestId,
+  inProgress,
+}: {
+  onClick: () => void
+  dataTestId?: string
+  inProgress?: boolean
+}) {
   const theme = useTheme()
   return (
-    <IconButton onClick={(e) => onClick()}>
+    <IconButtonWithProgress
+      dataTestId={dataTestId}
+      onClick={onClick}
+      inProgress={inProgress}
+    >
       <DeleteForever htmlColor={theme.palette.error.main} />
-    </IconButton>
+    </IconButtonWithProgress>
   )
 }

@@ -264,8 +264,12 @@ function TableCard({
   const [editable, setEditable] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
   const [deleted, setDeleted] = useState(false)
+  const { promiseInProgress } = usePromiseTracker({ area: "delete-table" })
   function handleDelete() {
-    removeTable(token, projectName, tableMeta.name)
+    trackPromise(
+      removeTable(token, projectName, tableMeta.name),
+      "delete-table"
+    )
       .then(() => {
         setDeleted(true)
         setErrorMsg("")
@@ -287,11 +291,15 @@ function TableCard({
           disabled={!editable}
           onChange={(name) => {}}
         />
-        <ButtonArray errorMsg={errorMsg}>
+        <ButtonArray errorMsg={errorMsg} errorTestId="delete-table-error">
           <IconButton onClick={(e) => setEditable((old) => !old)}>
             <Edit />
           </IconButton>
-          <DeleteButton onClick={handleDelete} />
+          <DeleteButton
+            onClick={handleDelete}
+            dataTestId="delete-table-button"
+            inProgress={promiseInProgress}
+          />
         </ButtonArray>
       </div>
       <NamedDivider name="Columns" />
