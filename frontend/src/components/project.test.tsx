@@ -296,3 +296,18 @@ test("table panel - FK behavior", async () => {
   expect(within(popover).queryByText(table2.name)).not.toBeInTheDocument()
   expect(within(popover).queryByText(table3.name)).not.toBeInTheDocument()
 })
+
+test("table panel - project refresh error", async () => {
+  mockedAxios.get
+    .mockRejectedValueOnce(Error("some refresh error"))
+    .mockResolvedValueOnce({
+      status: httpStatusCodes.OK,
+      data: [],
+    })
+  let { getByTestId, getByText } = renderProjectPage()
+  await waitForDomChange()
+  expect(getByText("some refresh error")).toBeInTheDocument()
+  fireEvent.click(getByTestId("refresh-tables-button"))
+  await waitForDomChange()
+  expect(getByTestId("refresh-tables-error")).toHaveTextContent("")
+})

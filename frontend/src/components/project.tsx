@@ -172,7 +172,10 @@ function TablePanel({
   const { promiseInProgress } = usePromiseTracker({ area: "getAllMeta" })
   const refreshTables = useCallback(() => {
     trackPromise(getAllMeta(token, projectName), "getAllMeta")
-      .then((tables) => setTableSpec(tables))
+      .then((tables) => {
+        setErrorMsg("")
+        setTableSpec(tables)
+      })
       .catch((e) => setErrorMsg(e.message))
   }, [token, projectName])
 
@@ -183,12 +186,21 @@ function TablePanel({
   const classes = useStyles()
   return (
     <div className={classes.tablePanel}>
-      <ButtonArray className={classes.tableControl} errorMsg={errorMsg} center>
+      <ButtonArray
+        className={classes.tableControl}
+        errorMsg={errorMsg}
+        errorTestId="refresh-tables-error"
+        center
+      >
         <CreateButton
           onClick={() => setRenderNew((old) => !old)}
           dataTestId="create-table-button"
         />
-        <RefreshButton onClick={refreshTables} inProgress={promiseInProgress} />
+        <RefreshButton
+          onClick={refreshTables}
+          inProgress={promiseInProgress}
+          dataTestId="refresh-tables-button"
+        />
       </ButtonArray>
       <NewTableForm
         token={token}
