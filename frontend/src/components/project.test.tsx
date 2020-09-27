@@ -508,3 +508,24 @@ test("table viability checks", async () => {
   // Should be disabled since the second column is empty
   expect(getByTestId("submit-table-button")).toBeDisabled()
 })
+
+test("submit table error", async () => {
+  mockedAxios.get
+    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: [] })
+    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: [table1] })
+  mockedAxios.put
+    .mockRejectedValueOnce(Error("some table submit error"))
+    .mockResolvedValueOnce({ status: httpStatusCodes.NO_CONTENT })
+  let { getByTestId } = renderProjectPage()
+  await waitForDomChange()
+  expect(getByTestId("table-submit-error")).toHaveTextContent("")
+  fillTableForm(getByTestId("new-table-form"), table1)
+  fireEvent.click(getByTestId("submit-table-button"))
+  await waitForDomChange()
+  expect(getByTestId("table-submit-error")).toHaveTextContent(
+    "some table submit error"
+  )
+  fireEvent.click(getByTestId("submit-table-button"))
+  await waitForDomChange()
+  expect(getByTestId("table-submit-error")).toHaveTextContent("")
+})

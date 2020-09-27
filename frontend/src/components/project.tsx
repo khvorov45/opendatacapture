@@ -453,7 +453,6 @@ function NewTableForm({
     }
     trackPromise(createTable(token, projectName, tableMeta), "submit-table")
       .then(() => {
-        setErrorMsg("")
         handleClear()
         onSubmit()
       })
@@ -501,7 +500,12 @@ function NewTableForm({
         <CreateButton dataTestId={"add-column"} onClick={addCol} />
       </div>
       <NamedDivider name="" />
-      <ButtonArray center className={"buttons"} errorMsg={errorMsg}>
+      <ButtonArray
+        center
+        className={"buttons"}
+        errorMsg={errorMsg}
+        errorTestId="table-submit-error"
+      >
         <IconButtonWithProgress
           onClick={handleSubmit}
           dataTestId="submit-table-button"
