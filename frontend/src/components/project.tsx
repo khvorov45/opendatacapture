@@ -432,18 +432,13 @@ function NewTableForm({
   }
 
   const isViable = useCallback(() => {
+    // Table name
     if (name === "") {
       return false
     }
-    if (cols.length === 0) {
-      return false
-    }
-    const namedCols = cols.filter((c) => c.name !== "")
-    if (namedCols.length === 0) {
-      return false
-    }
-    const typedCols = namedCols.filter((c) => c.postgres_type !== "")
-    if (typedCols.length === 0) {
+    // Column with no name or type
+    const badCol = cols.find((c) => c.name === "" || c.postgres_type === "")
+    if (badCol) {
       return false
     }
     return true
