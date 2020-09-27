@@ -287,13 +287,16 @@ function TableCard({
     >
       <div className="padded head">
         <TableHead
-          inputTestId={`table-card-name-field-${tableMeta.name}`}
+          inputTestId={`table-card-name-field`}
           value={tableMeta.name}
           disabled={!editable}
           onChange={(name) => {}}
         />
         <ButtonArray errorMsg={errorMsg} errorTestId="delete-table-error">
-          <IconButton onClick={(e) => setEditable((old) => !old)}>
+          <IconButton
+            onClick={(e) => setEditable((old) => !old)}
+            data-testid="enable-edit"
+          >
             <Edit />
           </IconButton>
           <DeleteButton
