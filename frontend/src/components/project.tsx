@@ -418,7 +418,11 @@ function NewTableForm({
   function removeCol(i: number) {
     const newCols = [...cols]
     newCols.splice(i, 1)
-    setCols(newCols)
+    if (newCols.length === 0) {
+      setCols([defaultCol])
+    } else {
+      setCols(newCols)
+    }
   }
 
   function handleClear() {
@@ -693,7 +697,7 @@ function ColumnEntry({
         </Select>
       </div>
       <div className={`delete${readOnly ? " hidden" : ""}`}>
-        <IconButton onClick={(e) => onRemove()}>
+        <IconButton onClick={(e) => onRemove()} data-testid="remove-column">
           <Remove htmlColor={theme.palette.error.main} />
         </IconButton>
       </div>
