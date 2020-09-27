@@ -602,6 +602,7 @@ function ColumnEntry({
       ?.cols.find((c) => c.primary_key)
     // We can't possibly not find a column considering the constraints on
     // available foreign tables
+    /* istanbul ignore next */
     if (newForeignColumn) {
       setForeignTable(newTable)
       setForeignColumn(newForeignColumn.name)
