@@ -17,7 +17,11 @@ import { API_ROOT } from "../lib/config"
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
-function renderProjectPage() {
+function renderProjectPage(token?: string | null) {
+  let tok: string | null = "123"
+  if (token !== undefined) {
+    tok = token
+  }
   return render(
     <BrowserRouter>
       <Switch>
@@ -25,7 +29,7 @@ function renderProjectPage() {
           <Redirect to="/project/some-project" />
         </Route>
         <Route path="/project/:name">
-          <ProjectPage token="123" />
+          <ProjectPage token={tok} />
         </Route>
       </Switch>
     </BrowserRouter>
@@ -181,6 +185,17 @@ const table3: TableMeta = {
     },
   ],
 }
+
+test("project page with null token", async () => {
+  // Normally the null (or wrong or too old)
+  // token will fail to be verified in App which should
+  // redirect us to login
+  let { getByTestId } = renderProjectPage(null)
+  // The top bar should be there
+  expect(getByTestId("project-page-links")).toBeInTheDocument()
+  // The main section should be absent
+  expect(document.getElementsByTagName("main")).toBeEmpty()
+})
 
 test("table panel functionality - no initial tables", async () => {
   // List of tables

@@ -130,7 +130,7 @@ function Sidebar() {
   const { url } = useRouteMatch()
   const classes = useStyles()
   return (
-    <div className={classes.sidebar}>
+    <div className={classes.sidebar} data-testid="project-page-links">
       <ButtonLink active={true} to={`${url}/tables`}>
         Tables
       </ButtonLink>
