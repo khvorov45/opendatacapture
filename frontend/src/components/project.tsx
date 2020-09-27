@@ -574,7 +574,10 @@ function ColumnEntry({
   )
   function handleFKChange(newFK: boolean) {
     setForeignKeyCheckbox(newFK)
-    if (!newFK) {
+    // Make sure the FK is always viable
+    if (newFK) {
+      handleForeignTableChange(availableForeignTables()[0].name)
+    } else {
       onFKChange(null)
     }
   }

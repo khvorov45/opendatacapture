@@ -341,6 +341,8 @@ test("table panel - FK behavior", async () => {
   const foreignColumn = within(newTableForm).getByTestId(
     "foreign-column-select"
   )
+  // Foreign table should be auto-selected
+  expect(foreignTable).toHaveTextContent(table1.name)
   // Foreign column selection should be disabled
   expect(within(foreignColumn).getByRole("button")).toHaveAttribute(
     "aria-disabled"
@@ -352,6 +354,40 @@ test("table panel - FK behavior", async () => {
   expect(within(popover).getByText(table1.name)).toBeInTheDocument()
   expect(within(popover).queryByText(table2.name)).not.toBeInTheDocument()
   expect(within(popover).queryByText(table3.name)).not.toBeInTheDocument()
+  fireEvent.click(within(popover).getByText(table1.name))
+  // Make the new table viable
+  const newTable: TableMeta = {
+    name: "fkTest",
+    cols: [
+      {
+        name: "fkTestCol",
+        postgres_type: "integer",
+        not_null: false,
+        unique: false,
+        primary_key: false,
+        foreign_key: null,
+      },
+    ],
+  }
+  fillTableForm(newTableForm, newTable)
+  // The foreign key constraint should still be there
+  expect(foreignTable).toHaveTextContent(table1.name)
+  // Now remove the foreign key constraint
+  performCheckboxClick(within(newTableForm).getByTestId("foreign-key"))
+  // Check that it was actually removed
+  let createTables = mockedAxios.put.mockImplementation(
+    async (url, data, config) => {
+      return { status: httpStatusCodes.NO_CONTENT }
+    }
+  )
+  expect(getByTestId("submit-table-button")).not.toBeDisabled()
+  fireEvent.click(getByTestId("submit-table-button"))
+  await waitForDomChange()
+  expect(createTables).toHaveBeenCalledWith(
+    expect.anything(),
+    newTable,
+    expect.anything()
+  )
 })
 
 test("table panel - project refresh error", async () => {
