@@ -386,7 +386,7 @@ test("table panel - column removal", async () => {
   // List of tables
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: [] })
 
-  let { getByTestId, queryByTestId } = renderProjectPage()
+  let { getByTestId } = renderProjectPage()
   await waitForDomChange()
 
   const newTableForm = getByTestId("new-table-form")
