@@ -32,7 +32,6 @@ impl AdminDB {
         }
         // Fill access types and the one admin if required.
         if opt.clean || connected_to_empty {
-            admindb.fill_access().await?;
             admindb
                 .insert_admin(
                     opt.admin_email.as_str(),
@@ -81,20 +80,11 @@ impl AdminDB {
             .execute(self.get_pool())
             .await?;
         sqlx::query(
-            "CREATE TABLE \"access\" \
-            (\"access_type\" odc_user_access PRIMARY KEY)",
-        )
-        .execute(self.get_pool())
-        .await?;
-        sqlx::query(
             "CREATE TABLE \"user\" (\
                 \"id\" SERIAL PRIMARY KEY,\
                 \"email\" TEXT NOT NULL UNIQUE,\
                 \"access\" odc_user_access NOT NULL,\
-                \"password_hash\" TEXT NOT NULL,\
-                FOREIGN KEY(\"access\") REFERENCES \
-                \"access\"(\"access_type\") \
-                ON UPDATE CASCADE ON DELETE CASCADE\
+                \"password_hash\" TEXT NOT NULL\
             )",
         )
         .execute(self.get_pool())
@@ -122,21 +112,6 @@ impl AdminDB {
                 ON UPDATE CASCADE ON DELETE CASCADE\
             )",
         )
-        .execute(self.get_pool())
-        .await?;
-        Ok(())
-    }
-
-    // Access table -----------------------------------------------------------
-
-    /// Fill the access table. Assume that it's empty.
-    async fn fill_access(&self) -> Result<()> {
-        log::info!("filling presumably empty access table");
-        sqlx::query(
-            "INSERT INTO \"access\" (\"access_type\") VALUES ($1), ($2)",
-        )
-        .bind(auth::Access::Admin)
-        .bind(auth::Access::User)
         .execute(self.get_pool())
         .await?;
         Ok(())
