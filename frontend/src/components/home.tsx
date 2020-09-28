@@ -1,9 +1,7 @@
-import React, { useState, useEffect, useCallback, ReactNode } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
-import Add from "@material-ui/icons/Add"
 import Send from "@material-ui/icons/Send"
 import DeleteForever from "@material-ui/icons/DeleteForever"
-import Refresh from "@material-ui/icons/Refresh"
 import {
   IconButton,
   useTheme,
@@ -15,8 +13,10 @@ import {
   TableBody,
   CircularProgress,
   Typography,
+  Button,
 } from "@material-ui/core"
 import { usePromiseTracker, trackPromise } from "react-promise-tracker"
+import { Link as RouterLink } from "react-router-dom"
 import {
   getUserProjects,
   Project,
@@ -24,6 +24,7 @@ import {
   createProject,
 } from "../lib/project"
 import { StyledTableRow, StyledTableCell } from "./table"
+import { ButtonArray, CreateButton, RefreshButton } from "./button"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -77,12 +78,8 @@ const useStyles = makeStyles((theme: Theme) =>
       display: "flex",
       justifyContent: "center",
     },
-    buttonArray: {
-      display: "flex",
-      flexDirection: "column",
-      "& div.buttons": {
-        display: "flex",
-      },
+    projectName: {
+      textTransform: "none",
     },
   })
 )
@@ -184,33 +181,13 @@ function ProjectControlButtons({
   const { promiseInProgress } = usePromiseTracker({ area: "get-projects" })
   return (
     <ButtonArray errorMsg={errorMsg} errorTestId="project-control-error">
-      <ProjectCreateButton onClick={onCreate} />
-      {promiseInProgress ? (
-        <CircularProgress />
-      ) : (
-        <ProjectRefreshButton onClick={onRefresh} />
-      )}
+      <CreateButton onClick={onCreate} dataTestId="project-create-button" />
+      <RefreshButton
+        onClick={onRefresh}
+        dataTestId="project-refresh-button"
+        inProgress={promiseInProgress}
+      />
     </ButtonArray>
-  )
-}
-
-function ButtonArray({
-  errorMsg,
-  children,
-  errorTestId,
-}: {
-  errorMsg?: string
-  children: ReactNode
-  errorTestId?: string
-}) {
-  const classes = useStyles()
-  return (
-    <div className={classes.buttonArray}>
-      <div className="buttons">{children}</div>
-      <FormHelperText error={true} data-testid={errorTestId}>
-        {errorMsg}
-      </FormHelperText>
-    </div>
   )
 }
 
@@ -268,7 +245,6 @@ function ProjectEntry({
   })
   const [hideSelf, setHideSelf] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
-  const classes = useStyles()
   function handleClick() {
     trackPromise(
       deleteProject(token, project.name),
@@ -281,12 +257,23 @@ function ProjectEntry({
       })
       .catch((e) => setErrorMsg(e.message))
   }
+  const classes = useStyles()
   return (
     <StyledTableRow
       data-testid={`project-entry-${project.name}`}
       className={`${classes.projectEntry}${hideSelf ? " hidden" : ""}`}
     >
-      <StyledTableCell align="center">{project.name}</StyledTableCell>
+      <StyledTableCell align="center">
+        <Button
+          className={classes.projectName}
+          variant="contained"
+          color="primary"
+          component={RouterLink}
+          to={`/project/${project.name}`}
+        >
+          {project.name}
+        </Button>
+      </StyledTableCell>
       <StyledTableCell>
         {promiseInProgress ? (
           <CircularProgress />
@@ -314,23 +301,6 @@ function NoProjects() {
         No projects found
       </Typography>
     </div>
-  )
-}
-
-function ProjectCreateButton({ onClick }: { onClick?: () => void }) {
-  const theme = useTheme()
-  return (
-    <IconButton onClick={onClick} data-testid="project-create-button">
-      <Add htmlColor={theme.palette.success.main} />
-    </IconButton>
-  )
-}
-
-function ProjectRefreshButton({ onClick }: { onClick?: () => void }) {
-  return (
-    <IconButton onClick={onClick} data-testid="project-refresh-button">
-      <Refresh />
-    </IconButton>
   )
 }
 

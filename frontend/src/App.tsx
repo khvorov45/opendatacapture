@@ -2,6 +2,7 @@ import React, { ReactNode, useState } from "react"
 import { createMuiTheme, ThemeProvider, Theme } from "@material-ui/core/styles"
 import Nav from "./components/nav"
 import Login from "./components/login"
+import Project from "./components/project"
 import { tokenFetcher, tokenValidator } from "./lib/auth"
 import CssBaseline from "@material-ui/core/CssBaseline"
 import {
@@ -17,6 +18,10 @@ function createThemeFromPalette(palette: "dark" | "light"): Theme {
   return createMuiTheme({
     palette: {
       type: palette,
+      background: {
+        paper: "var(--palette-bg)",
+        default: "var(--palette-bg)",
+      },
     },
   })
 }
@@ -47,18 +52,21 @@ export default function App({
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Nav handleThemeChange={handleThemeChange} />
       <Router>
+        <Nav handleThemeChange={handleThemeChange} />
         <Switch>
-          <Route path="/login">
+          <Route exact path="/login">
             {auth === AuthStatus.Ok ? (
               <Redirect to="/" />
             ) : (
               <Login updateToken={updateToken} tokenFetcher={tokenFetcher} />
             )}
           </Route>
-          <AuthRoute path="/" auth={auth}>
+          <AuthRoute exact path="/" auth={auth}>
             <Home token={token} />
+          </AuthRoute>
+          <AuthRoute path="/project/:name" auth={auth}>
+            <Project token={token} />
           </AuthRoute>
         </Switch>
       </Router>
@@ -70,13 +78,15 @@ function AuthRoute({
   path,
   auth,
   children,
+  exact,
 }: {
   path: string
   auth: AuthStatus
   children: ReactNode
+  exact?: boolean
 }) {
   return (
-    <Route path={path}>
+    <Route exact={exact} path={path}>
       {auth === AuthStatus.Err ? (
         <Redirect to="/login" />
       ) : auth === AuthStatus.InProgress ? (
