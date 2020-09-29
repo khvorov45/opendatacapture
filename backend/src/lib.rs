@@ -3,12 +3,11 @@ use structopt::StructOpt;
 pub mod api;
 mod auth;
 pub mod db;
-pub mod error;
-pub mod json;
+mod error;
 
-pub use error::Error;
+use error::Error;
 
-pub type Result<T> = std::result::Result<T, Error>;
+type Result<T> = std::result::Result<T, Error>;
 
 /// opendatacapture
 #[derive(StructOpt, Debug)]
