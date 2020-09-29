@@ -4,9 +4,6 @@ use crate::{Error, Result};
 pub type ColSpec = Vec<ColMeta>;
 /// Table specification
 pub type TableSpec = Vec<TableMeta>;
-/// Collection of tables in json format
-/// Order matters for table creation/data insertion
-pub type DBJson = Vec<TableJson>;
 /// Row json
 pub type RowJson = serde_json::Map<String, serde_json::Value>;
 
@@ -255,21 +252,6 @@ impl TableMeta {
             return Err(Error::NoSuchColumns(cols_not_present));
         }
         Ok(())
-    }
-}
-
-/// Table json
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct TableJson {
-    /// Table metadata
-    pub meta: TableMeta,
-    /// Table rows
-    pub rows: Vec<RowJson>,
-}
-
-impl TableJson {
-    pub fn new(meta: TableMeta, rows: Vec<RowJson>) -> Self {
-        Self { meta, rows }
     }
 }
 
