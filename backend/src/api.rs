@@ -230,7 +230,7 @@ fn get_user_by_token(
 }
 
 /// Get all users
-pub fn get_users(
+fn get_users(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("get" / "users")
@@ -246,7 +246,7 @@ pub fn get_users(
 }
 
 /// Create a project
-pub fn create_project(
+fn create_project(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("create" / "project" / String)
@@ -268,7 +268,7 @@ pub fn create_project(
 }
 
 /// Delete a project
-pub fn delete_project(
+fn delete_project(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("delete" / "project" / String)
@@ -282,7 +282,12 @@ pub fn delete_project(
                 let mut db = db.lock().await;
                 match db.remove_project(user.id(), project_name.as_str()).await
                 {
-                    Ok(()) => Ok(warp::reply::with_status(warp::reply(), StatusCode::NO_CONTENT)),
+                    Ok(()) => {
+                        Ok(
+                            warp::reply::with_status(warp::reply(),
+                            StatusCode::NO_CONTENT)
+                        )
+                    }
                     Err(e) => Err(warp::reject::custom(e)),
                 }
             },
@@ -290,7 +295,7 @@ pub fn delete_project(
 }
 
 /// Get user's projects
-pub fn get_user_projects(
+fn get_user_projects(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("get" / "projects")
@@ -306,7 +311,10 @@ pub fn get_user_projects(
 }
 
 /// Get a specific project
-pub fn get_user_project(
+#[allow(dead_code)]
+// This isn't actually dead, Rust just can't see that this is used in
+// a function that I don't directly call but instead pass to warp filters
+fn get_user_project(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("get" / "project" / String)
@@ -327,7 +335,7 @@ pub fn get_user_project(
 }
 
 /// Create table in a user's database
-pub fn create_table(
+fn create_table(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("project" / String / "create" / "table")
@@ -351,7 +359,7 @@ pub fn create_table(
 }
 
 /// Remove table from a user's database
-pub fn remove_table(
+fn remove_table(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("project" / String / "remove" / "table" / String)
@@ -377,7 +385,7 @@ pub fn remove_table(
 }
 
 /// Get a list of table names in a user's database
-pub fn get_table_names(
+fn get_table_names(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("project" / String / "get" / "tablenames")
@@ -395,7 +403,7 @@ pub fn get_table_names(
 }
 
 /// Get user table metadata
-pub fn get_table_meta(
+fn get_table_meta(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("project" / String / "get" / "table" / String / "meta")
@@ -420,7 +428,7 @@ pub fn get_table_meta(
 }
 
 /// Get all table metadata for a project
-pub fn get_all_meta(
+fn get_all_meta(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("project" / String / "get" / "meta")
@@ -438,7 +446,7 @@ pub fn get_all_meta(
 }
 
 /// Insert data into a user's table
-pub fn insert_data(
+fn insert_data(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("project" / String / "insert" / String)
@@ -472,7 +480,7 @@ pub fn insert_data(
 }
 
 /// Remove all data from a user's table
-pub fn remove_all_user_table_data(
+fn remove_all_user_table_data(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("project" / String / "remove" / String / "all")
@@ -503,7 +511,7 @@ pub fn remove_all_user_table_data(
 }
 
 /// Get data from a user's table
-pub fn get_table_data(
+fn get_table_data(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("project" / String / "get" / "table" / String / "data")
