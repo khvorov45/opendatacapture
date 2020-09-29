@@ -8,13 +8,11 @@ const DB_POOL_MAX_OPEN: u32 = 32;
 const DB_POOL_MAX_IDLE: u32 = 8;
 const DB_POOL_TIMEOUT_SECONDS: u64 = 15;
 
-pub type Database = sqlx::postgres::Postgres;
-pub type DBRow = sqlx::postgres::PgRow;
-pub type Pool = sqlx::postgres::PgPool;
-pub type Connection = sqlx::pool::PoolConnection<Database>;
+type Database = sqlx::postgres::Postgres;
+type Pool = sqlx::postgres::PgPool;
 pub type ConnectionConfig = sqlx::postgres::PgConnectOptions;
 
-pub trait FromOpt {
+trait FromOpt {
     fn from_opt(opt: &crate::Opt) -> Self;
 }
 
@@ -117,7 +115,7 @@ pub struct PoolMeta {
 
 impl PoolMeta {
     /// Database name in config will be ignored
-    pub async fn new(config: ConnectionConfig, name: &str) -> Result<Self> {
+    async fn new(config: ConnectionConfig, name: &str) -> Result<Self> {
         let config = config.database(name);
         Ok(Self {
             pool: create_pool(config.clone()).await?,
@@ -126,7 +124,7 @@ impl PoolMeta {
         })
     }
     /// Construction from opt
-    pub async fn from_opt(opt: &crate::Opt) -> Result<Self> {
+    async fn from_opt(opt: &crate::Opt) -> Result<Self> {
         let config = ConnectionConfig::from_opt(opt);
         Ok(Self {
             pool: create_pool(config.clone()).await?,
@@ -135,15 +133,15 @@ impl PoolMeta {
         })
     }
     /// Reference to the actual connection pool
-    pub fn get_pool(&self) -> &Pool {
+    fn get_pool(&self) -> &Pool {
         &self.pool
     }
     /// Database name
-    pub fn get_name(&self) -> &str {
+    fn get_name(&self) -> &str {
         self.name.as_str()
     }
     /// Config used to create the connection pool
-    pub fn get_config(&self) -> ConnectionConfig {
+    fn get_config(&self) -> ConnectionConfig {
         self.config.clone()
     }
 }
