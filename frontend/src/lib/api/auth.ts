@@ -2,7 +2,7 @@ import axios from "axios"
 import httpStatusCodes from "http-status-codes"
 import * as t from "io-ts"
 import { API_ROOT } from "../config"
-import { createEnumType } from "./io-validation"
+import { fromEnum } from "./io-validation"
 
 export interface EmailPassword {
   email: string
@@ -22,7 +22,7 @@ export enum Access {
 const UserV = t.type({
   id: t.number,
   email: t.string,
-  access: createEnumType<Access>(Access, "User"),
+  access: fromEnum<Access>("Access", Access),
   password_hash: t.string,
 })
 
