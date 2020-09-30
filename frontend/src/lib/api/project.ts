@@ -152,7 +152,7 @@ export async function getAllTableNames(
   if (res.status !== httpStatusCodes.OK) {
     throw Error(res.data)
   }
-  return res.data
+  return await decode(t.array(t.string), res.data)
 }
 
 export async function getAllMeta(
