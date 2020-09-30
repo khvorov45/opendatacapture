@@ -1,6 +1,8 @@
 import axios from "axios"
 import httpStatusCodes from "http-status-codes"
+import * as t from "io-ts"
 import { API_ROOT } from "./config"
+import { createEnumType } from "./io-validation"
 
 export interface EmailPassword {
   email: string
@@ -17,23 +19,14 @@ export enum Access {
   Admin = "Admin",
 }
 
-export interface User {
-  id: number
-  email: string
-  access: Access
-  password_hash: string
-}
+const UserV = t.type({
+  id: t.number,
+  email: t.string,
+  access: createEnumType<Access>(Access, "User"),
+  password_hash: t.string,
+})
 
-function validateUser(u: any): boolean {
-  return (
-    u &&
-    Object.keys(u).length === 4 &&
-    typeof u.id === "number" &&
-    typeof u.email === "string" &&
-    [Access.User, Access.Admin].includes(u.access) &&
-    typeof u.password_hash === "string"
-  )
-}
+export type User = t.TypeOf<typeof UserV>
 
 export async function tokenFetcher(cred: EmailPassword): Promise<string> {
   const res = await axios.post(`${API_ROOT}/auth/session-token`, cred, {
@@ -63,7 +56,7 @@ export async function tokenValidator(tok: string): Promise<User> {
   if (res.status !== httpStatusCodes.OK) {
     throw Error(res.data)
   }
-  if (!validateUser(res.data)) {
+  if (!UserV.is(res.data)) {
     throw Error("unexpected response data: " + JSON.stringify(res.data))
   }
   return res.data as User
