@@ -1,7 +1,7 @@
 import axios from "axios"
 import httpStatusCodes from "http-status-codes"
 import * as t from "io-ts"
-import { API_ROOT } from "./config"
+import { API_ROOT } from "../config"
 import { createEnumType } from "./io-validation"
 
 export interface EmailPassword {

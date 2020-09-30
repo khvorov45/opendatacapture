@@ -4,7 +4,12 @@
 
 /* istanbul ignore file */
 
-import { Access, LoginFailure, tokenFetcher, tokenValidator } from "../lib/auth"
+import {
+  Access,
+  LoginFailure,
+  tokenFetcher,
+  tokenValidator,
+} from "../lib/api/auth"
 import {
   createProject,
   getUserProjects,
@@ -18,7 +23,7 @@ import {
   insertData,
   getTableData,
   removeAllTableData,
-} from "../lib/project"
+} from "../lib/api/project"
 
 test("wrong token", async () => {
   expect.assertions(1)

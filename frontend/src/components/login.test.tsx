@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react"
 import Login from "./login"
 import { BrowserRouter, Switch, Route, Redirect } from "react-router-dom"
-import { LoginFailure } from "../lib/auth"
+import { LoginFailure } from "../lib/api/auth"
 
 test("basic functionality", async () => {
   let token: string | null = null

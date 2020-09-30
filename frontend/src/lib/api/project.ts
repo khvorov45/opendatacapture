@@ -4,7 +4,7 @@ import * as t from "io-ts"
 import { DateFromISOString } from "io-ts-types"
 import axios from "axios"
 import httpStatusCodes from "http-status-codes"
-import { API_ROOT } from "./config"
+import { API_ROOT } from "../config"
 import { decode } from "./io-validation"
 
 const ProjectV = t.type({
