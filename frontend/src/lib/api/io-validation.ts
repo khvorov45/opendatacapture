@@ -1,6 +1,7 @@
 import { pipe } from "fp-ts/function"
 import { fold } from "fp-ts/Either"
 import * as t from "io-ts"
+import { PathReporter } from "io-ts/PathReporter"
 
 export class EnumType<A> extends t.Type<A> {
   public readonly _tag: "EnumType" = "EnumType"
@@ -34,11 +35,12 @@ export async function decode<T, O, I>(
   validator: t.Type<T, O, I>,
   input: I
 ): Promise<T> {
+  const result = validator.decode(input)
   return pipe(
-    validator.decode(input),
+    result,
     fold(
       (errors) => {
-        throw errors
+        throw Error("decode error: " + PathReporter.report(result))
       },
       (value) => value
     )

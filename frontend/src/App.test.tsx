@@ -11,7 +11,6 @@ import App from "./App"
 import { themeInit } from "./lib/theme"
 import httpStatusCodes from "http-status-codes"
 import axios from "axios"
-import { act } from "react-dom/test-utils"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
@@ -86,7 +85,7 @@ test("route to project page", async () => {
   let project = {
     user: 1,
     name: "somename",
-    created: new Date(),
+    created: new Date().toISOString(),
   }
   mockedAxios.get
     // Token validation
