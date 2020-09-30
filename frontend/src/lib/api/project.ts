@@ -12,31 +12,31 @@ const ProjectV = t.type({
   name: t.string,
   created: DateFromISOString,
 })
-
 export type Project = t.TypeOf<typeof ProjectV>
 
-export type TableSpec = TableMeta[]
+const ForeignKeyV = t.type({
+  table: t.string,
+  column: t.string,
+})
+export type ForeignKey = t.TypeOf<typeof ForeignKeyV>
 
-export interface TableMeta {
-  name: string
-  cols: ColSpec
-}
-
+const ColMetaV = t.type({
+  name: t.string,
+  postgres_type: t.string,
+  not_null: t.boolean,
+  unique: t.boolean,
+  primary_key: t.boolean,
+  foreign_key: t.union([ForeignKeyV, t.null]),
+})
+export type ColMeta = t.TypeOf<typeof ColMetaV>
 export type ColSpec = ColMeta[]
 
-export interface ColMeta {
-  name: string
-  postgres_type: string
-  not_null: boolean
-  unique: boolean
-  primary_key: boolean
-  foreign_key: ForeignKey | null
-}
-
-export interface ForeignKey {
-  table: string
-  column: string
-}
+const TableMetaV = t.type({
+  name: t.string,
+  cols: t.array(ColMetaV),
+})
+export type TableMeta = t.TypeOf<typeof TableMetaV>
+export type TableSpec = TableMeta[]
 
 export type TableData = Object[]
 
@@ -171,7 +171,7 @@ export async function getAllMeta(
   if (res.status !== httpStatusCodes.OK) {
     throw Error(res.data)
   }
-  return res.data
+  return await decode(t.array(TableMetaV), res.data)
 }
 
 export async function getTableMeta(
@@ -194,7 +194,7 @@ export async function getTableMeta(
   if (res.status !== httpStatusCodes.OK) {
     throw Error(res.data)
   }
-  return res.data
+  return await decode(TableMetaV, res.data)
 }
 
 export async function insertData(
@@ -264,5 +264,5 @@ export async function getTableData(
   if (res.status !== httpStatusCodes.OK) {
     throw Error(res.data)
   }
-  return res.data
+  return await decode(t.array(t.UnknownRecord), res.data)
 }
