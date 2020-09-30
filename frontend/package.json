@@ -31,7 +31,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "test-backend": "react-scripts test --testMatch=\"**/requireBackend.ts\"",
+    "test-fullstack": "react-scripts test --testMatch=\"**/fullstack.ts\"",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
