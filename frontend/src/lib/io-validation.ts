@@ -38,9 +38,9 @@ export async function decode<T, O, I>(
     validator.decode(input),
     fold(
       (errors) => {
-        return Promise.reject(errors)
+        throw errors
       },
-      (value) => Promise.resolve(value)
+      (value) => value
     )
   )
 }
