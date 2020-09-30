@@ -1,3 +1,5 @@
+import { pipe } from "fp-ts/function"
+import { fold } from "fp-ts/Either"
 import * as t from "io-ts"
 
 export class EnumType<A> extends t.Type<A> {
@@ -26,4 +28,19 @@ export class EnumType<A> extends t.Type<A> {
 
 export function createEnumType<T>(e: object, name?: string) {
   return new EnumType<T>(e, name)
+}
+
+export async function decode<T, O, I>(
+  validator: t.Type<T, O, I>,
+  input: I
+): Promise<T> {
+  return pipe(
+    validator.decode(input),
+    fold(
+      (errors) => {
+        return Promise.reject(errors)
+      },
+      (value) => Promise.resolve(value)
+    )
+  )
 }

@@ -1,15 +1,19 @@
 /** Project manipulation */
 
+import * as t from "io-ts"
+import { DateFromISOString } from "io-ts-types"
 import axios from "axios"
 import httpStatusCodes from "http-status-codes"
-
 import { API_ROOT } from "./config"
+import { decode } from "./io-validation"
 
-export interface Project {
-  user: number
-  name: string
-  created: Date
-}
+const ProjectV = t.type({
+  user: t.number,
+  name: t.string,
+  created: DateFromISOString,
+})
+
+export type Project = t.TypeOf<typeof ProjectV>
 
 export type TableSpec = TableMeta[]
 
@@ -79,7 +83,7 @@ export async function getUserProjects(tok: string): Promise<Project[]> {
   if (res.status !== httpStatusCodes.OK) {
     throw Error(res.data)
   }
-  return res.data
+  return await decode(t.array(ProjectV), res.data)
 }
 
 export async function createTable(
