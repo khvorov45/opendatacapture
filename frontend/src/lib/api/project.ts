@@ -1,38 +1,42 @@
 /** Project manipulation */
 
+import * as t from "io-ts"
+import { DateFromISOString } from "io-ts-types"
 import axios from "axios"
 import httpStatusCodes from "http-status-codes"
+import { API_ROOT } from "../config"
+import { decode } from "./io-validation"
 
-import { API_ROOT } from "./config"
+const ProjectV = t.type({
+  user: t.number,
+  name: t.string,
+  created: DateFromISOString,
+})
+export type Project = t.TypeOf<typeof ProjectV>
 
-export interface Project {
-  user: number
-  name: string
-  created: Date
-}
+const ForeignKeyV = t.type({
+  table: t.string,
+  column: t.string,
+})
+export type ForeignKey = t.TypeOf<typeof ForeignKeyV>
 
-export type TableSpec = TableMeta[]
-
-export interface TableMeta {
-  name: string
-  cols: ColSpec
-}
-
+const ColMetaV = t.type({
+  name: t.string,
+  postgres_type: t.string,
+  not_null: t.boolean,
+  unique: t.boolean,
+  primary_key: t.boolean,
+  foreign_key: t.union([ForeignKeyV, t.null]),
+})
+export type ColMeta = t.TypeOf<typeof ColMetaV>
 export type ColSpec = ColMeta[]
 
-export interface ColMeta {
-  name: string
-  postgres_type: string
-  not_null: boolean
-  unique: boolean
-  primary_key: boolean
-  foreign_key: ForeignKey | null
-}
-
-export interface ForeignKey {
-  table: string
-  column: string
-}
+const TableMetaV = t.type({
+  name: t.string,
+  cols: t.array(ColMetaV),
+})
+export type TableMeta = t.TypeOf<typeof TableMetaV>
+export type TableSpec = TableMeta[]
 
 export type TableData = Object[]
 
@@ -79,7 +83,7 @@ export async function getUserProjects(tok: string): Promise<Project[]> {
   if (res.status !== httpStatusCodes.OK) {
     throw Error(res.data)
   }
-  return res.data
+  return await decode(t.array(ProjectV), res.data)
 }
 
 export async function createTable(
@@ -148,7 +152,7 @@ export async function getAllTableNames(
   if (res.status !== httpStatusCodes.OK) {
     throw Error(res.data)
   }
-  return res.data
+  return await decode(t.array(t.string), res.data)
 }
 
 export async function getAllMeta(
@@ -167,7 +171,7 @@ export async function getAllMeta(
   if (res.status !== httpStatusCodes.OK) {
     throw Error(res.data)
   }
-  return res.data
+  return await decode(t.array(TableMetaV), res.data)
 }
 
 export async function getTableMeta(
@@ -190,7 +194,7 @@ export async function getTableMeta(
   if (res.status !== httpStatusCodes.OK) {
     throw Error(res.data)
   }
-  return res.data
+  return await decode(TableMetaV, res.data)
 }
 
 export async function insertData(
@@ -260,5 +264,5 @@ export async function getTableData(
   if (res.status !== httpStatusCodes.OK) {
     throw Error(res.data)
   }
-  return res.data
+  return await decode(t.array(t.UnknownRecord), res.data)
 }

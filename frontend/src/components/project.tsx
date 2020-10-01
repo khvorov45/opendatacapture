@@ -29,7 +29,7 @@ import {
   removeTable,
   TableMeta,
   TableSpec,
-} from "../lib/project"
+} from "../lib/api/project"
 import {
   ButtonArray,
   ButtonLink,

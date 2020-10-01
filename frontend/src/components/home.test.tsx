@@ -48,7 +48,9 @@ test("homepage with token and some projects", async () => {
   // Get projects
   mockedAxios.get.mockResolvedValueOnce({
     status: httpStatusCodes.OK,
-    data: [{ user: 1, name: "some-project", created: new Date() }],
+    data: [
+      { user: 1, name: "some-project", created: new Date().toISOString() },
+    ],
   })
   const { getByTestId, getByText } = renderHome("123")
   await waitForDomChange()
@@ -62,7 +64,7 @@ test("project widget - click on project create", async () => {
   // Project list
   mockedAxios.get.mockResolvedValueOnce({
     status: httpStatusCodes.OK,
-    data: [{ user: 1, name: 2, created: new Date() }],
+    data: [{ user: 1, name: "2", created: new Date().toISOString() }],
   })
   const { getByTestId } = renderProjectWidget()
   await waitForDomChange()
@@ -83,7 +85,9 @@ test("project widget - create project", async () => {
     })
     .mockResolvedValueOnce({
       status: httpStatusCodes.OK,
-      data: [{ user: 1, name: "newproject", created: new Date() }],
+      data: [
+        { user: 1, name: "newproject", created: new Date().toISOString() },
+      ],
     })
   const { getByTestId, getByText } = renderProjectWidget()
   await waitForDomChange()
@@ -104,7 +108,7 @@ test("project widget - remove projects", async () => {
   mockedAxios.get
     .mockResolvedValueOnce({
       status: httpStatusCodes.OK,
-      data: [{ user: 1, name: 2, created: new Date() }],
+      data: [{ user: 1, name: "2", created: new Date().toISOString() }],
     })
     .mockResolvedValueOnce({
       status: httpStatusCodes.OK,
@@ -125,7 +129,9 @@ test("project widget - remove projects", async () => {
 test("project widget - routing", async () => {
   mockedAxios.get.mockResolvedValueOnce({
     status: httpStatusCodes.OK,
-    data: [{ user: 1, name: "some-project", created: new Date() }],
+    data: [
+      { user: 1, name: "some-project", created: new Date().toISOString() },
+    ],
   })
   const { getByText } = render(
     <Router>
@@ -192,7 +198,7 @@ test("project widget - fail to delete project", async () => {
   mockedAxios.delete.mockRejectedValueOnce(Error("some delete project error"))
   mockedAxios.get.mockResolvedValueOnce({
     status: httpStatusCodes.OK,
-    data: [{ user: 1, name: "prj", created: new Date() }],
+    data: [{ user: 1, name: "prj", created: new Date().toISOString() }],
   })
   const { getByTestId } = renderProjectWidget()
   await waitForDomChange()

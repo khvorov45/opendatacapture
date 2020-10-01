@@ -1,4 +1,4 @@
-import { User } from "../lib/auth"
+import { User } from "../lib/api/auth"
 import { useState, useEffect } from "react"
 
 export enum AuthStatus {

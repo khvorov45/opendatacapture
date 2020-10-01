@@ -22,7 +22,7 @@ import {
   Project,
   deleteProject,
   createProject,
-} from "../lib/project"
+} from "../lib/api/project"
 import { StyledTableRow, StyledTableCell } from "./table"
 import { ButtonArray, CreateButton, RefreshButton } from "./button"
 

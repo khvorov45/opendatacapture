@@ -1,7 +1,7 @@
 import React, { useState } from "react"
 import { TextField, Button, FormHelperText } from "@material-ui/core"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
-import { EmailPassword, LoginFailure } from "../lib/auth"
+import { EmailPassword, LoginFailure } from "../lib/api/auth"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({

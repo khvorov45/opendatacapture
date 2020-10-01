@@ -17,7 +17,7 @@ You will also see any lint errors in the console.
 Launches the test runner in the interactive watch mode.<br />
 See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
-### `npm run test-backend`
+### `npm run test-fullstack`
 
 Runs tests that require the backend to have been
 launched with the `--clean` option.

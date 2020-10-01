@@ -13,7 +13,13 @@
     "@types/react": "^16.9.46",
     "@types/react-dom": "^16.9.8",
     "axios": "^0.19.2",
+    "fp-ts": "^2.8.3",
     "http-status-codes": "^1.4.0",
+    "io-ts": "^2.2.10",
+    "io-ts-reporters": "^1.2.2",
+    "io-ts-types": "^0.5.11",
+    "monocle-ts": "^2.3.3",
+    "newtype-ts": "^0.3.4",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "react-promise-tracker": "^2.1.0",
@@ -25,7 +31,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "test-backend": "react-scripts test --testMatch=\"**/requireBackend.ts\"",
+    "test-fullstack": "react-scripts test --testMatch=\"**/fullstack.ts\"",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
