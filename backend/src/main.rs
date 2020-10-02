@@ -10,18 +10,24 @@ use warp::Filter;
 async fn main() -> Result<()> {
     pretty_env_logger::init();
     let opt = Opt::from_args();
+
     // Administrative database
     let admin_database = db::admin::AdminDB::new(&opt)
         .await
         .context("failed to connect to administrative database")?;
     let admin_database_ref = Arc::new(Mutex::new(admin_database));
+
+    // Server parameters
+    let routes = api::routes(admin_database_ref, opt.prefix.as_str());
+    let addr = ([0, 0, 0, 0], opt.apiport);
+
+    // Adding CORS changes type so hard I can't find a way to avoid
+    // having to make both branches separate servers
     if opt.disable_cors {
-        let routes = api::routes(admin_database_ref, opt.prefix.as_str());
-        warp::serve(routes).run(([0, 0, 0, 0], opt.apiport)).await;
+        warp::serve(routes).run(addr).await;
     } else {
-        let routes = api::routes(admin_database_ref, opt.prefix.as_str())
-            .with(api::get_cors());
-        warp::serve(routes).run(([0, 0, 0, 0], opt.apiport)).await;
+        warp::serve(routes.with(api::get_cors())).run(addr).await;
     }
+
     Ok(())
 }
