@@ -12,8 +12,8 @@ import { BrowserRouter, Redirect, Route, Switch } from "react-router-dom"
 import ProjectPage from "./project"
 
 import axios from "axios"
-import { ColMeta, TableMeta } from "../lib/api/project"
-import { API_ROOT } from "../lib/config"
+import { ColMeta, TableMeta } from "../../lib/api/project"
+import { API_ROOT } from "../../lib/config"
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 

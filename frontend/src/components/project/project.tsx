@@ -29,7 +29,7 @@ import {
   removeTable,
   TableMeta,
   TableSpec,
-} from "../lib/api/project"
+} from "../../lib/api/project"
 import {
   ButtonArray,
   ButtonLink,
@@ -37,12 +37,12 @@ import {
   DeleteButton,
   IconButtonWithProgress,
   RefreshButton,
-} from "./button"
+} from "../button"
 import Check from "@material-ui/icons/Check"
 import Clear from "@material-ui/icons/Clear"
 import Remove from "@material-ui/icons/Remove"
 import Edit from "@material-ui/icons/Edit"
-import { NamedDivider } from "./divider"
+import { NamedDivider } from "../divider"
 import { trackPromise, usePromiseTracker } from "react-promise-tracker"
 
 const useStyles = makeStyles((theme: Theme) =>
