@@ -110,6 +110,25 @@ function fillTableForm(form: HTMLElement, table: TableMeta) {
   })
 }
 
+// Thanks, Material UI, for easy-to-test components
+function expectMuiSelectToBeEmpty(select: HTMLElement) {
+  const textContent = within(select).getByRole("button").childNodes[0]
+    .textContent
+  // Was this really necessary or was it just to mess with me?
+  expect(textContent).toEqual("\u200B")
+}
+
+function expectTableFormToBeEmpty(form: HTMLElement) {
+  expect(within(form).getByTestId("new-table-name-field")).toHaveValue("")
+  // The following should fail if there is more than one column entry
+  expect(within(form).getByTestId("new-column-name-field")).toHaveValue("")
+  expectMuiSelectToBeEmpty(within(form).getByTestId("new-column-type-select"))
+  expect(within(form).getByTestId("primary-key")).not.toBeChecked()
+  expect(within(form).getByTestId("not-null")).not.toBeChecked()
+  expect(within(form).getByTestId("unique")).not.toBeChecked()
+  expect(within(form).getByTestId("foreign-key")).not.toBeChecked()
+}
+
 const table1: TableMeta = {
   name: "newtable",
   cols: [
@@ -256,9 +275,7 @@ test("table panel functionality - no initial tables", async () => {
   // The table form should still be visible
   expect(newTableForm).not.toHaveClass("nodisplay")
   // And empty
-  expect(within(newTableForm).getByTestId("new-table-name-field")).toHaveValue(
-    ""
-  )
+  expectTableFormToBeEmpty(newTableForm)
 
   // Create another table
   fillTableForm(newTableForm, table2)
@@ -278,6 +295,7 @@ test("table panel functionality - no initial tables", async () => {
     table2,
     expect.anything()
   )
+  expectTableFormToBeEmpty(newTableForm)
 
   // There should be another table card
   expect(getByTestId(`table-card-${table1.name}`)).toBeInTheDocument()

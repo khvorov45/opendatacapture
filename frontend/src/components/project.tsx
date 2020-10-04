@@ -568,12 +568,8 @@ function ColumnEntry({
 }) {
   const allowedTypes = ["integer", "text"]
 
-  // Foreign key checkbox
-  const [foreignKeyCheckbox, setForeignKeyCheckbox] = useState(
-    foreignKey !== null
-  )
+  // FK checkbox
   function handleFKChange(newFK: boolean) {
-    setForeignKeyCheckbox(newFK)
     // Make sure the FK is always viable
     if (newFK) {
       handleForeignTableChange(availableForeignTables()[0].name)
@@ -589,12 +585,6 @@ function ColumnEntry({
       (t) => t.cols.filter((c) => c.primary_key).length === 1
     )
   }, [tableSpec])
-  const [foreignTable, setForeignTable] = useState(
-    foreignKey ? foreignKey.table : ""
-  )
-  const [foreignColumn, setForeignColumn] = useState(
-    foreignKey ? foreignKey.column : ""
-  )
   function handleForeignTableChange(newTable: string) {
     // There is only one column option per available table with my constraints
     const newForeignColumn = tableSpec
@@ -604,11 +594,10 @@ function ColumnEntry({
     // available foreign tables
     /* istanbul ignore next */
     if (newForeignColumn) {
-      setForeignTable(newTable)
-      setForeignColumn(newForeignColumn.name)
       onFKChange({ table: newTable, column: newForeignColumn.name })
     }
   }
+  const foreingColumn = foreignKey ? foreignKey.column : ""
 
   const classes = useStyles()
   const theme = useTheme()
@@ -670,7 +659,7 @@ function ColumnEntry({
 
       <div>
         <Checkbox
-          checked={foreignKeyCheckbox}
+          checked={foreignKey !== null}
           onChange={handleFKChange}
           label="Foreign key"
           readOnly={readOnly || availableForeignTables().length === 0}
@@ -678,10 +667,10 @@ function ColumnEntry({
         />
         <Select
           id="fk-table"
-          value={foreignTable}
+          value={foreignKey ? foreignKey.table : ""}
           onChange={handleForeignTableChange}
           label="Table"
-          hidden={!foreignKeyCheckbox}
+          hidden={foreignKey === null}
           readOnly={readOnly || availableForeignTables().length === 0}
           dataTestId={"foreign-table-select"}
         >
@@ -693,13 +682,13 @@ function ColumnEntry({
         </Select>
         <Select
           id="fk-column"
-          value={foreignColumn}
+          value={foreingColumn}
           label="Column"
-          hidden={!foreignKeyCheckbox}
+          hidden={foreignKey === null}
           readOnly={true}
           dataTestId={"foreign-column-select"}
         >
-          <MenuItem value={foreignColumn}>{foreignColumn}</MenuItem>
+          <MenuItem value={foreingColumn}>{foreingColumn}</MenuItem>
         </Select>
       </div>
       <div className={`delete${readOnly ? " hidden" : ""}`}>
