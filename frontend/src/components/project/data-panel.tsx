@@ -1,6 +1,7 @@
 import { makeStyles, Theme, createStyles } from "@material-ui/core"
 import React, { useCallback, useEffect, useState } from "react"
 import { trackPromise, usePromiseTracker } from "react-promise-tracker"
+import { Redirect, Route, useParams, useRouteMatch } from "react-router-dom"
 import { getAllTableNames } from "../../lib/api/project"
 import { ButtonArray, RefreshButton } from "../button"
 import { SimpleNav } from "../nav"
@@ -41,6 +42,7 @@ export default function DataPanel({
   useEffect(() => {
     refreshTables()
   }, [refreshTables])
+  const { url } = useRouteMatch()
   const classes = useStyles()
   return (
     <div data-testid="data-panel">
@@ -54,27 +56,23 @@ export default function DataPanel({
         </ButtonArray>
         <SimpleNav links={tableNames ?? []} />
       </div>
-
-      {tableNames === null ? (
-        <></>
-      ) : tableNames.length === 0 ? (
-        "No tables found"
-      ) : (
-        <Main token={token} projectName={projectName} tableNames={tableNames} />
-      )}
+      <Route exact path={url}>
+        {tableNames === null ? (
+          <></>
+        ) : tableNames.length === 0 ? (
+          "No tables found"
+        ) : (
+          <Redirect to={`${url}/${tableNames[0]}`} />
+        )}
+      </Route>
+      <Route path={`${url}/:tablename`}>
+        <TableEntry />
+      </Route>
     </div>
   )
 }
 
-function Main({
-  token,
-  projectName,
-  tableNames,
-}: {
-  token: string
-  projectName: string
-  tableNames: string[]
-}) {
-  console.log(tableNames)
-  return <div data-testid="data-main">Main data here</div>
+function TableEntry() {
+  const { tablename } = useParams<{ tablename: string }>()
+  return <div>Table entry for {tablename}</div>
 }
