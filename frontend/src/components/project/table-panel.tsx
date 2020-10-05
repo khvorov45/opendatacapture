@@ -11,7 +11,7 @@ import Check from "@material-ui/icons/Check"
 import Clear from "@material-ui/icons/Clear"
 import Remove from "@material-ui/icons/Remove"
 import Edit from "@material-ui/icons/Edit"
-import React, { useState, useEffect, useCallback, ChangeEvent } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { usePromiseTracker, trackPromise } from "react-promise-tracker"
 import {
   TableSpec,
