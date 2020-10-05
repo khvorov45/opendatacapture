@@ -56,15 +56,8 @@ export default function DataPanel({
 
   // Current table
   const { pathname } = useLocation()
-  const [currentTable, setCurrentTable] = useState<string | null>(null)
-  const refreshCurrentTable = useCallback(() => {
-    setCurrentTable(
-      pathname.match(/^\/project\/[^/]*\/data\/([^/]*)/)?.[1] ?? null
-    )
-  }, [pathname])
-  useEffect(() => {
-    refreshCurrentTable()
-  }, [refreshCurrentTable])
+  const currentTable =
+    pathname.match(/^\/project\/[^/]*\/data\/([^/]*)/)?.[1] ?? null
 
   // Current table data
   const [data, setData] = useState<TableData | null>(null)
@@ -92,7 +85,6 @@ export default function DataPanel({
           <RefreshButton
             onClick={() => {
               refreshTables()
-              refreshCurrentTable()
               refreshData()
             }}
             inProgress={promiseInProgress}
