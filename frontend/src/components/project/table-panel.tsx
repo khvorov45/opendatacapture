@@ -1,7 +1,5 @@
 import {
-  Checkbox as MaterialCheckbox,
   createStyles,
-  FormControlLabel,
   IconButton,
   MenuItem,
   TextField,
@@ -33,6 +31,7 @@ import {
 } from "../button"
 import { NamedDivider } from "../divider"
 import Select from "../select"
+import Checkbox from "../checkbox"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -632,38 +631,5 @@ function ColumnEntry({
         </IconButton>
       </div>
     </div>
-  )
-}
-
-function Checkbox({
-  checked,
-  onChange,
-  label,
-  hidden,
-  readOnly,
-  dataTestId,
-}: {
-  checked: boolean
-  onChange: (value: boolean) => void
-  label: string
-  hidden?: boolean
-  readOnly?: boolean
-  dataTestId?: string
-}) {
-  return (
-    <FormControlLabel
-      className={`${hidden ? "hidden" : ""}`}
-      control={
-        <MaterialCheckbox
-          checked={checked}
-          onChange={(e: ChangeEvent<HTMLInputElement>) =>
-            onChange(e.target.checked)
-          }
-          disabled={readOnly}
-          data-testid={dataTestId}
-        />
-      }
-      label={label}
-    />
   )
 }
