@@ -78,7 +78,7 @@ export default function DataPanel({
         setData(td)
       })
       .catch((e) => setErrorMsg(e.message))
-  }, [currentTable])
+  }, [token, projectName, currentTable])
   useEffect(() => {
     refreshData()
   }, [refreshData])
@@ -122,7 +122,6 @@ export default function DataPanel({
 
 function TableEntry({ data }: { data: TableData }) {
   const { tablename } = useParams<{ tablename: string }>()
-  //const [data, setData] =
   return (
     <div>
       Table entry for {tablename} with data {JSON.stringify(data)}
