@@ -1,11 +1,11 @@
 import { createStyles, Theme } from "@material-ui/core"
-import { Redirect, useLocation, useRouteMatch } from "react-router-dom"
+import { Redirect, useRouteMatch } from "react-router-dom"
 import makeStyles from "@material-ui/core/styles/makeStyles"
 import React from "react"
 import { Route, useParams } from "react-router-dom"
-import { ButtonLink } from "../button"
 import TablePanel from "./table-panel"
 import DataPanel from "./data-panel"
+import { SimpleNav } from "../nav"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -18,10 +18,6 @@ const useStyles = makeStyles((theme: Theme) =>
         display: "none",
       },
     },
-    sidebar: {
-      backgroundColor: "var(--palette-bg-alt)",
-      borderBottom: `1px solid ${theme.palette.divider}`,
-    },
   })
 )
 
@@ -30,24 +26,8 @@ export default function ProjectPage({ token }: { token: string | null }) {
   const classes = useStyles()
   return (
     <div className={classes.projectPage} data-testid={`project-page-${name}`}>
-      <Sidebar />
+      <SimpleNav links={["tables", "data"]} dataTestId="project-page-links" />
       {token ? <Main token={token} /> : <></>}
-    </div>
-  )
-}
-
-function Sidebar() {
-  const { url } = useRouteMatch()
-  const { pathname } = useLocation()
-  const classes = useStyles()
-  return (
-    <div className={classes.sidebar} data-testid="project-page-links">
-      <ButtonLink active={pathname.endsWith("tables")} to={`${url}/tables`}>
-        Tables
-      </ButtonLink>
-      <ButtonLink active={pathname.endsWith("data")} to={`${url}/data`}>
-        Data
-      </ButtonLink>
     </div>
   )
 }

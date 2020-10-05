@@ -222,7 +222,11 @@ test("links", async () => {
   let home = renderProjectPage()
   await waitForDomChange()
   expect(home.getByTestId("table-panel")).toBeInTheDocument()
+  expect(home.getByText("Tables").parentElement).toHaveClass("active")
   fireEvent.click(home.getByText("Data"))
+  // await waitForDomChange()
+  expect(home.getByText("Tables").parentElement).not.toHaveClass("active")
+  expect(home.getByText("Data").parentElement).toHaveClass("active")
   expect(home.getByTestId("data-panel")).toBeInTheDocument()
   fireEvent.click(home.getByText("Tables"))
   await waitForDomChange()
@@ -237,6 +241,7 @@ test("render on table page", async () => {
 
 test("render on data page", async () => {
   let data = renderProjectPage("123", "data")
+  // await waitForDomChange()
   expect(data.getByTestId("data-panel")).toBeInTheDocument()
 })
 

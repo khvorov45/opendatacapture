@@ -2,8 +2,9 @@ import React from "react"
 import { IconButton } from "@material-ui/core"
 import BrightnessMediumIcon from "@material-ui/icons/BrightnessMedium"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
-import { useLocation } from "react-router-dom"
+import { useLocation, useRouteMatch } from "react-router-dom"
 import { ButtonLink } from "./button"
+import toProperCase from "../lib/to-proper-case"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -32,6 +33,10 @@ const useStyles = makeStyles((theme: Theme) =>
       "& .name": {
         "font-size": "1.1em",
       },
+    },
+    simpleNav: {
+      backgroundColor: "var(--palette-bg-alt)",
+      borderBottom: `1px solid ${theme.palette.divider}`,
     },
   })
 )
@@ -87,5 +92,26 @@ function ThemeSwitch({ handleThemeChange }: { handleThemeChange: () => void }) {
     <IconButton data-testid="themeswitch" onClick={handleThemeChange}>
       <BrightnessMediumIcon />
     </IconButton>
+  )
+}
+
+export function SimpleNav({
+  links,
+  dataTestId,
+}: {
+  links: string[]
+  dataTestId?: string
+}) {
+  const { url } = useRouteMatch()
+  const { pathname } = useLocation()
+  const classes = useStyles()
+  return (
+    <div className={classes.simpleNav} data-testid={dataTestId}>
+      {links.map((l) => (
+        <ButtonLink key={l} active={pathname.endsWith(l)} to={`${url}/${l}`}>
+          {toProperCase(l)}
+        </ButtonLink>
+      ))}
+    </div>
   )
 }
