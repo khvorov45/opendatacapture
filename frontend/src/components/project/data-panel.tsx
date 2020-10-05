@@ -1,8 +1,18 @@
 import { makeStyles, Theme, createStyles } from "@material-ui/core"
 import React, { useCallback, useEffect, useState } from "react"
 import { trackPromise, usePromiseTracker } from "react-promise-tracker"
-import { Redirect, Route, useParams, useRouteMatch } from "react-router-dom"
-import { getAllTableNames } from "../../lib/api/project"
+import {
+  Redirect,
+  Route,
+  useLocation,
+  useParams,
+  useRouteMatch,
+} from "react-router-dom"
+import {
+  getAllTableNames,
+  getTableData,
+  TableData,
+} from "../../lib/api/project"
 import { ButtonArray, RefreshButton } from "../button"
 import { SimpleNav } from "../nav"
 
@@ -28,11 +38,12 @@ export default function DataPanel({
   token: string
   projectName: string
 }) {
+  // Table list
   const [tableNames, setTableNames] = useState<string[] | null>(null)
   const [errorMsg, setErrorMsg] = useState("")
-  const { promiseInProgress } = usePromiseTracker({ area: "getAllTableNames" })
+  const { promiseInProgress } = usePromiseTracker({ area: "refresh" })
   const refreshTables = useCallback(() => {
-    trackPromise(getAllTableNames(token, projectName), "getAllTableNames")
+    trackPromise(getAllTableNames(token, projectName), "refresh")
       .then((tables) => {
         setErrorMsg("")
         setTableNames(tables)
@@ -42,6 +53,36 @@ export default function DataPanel({
   useEffect(() => {
     refreshTables()
   }, [refreshTables])
+
+  // Current table
+  const { pathname } = useLocation()
+  const [currentTable, setCurrentTable] = useState<string | null>(null)
+  const refreshCurrentTable = useCallback(() => {
+    setCurrentTable(
+      pathname.match(/^\/project\/[^/]*\/data\/([^/]*)/)?.[1] ?? null
+    )
+  }, [pathname])
+  useEffect(() => {
+    refreshCurrentTable()
+  }, [refreshCurrentTable])
+
+  // Current table data
+  const [data, setData] = useState<TableData | null>(null)
+  const refreshData = useCallback(() => {
+    if (!currentTable) {
+      return
+    }
+    trackPromise(getTableData(token, projectName, currentTable), "refresh")
+      .then((td) => {
+        setErrorMsg("")
+        setData(td)
+      })
+      .catch((e) => setErrorMsg(e.message))
+  }, [currentTable])
+  useEffect(() => {
+    refreshData()
+  }, [refreshData])
+
   const { url } = useRouteMatch()
   const classes = useStyles()
   return (
@@ -49,12 +90,19 @@ export default function DataPanel({
       <div className={classes.dataControl}>
         <ButtonArray errorMsg={errorMsg} errorTestId="refresh-tables-error">
           <RefreshButton
-            onClick={refreshTables}
+            onClick={() => {
+              refreshTables()
+              refreshCurrentTable()
+              refreshData()
+            }}
             inProgress={promiseInProgress}
             dataTestId="refresh-tables-button"
           />
         </ButtonArray>
-        <SimpleNav links={tableNames ?? []} />
+        <SimpleNav
+          links={tableNames ?? []}
+          active={(l) => pathname.includes(`/project/${projectName}/data/${l}`)}
+        />
       </div>
       <Route exact path={url}>
         {tableNames === null ? (
@@ -66,13 +114,18 @@ export default function DataPanel({
         )}
       </Route>
       <Route path={`${url}/:tablename`}>
-        <TableEntry />
+        <TableEntry data={data ?? []} />
       </Route>
     </div>
   )
 }
 
-function TableEntry() {
+function TableEntry({ data }: { data: TableData }) {
   const { tablename } = useParams<{ tablename: string }>()
-  return <div>Table entry for {tablename}</div>
+  //const [data, setData] =
+  return (
+    <div>
+      Table entry for {tablename} with data {JSON.stringify(data)}
+    </div>
+  )
 }

@@ -98,9 +98,13 @@ function ThemeSwitch({ handleThemeChange }: { handleThemeChange: () => void }) {
 export function SimpleNav({
   links,
   dataTestId,
+  onClick,
+  active,
 }: {
   links: string[]
   dataTestId?: string
+  onClick?: (l: string) => void
+  active?: (l: string) => boolean
 }) {
   const { url } = useRouteMatch()
   const { pathname } = useLocation()
@@ -108,7 +112,12 @@ export function SimpleNav({
   return (
     <div className={classes.simpleNav} data-testid={dataTestId}>
       {links.map((l) => (
-        <ButtonLink key={l} active={pathname.includes(l)} to={`${url}/${l}`}>
+        <ButtonLink
+          key={l}
+          active={active ? active(l) : pathname.includes(l)}
+          to={`${url}/${l}`}
+          onClick={() => onClick?.(l)}
+        >
           {toProperCase(l)}
         </ButtonLink>
       ))}
