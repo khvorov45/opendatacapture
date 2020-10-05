@@ -1,10 +1,11 @@
 import { createStyles, Theme } from "@material-ui/core"
-import { Redirect, useRouteMatch } from "react-router-dom"
+import { Redirect, useLocation, useRouteMatch } from "react-router-dom"
 import makeStyles from "@material-ui/core/styles/makeStyles"
 import React from "react"
 import { Route, useParams } from "react-router-dom"
 import { ButtonLink } from "../button"
 import TablePanel from "./table-panel"
+import DataPanel from "./data-panel"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -37,11 +38,15 @@ export default function ProjectPage({ token }: { token: string | null }) {
 
 function Sidebar() {
   const { url } = useRouteMatch()
+  const { pathname } = useLocation()
   const classes = useStyles()
   return (
     <div className={classes.sidebar} data-testid="project-page-links">
-      <ButtonLink active={true} to={`${url}/tables`}>
+      <ButtonLink active={pathname.endsWith("tables")} to={`${url}/tables`}>
         Tables
+      </ButtonLink>
+      <ButtonLink active={pathname.endsWith("data")} to={`${url}/data`}>
+        Data
       </ButtonLink>
     </div>
   )
@@ -52,11 +57,14 @@ function Main({ token }: { token: string }) {
   const { name } = useParams<{ name: string }>()
   return (
     <main>
-      <Route path={url}>
+      <Route exact path={url}>
         <Redirect to={`${url}/tables`} />
       </Route>
       <Route path={`${url}/tables`}>
         <TablePanel token={token} projectName={name} />
+      </Route>
+      <Route path={`${url}/data`}>
+        <DataPanel token={token} projectName={name} />
       </Route>
     </main>
   )

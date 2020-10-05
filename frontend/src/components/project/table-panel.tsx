@@ -120,7 +120,7 @@ export default function TablePanel({
 
   const classes = useStyles()
   return (
-    <div className={classes.tablePanel}>
+    <div className={classes.tablePanel} data-testid="table-panel">
       <ButtonArray
         className={classes.tableControl}
         errorMsg={errorMsg}

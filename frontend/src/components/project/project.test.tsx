@@ -7,7 +7,7 @@ import {
   waitForDomChange,
   within,
 } from "@testing-library/react"
-import { BrowserRouter, Redirect, Route, Switch } from "react-router-dom"
+import { Redirect, Route, Switch, MemoryRouter } from "react-router-dom"
 
 import ProjectPage from "./project"
 
@@ -23,7 +23,7 @@ function renderProjectPage(token?: string | null) {
     tok = token
   }
   return render(
-    <BrowserRouter>
+    <MemoryRouter>
       <Switch>
         <Route exact path="/">
           <Redirect to="/project/some-project" />
@@ -32,7 +32,7 @@ function renderProjectPage(token?: string | null) {
           <ProjectPage token={tok} />
         </Route>
       </Switch>
-    </BrowserRouter>
+    </MemoryRouter>
   )
 }
 
@@ -214,6 +214,14 @@ test("project page with null token", async () => {
   expect(getByTestId("project-page-links")).toBeInTheDocument()
   // The main section should be absent
   expect(document.getElementsByTagName("main")).toBeEmpty()
+})
+
+test("routing", async () => {
+  let { getByTestId, getByText } = renderProjectPage()
+  await waitForDomChange()
+  expect(getByTestId("table-panel")).toBeInTheDocument()
+  fireEvent.click(getByText("Data"))
+  expect(getByTestId("data-panel")).toBeInTheDocument()
 })
 
 test("table panel functionality - no initial tables", async () => {
