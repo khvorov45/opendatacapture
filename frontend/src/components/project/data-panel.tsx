@@ -11,7 +11,9 @@ import {
 import {
   getAllTableNames,
   getTableData,
+  getTableMeta,
   TableData,
+  TableMeta,
 } from "../../lib/api/project"
 import { ButtonArray, RefreshButton } from "../button"
 import { SimpleNav } from "../nav"
@@ -50,43 +52,28 @@ export default function DataPanel({
       })
       .catch((e) => setErrorMsg(e.message))
   }, [token, projectName])
-  useEffect(() => {
+
+  // Let the table know it needs to refresh
+  const [refreshCounter, setRefreshCounter] = useState(0)
+
+  // Refresh everything
+  const refreshAll = useCallback(() => {
     refreshTables()
-  }, [refreshTables])
-
-  // Current table
-  const { pathname } = useLocation()
-  const currentTable =
-    pathname.match(/^\/project\/[^/]*\/data\/([^/]*)/)?.[1] ?? null
-
-  // Current table data
-  const [data, setData] = useState<TableData | null>(null)
-  const refreshData = useCallback(() => {
-    if (!currentTable) {
-      return
-    }
-    trackPromise(getTableData(token, projectName, currentTable), "refresh")
-      .then((td) => {
-        setErrorMsg("")
-        setData(td)
-      })
-      .catch((e) => setErrorMsg(e.message))
-  }, [token, projectName, currentTable])
+    setRefreshCounter((old) => old + 1)
+  }, [refreshTables, setRefreshCounter])
   useEffect(() => {
-    refreshData()
-  }, [refreshData])
+    refreshAll()
+  }, [refreshAll])
 
   const { url } = useRouteMatch()
+  const { pathname } = useLocation()
   const classes = useStyles()
   return (
     <div data-testid="data-panel">
       <div className={classes.dataControl}>
         <ButtonArray errorMsg={errorMsg} errorTestId="refresh-tables-error">
           <RefreshButton
-            onClick={() => {
-              refreshTables()
-              refreshData()
-            }}
+            onClick={refreshAll}
             inProgress={promiseInProgress}
             dataTestId="refresh-tables-button"
           />
@@ -106,17 +93,64 @@ export default function DataPanel({
         )}
       </Route>
       <Route path={`${url}/:tablename`}>
-        <TableEntry data={data ?? []} />
+        <TableEntry
+          token={token}
+          projectName={projectName}
+          refresh={refreshCounter}
+          setErrorMsg={setErrorMsg}
+        />
       </Route>
     </div>
   )
 }
 
-function TableEntry({ data }: { data: TableData }) {
+function TableEntry({
+  token,
+  projectName,
+  refresh,
+  setErrorMsg,
+}: {
+  token: string
+  projectName: string
+  refresh: number
+  setErrorMsg: (s: string) => void
+}) {
   const { tablename } = useParams<{ tablename: string }>()
+  // Current meta
+  const [meta, setMeta] = useState<TableMeta | null>(null)
+  const refreshMeta = useCallback(() => {
+    trackPromise(getTableMeta(token, projectName, tablename), "refresh")
+      .then((tm) => {
+        setErrorMsg("")
+        setMeta(tm)
+      })
+      .catch((e) => setErrorMsg(e.message))
+  }, [token, projectName, tablename, setErrorMsg])
+
+  // Current table data
+  const [data, setData] = useState<TableData | null>(null)
+  const refreshData = useCallback(() => {
+    trackPromise(getTableData(token, projectName, tablename), "refresh")
+      .then((td) => {
+        setErrorMsg("")
+        setData(td)
+      })
+      .catch((e) => setErrorMsg(e.message))
+  }, [token, projectName, tablename, setErrorMsg])
+
+  // Refresh everything
+  const refreshAll = useCallback(() => {
+    refreshMeta()
+    refreshData()
+  }, [refreshMeta, refreshData])
+  useEffect(() => {
+    refreshAll()
+  }, [refreshAll, refresh])
+
   return (
     <div>
-      Table entry for {tablename} with data {JSON.stringify(data)}
+      Table entry for {tablename} with meta {JSON.stringify(meta)} and data{" "}
+      {JSON.stringify(data)}
     </div>
   )
 }
