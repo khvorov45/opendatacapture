@@ -4,6 +4,7 @@ import httpStatusCodes from "http-status-codes"
 import {
   fireEvent,
   render,
+  wait,
   waitForDomChange,
   within,
 } from "@testing-library/react"
@@ -224,10 +225,11 @@ test("links", async () => {
   expect(home.getByTestId("table-panel")).toBeInTheDocument()
   expect(home.getByText("Tables").parentElement).toHaveClass("active")
   fireEvent.click(home.getByText("Data"))
-  // await waitForDomChange()
-  expect(home.getByText("Tables").parentElement).not.toHaveClass("active")
-  expect(home.getByText("Data").parentElement).toHaveClass("active")
-  expect(home.getByTestId("data-panel")).toBeInTheDocument()
+  await wait(() => {
+    expect(home.getByText("Tables").parentElement).not.toHaveClass("active")
+    expect(home.getByText("Data").parentElement).toHaveClass("active")
+    expect(home.getByTestId("data-panel")).toBeInTheDocument()
+  })
   fireEvent.click(home.getByText("Tables"))
   await waitForDomChange()
   expect(home.getByTestId("table-panel")).toBeInTheDocument()
@@ -241,8 +243,7 @@ test("render on table page", async () => {
 
 test("render on data page", async () => {
   let data = renderProjectPage("123", "data")
-  // await waitForDomChange()
-  expect(data.getByTestId("data-panel")).toBeInTheDocument()
+  await wait(() => expect(data.getByTestId("data-panel")).toBeInTheDocument())
 })
 
 test("table panel functionality - no initial tables", async () => {
