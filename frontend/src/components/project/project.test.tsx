@@ -17,13 +17,15 @@ import { API_ROOT } from "../../lib/config"
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
-function renderProjectPage(token?: string | null) {
+function renderProjectPage(token?: string | null, path?: "tables" | "data") {
   let tok: string | null = "123"
   if (token !== undefined) {
     tok = token
   }
   return render(
-    <MemoryRouter>
+    <MemoryRouter
+      initialEntries={[path ? `/project/some-project/${path}` : "/"]}
+    >
       <Switch>
         <Route exact path="/">
           <Redirect to="/project/some-project" />
@@ -216,12 +218,26 @@ test("project page with null token", async () => {
   expect(document.getElementsByTagName("main")).toBeEmpty()
 })
 
-test("routing", async () => {
-  let { getByTestId, getByText } = renderProjectPage()
+test("links", async () => {
+  let home = renderProjectPage()
   await waitForDomChange()
-  expect(getByTestId("table-panel")).toBeInTheDocument()
-  fireEvent.click(getByText("Data"))
-  expect(getByTestId("data-panel")).toBeInTheDocument()
+  expect(home.getByTestId("table-panel")).toBeInTheDocument()
+  fireEvent.click(home.getByText("Data"))
+  expect(home.getByTestId("data-panel")).toBeInTheDocument()
+  fireEvent.click(home.getByText("Tables"))
+  await waitForDomChange()
+  expect(home.getByTestId("table-panel")).toBeInTheDocument()
+})
+
+test("render on table page", async () => {
+  let tables = renderProjectPage("123", "tables")
+  await waitForDomChange()
+  expect(tables.getByTestId("table-panel")).toBeInTheDocument()
+})
+
+test("render on data page", async () => {
+  let data = renderProjectPage("123", "data")
+  expect(data.getByTestId("data-panel")).toBeInTheDocument()
 })
 
 test("table panel functionality - no initial tables", async () => {
