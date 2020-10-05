@@ -42,12 +42,12 @@ export default function DataPanel({
 }) {
   // Table list
   const [tableNames, setTableNames] = useState<string[] | null>(null)
-  const [errorMsg, setErrorMsg] = useState("")
+  const [tableNamesError, setTableNamesError] = useState("")
   const { promiseInProgress } = usePromiseTracker({ area: "refresh" })
   const refreshTables = useCallback(() => {
     trackPromise(getAllTableNames(token, projectName), "refresh")
       .then((tables) => {
-        setErrorMsg("")
+        setTableNamesError("")
         setTableNames(tables)
       })
       .catch((e) => setErrorMsg(e.message))
@@ -64,6 +64,12 @@ export default function DataPanel({
   useEffect(() => {
     refreshAll()
   }, [refreshAll])
+
+  // Update error
+  const [errorMsg, setErrorMsg] = useState("")
+  function updateErrorMsg(msg: string) {
+    setErrorMsg(tableNamesError + msg)
+  }
 
   const { url } = useRouteMatch()
   const { pathname } = useLocation()
@@ -97,7 +103,7 @@ export default function DataPanel({
           token={token}
           projectName={projectName}
           refresh={refreshCounter}
-          setErrorMsg={setErrorMsg}
+          updateErrorMsg={updateErrorMsg}
         />
       </Route>
     </div>
@@ -108,35 +114,38 @@ function TableEntry({
   token,
   projectName,
   refresh,
-  setErrorMsg,
+  updateErrorMsg,
 }: {
   token: string
   projectName: string
   refresh: number
-  setErrorMsg: (s: string) => void
+  updateErrorMsg: (s: string) => void
 }) {
   const { tablename } = useParams<{ tablename: string }>()
+
   // Current meta
   const [meta, setMeta] = useState<TableMeta | null>(null)
+  const [metaError, setMetaError] = useState("")
   const refreshMeta = useCallback(() => {
     trackPromise(getTableMeta(token, projectName, tablename), "refresh")
       .then((tm) => {
-        setErrorMsg("")
+        setMetaError("")
         setMeta(tm)
       })
-      .catch((e) => setErrorMsg(e.message))
-  }, [token, projectName, tablename, setErrorMsg])
+      .catch((e) => setMetaError(e.message))
+  }, [token, projectName, tablename, setMetaError])
 
   // Current table data
   const [data, setData] = useState<TableData | null>(null)
+  const [dataError, setDataError] = useState("")
   const refreshData = useCallback(() => {
     trackPromise(getTableData(token, projectName, tablename), "refresh")
       .then((td) => {
-        setErrorMsg("")
+        setDataError("")
         setData(td)
       })
-      .catch((e) => setErrorMsg(e.message))
-  }, [token, projectName, tablename, setErrorMsg])
+      .catch((e) => setDataError(e.message))
+  }, [token, projectName, tablename, setDataError])
 
   // Refresh everything
   const refreshAll = useCallback(() => {
@@ -146,6 +155,11 @@ function TableEntry({
   useEffect(() => {
     refreshAll()
   }, [refreshAll, refresh])
+
+  // Update errors
+  useEffect(() => {
+    updateErrorMsg(metaError + dataError)
+  }, [updateErrorMsg, metaError, dataError])
 
   return (
     <div>

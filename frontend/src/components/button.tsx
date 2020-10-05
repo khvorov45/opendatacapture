@@ -36,6 +36,10 @@ const useStyles = makeStyles((theme: Theme) =>
       width: 48,
       height: 48,
     },
+    error: {
+      backgroundColor: theme.palette.background.default,
+      zIndex: theme.zIndex.tooltip,
+    },
   })
 )
 
@@ -58,7 +62,11 @@ export function ButtonArray({
       className={`${classes.buttonArray}${className ? ` ${className}` : ""}`}
     >
       <div className={`buttons${center ? " center" : ""}`}>{children}</div>
-      <FormHelperText error={true} data-testid={errorTestId}>
+      <FormHelperText
+        error={true}
+        data-testid={errorTestId}
+        className={classes.error}
+      >
         {errorMsg}
       </FormHelperText>
     </div>

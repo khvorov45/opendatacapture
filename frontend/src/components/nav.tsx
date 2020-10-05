@@ -15,14 +15,10 @@ const useStyles = makeStyles((theme: Theme) =>
       alignItems: "center",
       backgroundColor: "var(--palette-bg-alt)",
       borderBottom: `1px solid ${theme.palette.divider}`,
-      "& .link": {
-        height: 48,
-      },
     },
     projectInfo: {
       display: "flex",
       flexDirection: "column",
-      height: 48,
       "& *": {
         margin: "auto",
       },
@@ -37,6 +33,9 @@ const useStyles = makeStyles((theme: Theme) =>
     simpleNav: {
       backgroundColor: "var(--palette-bg-alt)",
       borderBottom: `1px solid ${theme.palette.divider}`,
+    },
+    link: {
+      height: 48,
     },
   })
 )
@@ -53,7 +52,7 @@ export default function Nav({
       <div>
         <ButtonLink
           dataTestId="home-link"
-          className="link"
+          className={classes.link}
           active={location.pathname === "/"}
           to="/"
         >
@@ -114,6 +113,7 @@ export function SimpleNav({
       {links.map((l) => (
         <ButtonLink
           key={l}
+          className={classes.link}
           active={active ? active(l) : pathname.includes(l)}
           to={`${url}/${l}`}
           onClick={() => onClick?.(l)}
