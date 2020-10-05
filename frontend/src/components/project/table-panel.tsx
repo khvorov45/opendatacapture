@@ -1,12 +1,9 @@
 import {
   Checkbox as MaterialCheckbox,
   createStyles,
-  FormControl,
   FormControlLabel,
   IconButton,
-  InputLabel,
   MenuItem,
-  Select as MaterialSelect,
   TextField,
   Theme,
   useTheme,
@@ -16,13 +13,7 @@ import Check from "@material-ui/icons/Check"
 import Clear from "@material-ui/icons/Clear"
 import Remove from "@material-ui/icons/Remove"
 import Edit from "@material-ui/icons/Edit"
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  ReactNode,
-  ChangeEvent,
-} from "react"
+import React, { useState, useEffect, useCallback, ChangeEvent } from "react"
 import { usePromiseTracker, trackPromise } from "react-promise-tracker"
 import {
   TableSpec,
@@ -41,6 +32,7 @@ import {
   IconButtonWithProgress,
 } from "../button"
 import { NamedDivider } from "../divider"
+import Select from "../select"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -92,9 +84,6 @@ const useStyles = makeStyles((theme: Theme) =>
       "&>*>*:last-child": {
         marginRight: 0,
       },
-    },
-    select: {
-      minWidth: 80,
     },
   })
 )
@@ -643,43 +632,6 @@ function ColumnEntry({
         </IconButton>
       </div>
     </div>
-  )
-}
-
-function Select({
-  children,
-  value,
-  onChange,
-  id,
-  label,
-  hidden,
-  readOnly,
-  dataTestId,
-}: {
-  children: ReactNode
-  value: string
-  onChange?: (value: string) => void
-  id: string
-  label: string
-  hidden?: boolean
-  readOnly?: boolean
-  dataTestId?: string
-}) {
-  const classes = useStyles()
-  return (
-    <FormControl className={`${classes.select}${hidden ? " hidden" : ""}`}>
-      <InputLabel id={id + "-select-label"}>{label}</InputLabel>
-      <MaterialSelect
-        data-testid={dataTestId}
-        labelId={id + "-select-label"}
-        id={id}
-        value={value}
-        onChange={(e) => onChange?.(e.target.value as string)}
-        disabled={readOnly}
-      >
-        {children}
-      </MaterialSelect>
-    </FormControl>
   )
 }
 
