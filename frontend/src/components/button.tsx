@@ -114,12 +114,14 @@ export function ButtonLink({
   to,
   className,
   dataTestId,
+  onClick,
 }: {
   children: ReactNode
   active: boolean
   to: string
   className?: string
   dataTestId?: string
+  onClick?: () => void
 }) {
   const classes = useStyles()
   return (
@@ -130,6 +132,7 @@ export function ButtonLink({
       }`}
       component={Link}
       to={to}
+      onClick={onClick}
     >
       {children}
     </Button>

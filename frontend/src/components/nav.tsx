@@ -108,7 +108,7 @@ export function SimpleNav({
   return (
     <div className={classes.simpleNav} data-testid={dataTestId}>
       {links.map((l) => (
-        <ButtonLink key={l} active={pathname.endsWith(l)} to={`${url}/${l}`}>
+        <ButtonLink key={l} active={pathname.includes(l)} to={`${url}/${l}`}>
           {toProperCase(l)}
         </ButtonLink>
       ))}
