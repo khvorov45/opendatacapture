@@ -199,6 +199,7 @@ function Table({ meta, data }: { meta: TableMeta; data: TableData }) {
           </StyledTableRow>
         </TableHead>
         <TableBody {...getTableBodyProps()}>
+          <InputRow meta={meta} />
           {rows.map((row) => (
             <StyledTableRow {...row.getRowProps()}>
               {row.cells.map((cell) => (
@@ -211,5 +212,15 @@ function Table({ meta, data }: { meta: TableMeta; data: TableData }) {
         </TableBody>
       </MaterialTable>
     </TableContainer>
+  )
+}
+
+function InputRow({ meta }: { meta: TableMeta }) {
+  return (
+    <StyledTableRow>
+      {meta.cols.map((c) => (
+        <StyledTableCell key={c.name}>{c.name} input</StyledTableCell>
+      ))}
+    </StyledTableRow>
   )
 }
