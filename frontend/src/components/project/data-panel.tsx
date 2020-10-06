@@ -1,5 +1,13 @@
-import { makeStyles, Theme, createStyles } from "@material-ui/core"
-import React, { useCallback, useEffect, useState } from "react"
+import {
+  makeStyles,
+  Theme,
+  createStyles,
+  TableContainer,
+  TableHead,
+  TableBody,
+  Table as MaterialTable,
+} from "@material-ui/core"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { trackPromise, usePromiseTracker } from "react-promise-tracker"
 import {
   Redirect,
@@ -8,15 +16,18 @@ import {
   useParams,
   useRouteMatch,
 } from "react-router-dom"
+import { useTable } from "react-table"
 import {
   getAllTableNames,
   getTableData,
   getTableMeta,
   TableData,
   TableMeta,
+  TableRow,
 } from "../../lib/api/project"
 import { ButtonArray, RefreshButton } from "../button"
 import { SimpleNav } from "../nav"
+import { StyledTableCell, StyledTableRow } from "../table"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -161,10 +172,44 @@ function TableEntry({
     updateErrorMsg(metaError + dataError)
   }, [updateErrorMsg, metaError, dataError])
 
+  return !meta || !data ? <></> : <Table meta={meta} data={data} />
+}
+
+function Table({ meta, data }: { meta: TableMeta; data: TableData }) {
+  const columns = useMemo(
+    () => meta.cols.map((c) => ({ Header: c.name, accessor: c.name })),
+    [meta]
+  )
+  const { headers, rows, getTableProps, getTableBodyProps } = useTable<
+    TableRow
+  >({
+    columns: columns,
+    data: data,
+  })
   return (
-    <div>
-      Table entry for {tablename} with meta {JSON.stringify(meta)} and data{" "}
-      {JSON.stringify(data)}
-    </div>
+    <TableContainer>
+      <MaterialTable {...getTableProps()}>
+        <TableHead>
+          <StyledTableRow>
+            {headers.map((header) => (
+              <StyledTableCell {...header.getHeaderProps()}>
+                {header.render("Header")}
+              </StyledTableCell>
+            ))}
+          </StyledTableRow>
+        </TableHead>
+        <TableBody {...getTableBodyProps()}>
+          {rows.map((row) => (
+            <StyledTableRow {...row.getRowProps()}>
+              {row.cells.map((cell) => (
+                <StyledTableCell {...cell.getCellProps()}>
+                  {cell.render("Cell")}
+                </StyledTableCell>
+              ))}
+            </StyledTableRow>
+          ))}
+        </TableBody>
+      </MaterialTable>
+    </TableContainer>
   )
 }
