@@ -41,6 +41,16 @@ const useStyles = makeStyles((theme: Theme) =>
         height: 48,
       },
     },
+    tableContainer: {
+      width: "auto",
+      "& table": {
+        margin: "auto",
+        width: "auto",
+        "& td, & th": {
+          textAlign: "center",
+        },
+      },
+    },
   })
 )
 
@@ -186,8 +196,9 @@ function Table({ meta, data }: { meta: TableMeta; data: TableData }) {
     columns: columns,
     data: data,
   })
+  const classes = useStyles()
   return (
-    <TableContainer>
+    <TableContainer className={classes.tableContainer}>
       <MaterialTable {...getTableProps()}>
         <TableHead>
           <StyledTableRow>
