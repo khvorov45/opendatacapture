@@ -27,7 +27,12 @@ import {
   TableMeta,
   TableRow,
 } from "../../lib/api/project"
-import { ButtonArray, CreateButton, RefreshButton } from "../button"
+import {
+  ButtonArray,
+  CreateButton,
+  RefreshButton,
+  CheckButton,
+} from "../button"
 import { SimpleNav } from "../nav"
 import { StyledTableCell, StyledTableRow } from "../table"
 
@@ -255,7 +260,9 @@ function InputRow({ meta, hidden }: { meta: TableMeta; hidden: boolean }) {
   }
   return (
     <StyledTableRow className={hidden ? "nodisplay" : ""}>
-      <StyledTableCell />
+      <StyledTableCell>
+        <CheckButton />
+      </StyledTableCell>
       {meta.cols.map((c) => (
         <StyledTableCell key={c.name}>
           <Input col={c} onChange={handleChange} val={record[c.name] ?? ""} />

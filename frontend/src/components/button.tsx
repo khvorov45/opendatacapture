@@ -11,6 +11,7 @@ import {
 import Add from "@material-ui/icons/Add"
 import Refresh from "@material-ui/icons/Refresh"
 import DeleteForever from "@material-ui/icons/DeleteForever"
+import Check from "@material-ui/icons/Check"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -184,6 +185,34 @@ export function DeleteButton({
       inProgress={inProgress}
     >
       <DeleteForever htmlColor={theme.palette.error.main} />
+    </IconButtonWithProgress>
+  )
+}
+
+export function CheckButton({
+  onClick,
+  dataTestId,
+  inProgress,
+  disabled,
+}: {
+  onClick?: () => void
+  dataTestId?: string
+  inProgress?: boolean
+  disabled?: boolean
+}) {
+  const theme = useTheme()
+  return (
+    <IconButtonWithProgress
+      onClick={onClick}
+      dataTestId={dataTestId}
+      disabled={disabled}
+      inProgress={inProgress}
+    >
+      <Check
+        htmlColor={
+          disabled ? theme.palette.text.disabled : theme.palette.success.main
+        }
+      />
     </IconButtonWithProgress>
   )
 }

@@ -7,7 +7,6 @@ import {
   useTheme,
 } from "@material-ui/core"
 import makeStyles from "@material-ui/core/styles/makeStyles"
-import Check from "@material-ui/icons/Check"
 import Clear from "@material-ui/icons/Clear"
 import Remove from "@material-ui/icons/Remove"
 import Edit from "@material-ui/icons/Edit"
@@ -28,6 +27,7 @@ import {
   RefreshButton,
   DeleteButton,
   IconButtonWithProgress,
+  CheckButton,
 } from "../button"
 import { NamedDivider } from "../divider"
 import Select from "../select"
@@ -443,20 +443,12 @@ function NewTableForm({
         errorMsg={errorMsg}
         errorTestId="table-submit-error"
       >
-        <IconButtonWithProgress
+        <CheckButton
           onClick={handleSubmit}
           dataTestId="submit-table-button"
           disabled={!isViable()}
           inProgress={promiseInProgress}
-        >
-          <Check
-            htmlColor={
-              isViable()
-                ? theme.palette.success.main
-                : theme.palette.text.disabled
-            }
-          />
-        </IconButtonWithProgress>
+        />
         <IconButton onClick={handleClear} data-testid="clear-table-button">
           <Clear htmlColor={theme.palette.error.main} />
         </IconButton>
