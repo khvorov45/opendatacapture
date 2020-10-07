@@ -217,16 +217,16 @@ function Table({ meta, data }: { meta: TableMeta; data: TableData }) {
       <MaterialTable {...getTableProps()}>
         <TableHead>
           <StyledTableRow>
-            {/*Control buttons*/}
-            <StyledTableCell>
-              <CreateButton onClick={() => setNewRow((old) => !old)} />
-            </StyledTableCell>
             {/*Actual headers*/}
             {headers.map((header) => (
               <StyledTableCell {...header.getHeaderProps()}>
                 {header.render("Header")}
               </StyledTableCell>
             ))}
+            {/*Control buttons*/}
+            <StyledTableCell>
+              <CreateButton onClick={() => setNewRow((old) => !old)} />
+            </StyledTableCell>
           </StyledTableRow>
         </TableHead>
         <TableBody {...getTableBodyProps()}>
@@ -260,14 +260,14 @@ function InputRow({ meta, hidden }: { meta: TableMeta; hidden: boolean }) {
   }
   return (
     <StyledTableRow className={hidden ? "nodisplay" : ""}>
-      <StyledTableCell>
-        <CheckButton />
-      </StyledTableCell>
       {meta.cols.map((c) => (
         <StyledTableCell key={c.name}>
           <Input col={c} onChange={handleChange} val={record[c.name] ?? ""} />
         </StyledTableCell>
       ))}
+      <StyledTableCell>
+        <CheckButton />
+      </StyledTableCell>
     </StyledTableRow>
   )
 }
