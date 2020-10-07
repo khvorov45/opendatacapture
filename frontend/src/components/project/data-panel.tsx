@@ -27,7 +27,7 @@ import {
   TableMeta,
   TableRow,
 } from "../../lib/api/project"
-import { ButtonArray, RefreshButton } from "../button"
+import { ButtonArray, CreateButton, RefreshButton } from "../button"
 import { SimpleNav } from "../nav"
 import { StyledTableCell, StyledTableRow } from "../table"
 
@@ -188,6 +188,14 @@ function TableEntry({
 }
 
 function Table({ meta, data }: { meta: TableMeta; data: TableData }) {
+  // New row form visibility
+  const [newRow, setNewRow] = useState(data.length === 0)
+  useEffect(() => {
+    if (data.length === 0) {
+      setNewRow(true)
+    }
+  }, [data])
+  // Table stuff
   const columns = useMemo(
     () => meta.cols.map((c) => ({ Header: c.name, accessor: c.name })),
     [meta]
@@ -204,6 +212,11 @@ function Table({ meta, data }: { meta: TableMeta; data: TableData }) {
       <MaterialTable {...getTableProps()}>
         <TableHead>
           <StyledTableRow>
+            {/*Control buttons*/}
+            <StyledTableCell>
+              <CreateButton onClick={() => setNewRow((old) => !old)} />
+            </StyledTableCell>
+            {/*Actual headers*/}
             {headers.map((header) => (
               <StyledTableCell {...header.getHeaderProps()}>
                 {header.render("Header")}
@@ -212,9 +225,10 @@ function Table({ meta, data }: { meta: TableMeta; data: TableData }) {
           </StyledTableRow>
         </TableHead>
         <TableBody {...getTableBodyProps()}>
-          <InputRow meta={meta} />
+          <InputRow meta={meta} hidden={!newRow} />
           {rows.map((row) => (
             <StyledTableRow {...row.getRowProps()}>
+              <StyledTableCell />
               {row.cells.map((cell) => (
                 <StyledTableCell {...cell.getCellProps()}>
                   {cell.render("Cell")}
@@ -228,7 +242,7 @@ function Table({ meta, data }: { meta: TableMeta; data: TableData }) {
   )
 }
 
-function InputRow({ meta }: { meta: TableMeta }) {
+function InputRow({ meta, hidden }: { meta: TableMeta; hidden: boolean }) {
   const [record, setRecord] = useState<TableRow>({})
   function handleChange(fieldName: string, val: number | string) {
     const newRecord = { ...record }
@@ -237,11 +251,11 @@ function InputRow({ meta }: { meta: TableMeta }) {
     } else {
       newRecord[fieldName] = val
     }
-    console.log(newRecord)
     setRecord(newRecord)
   }
   return (
-    <StyledTableRow>
+    <StyledTableRow className={hidden ? "nodisplay" : ""}>
+      <StyledTableCell />
       {meta.cols.map((c) => (
         <StyledTableCell key={c.name}>
           <Input col={c} onChange={handleChange} val={record[c.name] ?? ""} />
