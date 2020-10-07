@@ -23,6 +23,7 @@ import {
   getAllTableNames,
   getTableData,
   getTableMeta,
+  insertData,
   TableData,
   TableMeta,
   TableRow,
@@ -189,10 +190,32 @@ function TableEntry({
     updateErrorMsg(metaError + dataError)
   }, [updateErrorMsg, metaError, dataError])
 
-  return !meta || !data ? <></> : <Table meta={meta} data={data} />
+  return !meta || !data ? (
+    <></>
+  ) : (
+    <Table
+      token={token}
+      projectName={projectName}
+      meta={meta}
+      data={data}
+      onNewRow={refreshData}
+    />
+  )
 }
 
-function Table({ meta, data }: { meta: TableMeta; data: TableData }) {
+function Table({
+  token,
+  projectName,
+  meta,
+  data,
+  onNewRow,
+}: {
+  token: string
+  projectName: string
+  meta: TableMeta
+  data: TableData
+  onNewRow: () => void
+}) {
   // New row form visibility
   const [newRow, setNewRow] = useState(data.length === 0)
   useEffect(() => {
@@ -205,9 +228,13 @@ function Table({ meta, data }: { meta: TableMeta; data: TableData }) {
     () => meta.cols.map((c) => ({ Header: c.name, accessor: c.name })),
     [meta]
   )
-  const { headers, rows, getTableProps, getTableBodyProps } = useTable<
-    TableRow
-  >({
+  const {
+    headers,
+    rows,
+    getTableProps,
+    getTableBodyProps,
+    prepareRow,
+  } = useTable<TableRow>({
     columns: columns,
     data: data,
   })
@@ -230,24 +257,46 @@ function Table({ meta, data }: { meta: TableMeta; data: TableData }) {
           </StyledTableRow>
         </TableHead>
         <TableBody {...getTableBodyProps()}>
-          <InputRow meta={meta} hidden={!newRow} />
-          {rows.map((row) => (
-            <StyledTableRow {...row.getRowProps()}>
-              <StyledTableCell />
-              {row.cells.map((cell) => (
-                <StyledTableCell {...cell.getCellProps()}>
-                  {cell.render("Cell")}
-                </StyledTableCell>
-              ))}
-            </StyledTableRow>
-          ))}
+          <InputRow
+            token={token}
+            projectName={projectName}
+            meta={meta}
+            hidden={!newRow}
+            onSubmit={onNewRow}
+          />
+          {rows.map((row) => {
+            prepareRow(row)
+            return (
+              <StyledTableRow {...row.getRowProps()}>
+                {row.cells.map((cell) => (
+                  <StyledTableCell {...cell.getCellProps()}>
+                    {cell.render("Cell")}
+                  </StyledTableCell>
+                ))}
+                {/*Line up with control*/}
+                <StyledTableCell />
+              </StyledTableRow>
+            )
+          })}
         </TableBody>
       </MaterialTable>
     </TableContainer>
   )
 }
 
-function InputRow({ meta, hidden }: { meta: TableMeta; hidden: boolean }) {
+function InputRow({
+  token,
+  projectName,
+  meta,
+  hidden,
+  onSubmit,
+}: {
+  token: string
+  projectName: string
+  meta: TableMeta
+  hidden: boolean
+  onSubmit: () => void
+}) {
   const [record, setRecord] = useState<TableRow>({})
   function handleChange(fieldName: string, val: number | string) {
     const newRecord = { ...record }
@@ -258,6 +307,20 @@ function InputRow({ meta, hidden }: { meta: TableMeta; hidden: boolean }) {
     }
     setRecord(newRecord)
   }
+  const [errorMsg, setErrorMsg] = useState("")
+  // Submit row
+  function submitRow() {
+    trackPromise(
+      insertData(token, projectName, meta.name, [record]),
+      "sumbit-row"
+    )
+      .then(() => {
+        setErrorMsg("")
+        setRecord({})
+        onSubmit()
+      })
+      .catch((e) => setErrorMsg(e.message))
+  }
   return (
     <StyledTableRow className={hidden ? "nodisplay" : ""}>
       {meta.cols.map((c) => (
@@ -266,7 +329,9 @@ function InputRow({ meta, hidden }: { meta: TableMeta; hidden: boolean }) {
         </StyledTableCell>
       ))}
       <StyledTableCell>
-        <CheckButton />
+        <ButtonArray errorMsg={errorMsg}>
+          <CheckButton dataTestId="submit-row-button" onClick={submitRow} />
+        </ButtonArray>
       </StyledTableCell>
     </StyledTableRow>
   )
@@ -289,7 +354,6 @@ function Input({
   }
   const [error, setError] = useState(false)
   function handleChange(val: string) {
-    console.log("handling " + val + " " + typeof val)
     // Deleted everything
     if (val === "") {
       setError(false)
@@ -298,7 +362,6 @@ function Input({
     }
     // Some input, need to convert
     const convertedVal = convertValue(val)
-    console.log("converted: " + convertedVal + " " + typeof convertedVal)
     // Conversion errors - don't notify parent
     if (typeof convertedVal === "number" && isNaN(convertedVal)) {
       setError(true)
