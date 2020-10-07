@@ -6,6 +6,7 @@ import {
   TableHead,
   TableBody,
   Table as MaterialTable,
+  TextField,
 } from "@material-ui/core"
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { trackPromise, usePromiseTracker } from "react-promise-tracker"
@@ -18,6 +19,7 @@ import {
 } from "react-router-dom"
 import { useTable } from "react-table"
 import {
+  ColMeta,
   getAllTableNames,
   getTableData,
   getTableMeta,
@@ -227,11 +229,70 @@ function Table({ meta, data }: { meta: TableMeta; data: TableData }) {
 }
 
 function InputRow({ meta }: { meta: TableMeta }) {
+  const [record, setRecord] = useState<TableRow>({})
+  function handleChange(fieldName: string, val: number | string) {
+    const newRecord = { ...record }
+    if (val === "") {
+      delete newRecord[fieldName]
+    } else {
+      newRecord[fieldName] = val
+    }
+    console.log(newRecord)
+    setRecord(newRecord)
+  }
   return (
     <StyledTableRow>
       {meta.cols.map((c) => (
-        <StyledTableCell key={c.name}>{c.name} input</StyledTableCell>
+        <StyledTableCell key={c.name}>
+          <Input col={c} onChange={handleChange} val={record[c.name] ?? ""} />
+        </StyledTableCell>
       ))}
     </StyledTableRow>
+  )
+}
+
+function Input({
+  col,
+  onChange,
+  val,
+}: {
+  col: ColMeta
+  onChange: (fieldName: string, val: number | string) => void
+  val: string | number
+}) {
+  function convertValue(val: string): string | number {
+    if (col.postgres_type === "integer") {
+      return parseInt(val)
+    }
+    return val
+  }
+  const [error, setError] = useState(false)
+  function handleChange(val: string) {
+    console.log("handling " + val + " " + typeof val)
+    // Deleted everything
+    if (val === "") {
+      setError(false)
+      onChange(col.name, val)
+      return
+    }
+    // Some input, need to convert
+    const convertedVal = convertValue(val)
+    console.log("converted: " + convertedVal + " " + typeof convertedVal)
+    // Conversion errors - don't notify parent
+    if (typeof convertedVal === "number" && isNaN(convertedVal)) {
+      setError(true)
+      return
+    }
+    // Successfull conversion
+    setError(false)
+    onChange(col.name, convertedVal)
+  }
+  return (
+    <TextField
+      value={val}
+      error={error}
+      label={col.name}
+      onChange={(e) => handleChange(e.target.value)}
+    />
   )
 }
