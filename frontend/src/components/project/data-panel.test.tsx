@@ -138,3 +138,12 @@ test("fail to fetch data/meta after a successful fetch", async () => {
   await waitForDomChange()
   expect(dataPanel.getByText("fetch errorfetch error")).toBeInTheDocument()
 })
+
+test("fail to submit", async () => {
+  const dataPanel = renderProjectPage("123", "data")
+  await waitForDomChange()
+  mockedAxios.put.mockRejectedValueOnce(Error("submit error"))
+  fireEvent.click(dataPanel.getByTestId("submit-row-button"))
+  await waitForDomChange()
+  expect(dataPanel.getByText("submit error")).toBeInTheDocument()
+})
