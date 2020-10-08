@@ -62,6 +62,10 @@ const useStyles = makeStyles((theme: Theme) =>
   })
 )
 
+/**Fetches and displays table names, delegate error presentation to individual
+ * tables though. Also let the table control panel refresh this list of table
+ * names so that I only need one refresh button.
+ */
 export default function DataPanel({
   token,
   projectName,
@@ -106,21 +110,24 @@ export default function DataPanel({
           token={token}
           projectName={projectName}
           refreshTableLinks={refreshTables}
+          refreshTableLinksError={tableNamesError}
         />
       </Route>
     </div>
   )
 }
 
-/**This does all the async data fetching/error handling */
+/**This does all the single-table async data fetching/error handling */
 function TableEntry({
   token,
   projectName,
   refreshTableLinks,
+  refreshTableLinksError,
 }: {
   token: string
   projectName: string
   refreshTableLinks: () => void
+  refreshTableLinksError: string
 }) {
   const { tablename } = useParams<{ tablename: string }>()
 
@@ -172,6 +179,7 @@ function TableEntry({
       onNewRow={refreshData}
       onRefresh={refreshAll}
       refreshInProgress={refreshPromise.promiseInProgress}
+      refreshError={`${refreshTableLinksError}${dataError}${metaError}`}
     />
   )
 }
@@ -185,6 +193,7 @@ function Table({
   onNewRow,
   onRefresh,
   refreshInProgress,
+  refreshError,
 }: {
   token: string
   projectName: string
@@ -193,6 +202,7 @@ function Table({
   onNewRow: () => void
   onRefresh: () => void
   refreshInProgress: boolean
+  refreshError: string
 }) {
   // New row form visibility
   const [newRow, setNewRow] = useState(data.length === 0)
@@ -230,7 +240,7 @@ function Table({
             ))}
             {/*Control buttons*/}
             <StyledTableCell>
-              <ButtonArray>
+              <ButtonArray errorMsg={refreshError}>
                 <CreateButton onClick={() => setNewRow((old) => !old)} />
                 <RefreshButton
                   onClick={onRefresh}
