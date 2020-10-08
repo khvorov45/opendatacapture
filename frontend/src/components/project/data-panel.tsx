@@ -7,6 +7,7 @@ import {
   TableBody,
   Table as MaterialTable,
   TextField,
+  FormHelperText,
 } from "@material-ui/core"
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { trackPromise, usePromiseTracker } from "react-promise-tracker"
@@ -94,6 +95,13 @@ export default function DataPanel({
   const { pathname } = useLocation()
   return (
     <div data-testid="data-panel">
+      <FormHelperText
+        error={true}
+        data-testid={"table-names-error"}
+        className={tableNamesError === "" ? "nodisplay" : ""}
+      >
+        {tableNamesError}
+      </FormHelperText>
       <SimpleNav
         links={tableNames ?? []}
         active={(l) => pathname.includes(`/project/${projectName}/data/${l}`)}
@@ -112,7 +120,6 @@ export default function DataPanel({
           token={token}
           projectName={projectName}
           refreshTableLinks={refreshTables}
-          refreshTableLinksError={tableNamesError}
         />
       </Route>
     </div>
@@ -124,12 +131,10 @@ function TableEntry({
   token,
   projectName,
   refreshTableLinks,
-  refreshTableLinksError,
 }: {
   token: string
   projectName: string
   refreshTableLinks: () => void
-  refreshTableLinksError: string
 }) {
   const { tablename } = useParams<{ tablename: string }>()
 
@@ -156,15 +161,16 @@ function TableEntry({
       })
       .catch((e) => setDataError(e.message))
   }, [token, projectName, tablename, setDataError])
-
   // Refresh everything
   const refreshAll = useCallback(() => {
     refreshTableLinks()
     refreshMeta()
     refreshData()
   }, [refreshTableLinks, refreshMeta, refreshData])
+  // Refresh only the table on load
   useEffect(() => {
-    refreshAll()
+    refreshMeta()
+    refreshData()
   }, [refreshAll])
 
   // Delete all table data
@@ -183,7 +189,7 @@ function TableEntry({
   const deleteAllPromise = usePromiseTracker({ area: "deleteAll" })
 
   return !meta || !data ? (
-    <></>
+    <FormHelperText error={true}>{`${dataError}${metaError}`}</FormHelperText>
   ) : (
     <Table
       token={token}
@@ -193,7 +199,7 @@ function TableEntry({
       onNewRow={refreshData}
       onRefresh={refreshAll}
       refreshInProgress={refreshPromise.promiseInProgress}
-      refreshError={`${refreshTableLinksError}${dataError}${metaError}`}
+      refreshError={`${dataError}${metaError}`}
       onDelete={deleteAllData}
       deleteError={deleteError}
       deleteInProgress={deleteAllPromise.promiseInProgress}

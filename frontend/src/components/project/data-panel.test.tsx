@@ -107,3 +107,22 @@ test("data panel functionality", async () => {
   // Check that the new row form is opened automatically
   expect(inputRow).not.toHaveClass("nodisplay")
 })
+
+test("fail to get a list of tables", async () => {
+  mockedAxios.get.mockRejectedValueOnce(Error("get tables error"))
+  const dataPanel = renderProjectPage("123", "data")
+  await waitForDomChange()
+  expect(dataPanel.getByText("get tables error")).toBeInTheDocument()
+})
+
+test("fail to fetch data and meta", async () => {
+  mockedAxios.get
+    // Table names
+    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: ["table"] })
+    // Meta/data, order is unknown
+    .mockRejectedValueOnce(Error("fetch error"))
+    .mockRejectedValueOnce(Error("fetch error"))
+  const dataPanel = renderProjectPage("123", "data")
+  await waitForDomChange()
+  expect(dataPanel.getByText("fetch errorfetch error")).toBeInTheDocument()
+})
