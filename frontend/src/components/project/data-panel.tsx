@@ -171,7 +171,7 @@ function TableEntry({
   useEffect(() => {
     refreshMeta()
     refreshData()
-  }, [refreshAll])
+  }, [refreshMeta, refreshData])
 
   // Delete all table data
   const [deleteError, setDeleteError] = useState("")

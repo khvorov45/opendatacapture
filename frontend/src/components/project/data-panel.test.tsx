@@ -126,3 +126,15 @@ test("fail to fetch data and meta", async () => {
   await waitForDomChange()
   expect(dataPanel.getByText("fetch errorfetch error")).toBeInTheDocument()
 })
+
+test("fail to fetch data/meta after a successful fetch", async () => {
+  const dataPanel = renderProjectPage("123", "data")
+  await waitForDomChange()
+  mockedAxios.get
+    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: ["table"] })
+    .mockRejectedValueOnce(Error("fetch error"))
+    .mockRejectedValueOnce(Error("fetch error"))
+  fireEvent.click(dataPanel.getByTestId("refresh-table-button"))
+  await waitForDomChange()
+  expect(dataPanel.getByText("fetch errorfetch error")).toBeInTheDocument()
+})
