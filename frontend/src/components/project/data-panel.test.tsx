@@ -41,4 +41,10 @@ test("data panel functionality", async () => {
   table1.cols.map((c) =>
     expect(within(headers).getByText(c.name)).toBeInTheDocument()
   )
+  // Check data
+  table1data.map((row) => {
+    Object.entries(row).map(([key, val]) => {
+      expect(dataPanel.getByText(val.toString())).toBeInTheDocument()
+    })
+  })
 })
