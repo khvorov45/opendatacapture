@@ -344,7 +344,10 @@ function InputRow({
       .catch((e) => setErrorMsg(e.message))
   }
   return (
-    <StyledTableRow className={hidden ? "nodisplay" : ""}>
+    <StyledTableRow
+      className={hidden ? "nodisplay" : ""}
+      data-testid="input-row"
+    >
       {meta.cols.map((c) => (
         <StyledTableCell key={c.name}>
           <Input col={c} onChange={handleChange} val={record[c.name] ?? ""} />
