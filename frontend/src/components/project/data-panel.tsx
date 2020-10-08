@@ -24,6 +24,7 @@ import {
   getTableData,
   getTableMeta,
   insertData,
+  removeAllTableData,
   TableData,
   TableMeta,
   TableRow,
@@ -33,6 +34,7 @@ import {
   CreateButton,
   RefreshButton,
   CheckButton,
+  DeleteButton,
 } from "../button"
 import { SimpleNav } from "../nav"
 import { StyledTableCell, StyledTableRow } from "../table"
@@ -165,8 +167,20 @@ function TableEntry({
     refreshAll()
   }, [refreshAll])
 
+  // Delete all table data
+  const [deleteError, setDeleteError] = useState("")
+  const deleteAllData = useCallback(() => {
+    trackPromise(removeAllTableData(token, projectName, tablename), "deleteAll")
+      .then(() => {
+        setDeleteError("")
+        refreshData()
+      })
+      .catch((e) => setDeleteError(e.message))
+  }, [token, projectName, tablename, setDeleteError, refreshData])
+
   // Promises
   const refreshPromise = usePromiseTracker({ area: "refresh" })
+  const deleteAllPromise = usePromiseTracker({ area: "deleteAll" })
 
   return !meta || !data ? (
     <></>
@@ -180,6 +194,9 @@ function TableEntry({
       onRefresh={refreshAll}
       refreshInProgress={refreshPromise.promiseInProgress}
       refreshError={`${refreshTableLinksError}${dataError}${metaError}`}
+      onDelete={deleteAllData}
+      deleteError={deleteError}
+      deleteInProgress={deleteAllPromise.promiseInProgress}
     />
   )
 }
@@ -194,6 +211,9 @@ function Table({
   onRefresh,
   refreshInProgress,
   refreshError,
+  onDelete,
+  deleteInProgress,
+  deleteError,
 }: {
   token: string
   projectName: string
@@ -203,6 +223,9 @@ function Table({
   onRefresh: () => void
   refreshInProgress: boolean
   refreshError: string
+  onDelete: () => void
+  deleteInProgress: boolean
+  deleteError: string
 }) {
   // New row form visibility
   const [newRow, setNewRow] = useState(data.length === 0)
@@ -240,12 +263,16 @@ function Table({
             ))}
             {/*Control buttons*/}
             <StyledTableCell>
-              <ButtonArray errorMsg={refreshError}>
+              <ButtonArray errorMsg={`${refreshError}${deleteError}`}>
                 <CreateButton onClick={() => setNewRow((old) => !old)} />
                 <RefreshButton
                   onClick={onRefresh}
                   inProgress={refreshInProgress}
                   dataTestId="refresh-table-button"
+                />
+                <DeleteButton
+                  onClick={onDelete}
+                  inProgress={deleteInProgress}
                 />
               </ButtonArray>
             </StyledTableCell>

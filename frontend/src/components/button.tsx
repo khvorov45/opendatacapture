@@ -173,7 +173,7 @@ export function DeleteButton({
   dataTestId,
   inProgress,
 }: {
-  onClick: () => void
+  onClick?: () => void
   dataTestId?: string
   inProgress?: boolean
 }) {
