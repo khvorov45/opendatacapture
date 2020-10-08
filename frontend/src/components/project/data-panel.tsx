@@ -72,52 +72,26 @@ export default function DataPanel({
   // Table list
   const [tableNames, setTableNames] = useState<string[] | null>(null)
   const [tableNamesError, setTableNamesError] = useState("")
-  const { promiseInProgress } = usePromiseTracker({ area: "refresh" })
   const refreshTables = useCallback(() => {
     trackPromise(getAllTableNames(token, projectName), "refresh")
       .then((tables) => {
         setTableNamesError("")
         setTableNames(tables)
       })
-      .catch((e) => setErrorMsg(e.message))
+      .catch((e) => setTableNamesError(e.message))
   }, [token, projectName])
-
-  // Let the table know it needs to refresh
-  const [refreshCounter, setRefreshCounter] = useState(0)
-
-  // Refresh everything
-  const refreshAll = useCallback(() => {
-    refreshTables()
-    setRefreshCounter((old) => old + 1)
-  }, [refreshTables, setRefreshCounter])
   useEffect(() => {
-    refreshAll()
-  }, [refreshAll])
-
-  // Update error
-  const [errorMsg, setErrorMsg] = useState("")
-  function updateErrorMsg(msg: string) {
-    setErrorMsg(tableNamesError + msg)
-  }
+    refreshTables()
+  }, [refreshTables])
 
   const { url } = useRouteMatch()
   const { pathname } = useLocation()
-  const classes = useStyles()
   return (
     <div data-testid="data-panel">
-      <div className={classes.dataControl}>
-        <ButtonArray errorMsg={errorMsg} errorTestId="refresh-tables-error">
-          <RefreshButton
-            onClick={refreshAll}
-            inProgress={promiseInProgress}
-            dataTestId="refresh-tables-button"
-          />
-        </ButtonArray>
-        <SimpleNav
-          links={tableNames ?? []}
-          active={(l) => pathname.includes(`/project/${projectName}/data/${l}`)}
-        />
-      </div>
+      <SimpleNav
+        links={tableNames ?? []}
+        active={(l) => pathname.includes(`/project/${projectName}/data/${l}`)}
+      />
       <Route exact path={url}>
         {tableNames === null ? (
           <></>
@@ -131,24 +105,22 @@ export default function DataPanel({
         <TableEntry
           token={token}
           projectName={projectName}
-          refresh={refreshCounter}
-          updateErrorMsg={updateErrorMsg}
+          refreshTableLinks={refreshTables}
         />
       </Route>
     </div>
   )
 }
 
+/**This does all the async data fetching/error handling */
 function TableEntry({
   token,
   projectName,
-  refresh,
-  updateErrorMsg,
+  refreshTableLinks,
 }: {
   token: string
   projectName: string
-  refresh: number
-  updateErrorMsg: (s: string) => void
+  refreshTableLinks: () => void
 }) {
   const { tablename } = useParams<{ tablename: string }>()
 
@@ -178,17 +150,16 @@ function TableEntry({
 
   // Refresh everything
   const refreshAll = useCallback(() => {
+    refreshTableLinks()
     refreshMeta()
     refreshData()
-  }, [refreshMeta, refreshData])
+  }, [refreshTableLinks, refreshMeta, refreshData])
   useEffect(() => {
     refreshAll()
-  }, [refreshAll, refresh])
+  }, [refreshAll])
 
-  // Update errors
-  useEffect(() => {
-    updateErrorMsg(metaError + dataError)
-  }, [updateErrorMsg, metaError, dataError])
+  // Promises
+  const refreshPromise = usePromiseTracker({ area: "refresh" })
 
   return !meta || !data ? (
     <></>
@@ -199,22 +170,29 @@ function TableEntry({
       meta={meta}
       data={data}
       onNewRow={refreshData}
+      onRefresh={refreshAll}
+      refreshInProgress={refreshPromise.promiseInProgress}
     />
   )
 }
 
+/**This does nothing async-related, just gets things and presents them */
 function Table({
   token,
   projectName,
   meta,
   data,
   onNewRow,
+  onRefresh,
+  refreshInProgress,
 }: {
   token: string
   projectName: string
   meta: TableMeta
   data: TableData
   onNewRow: () => void
+  onRefresh: () => void
+  refreshInProgress: boolean
 }) {
   // New row form visibility
   const [newRow, setNewRow] = useState(data.length === 0)
@@ -252,7 +230,14 @@ function Table({
             ))}
             {/*Control buttons*/}
             <StyledTableCell>
-              <CreateButton onClick={() => setNewRow((old) => !old)} />
+              <ButtonArray>
+                <CreateButton onClick={() => setNewRow((old) => !old)} />
+                <RefreshButton
+                  onClick={onRefresh}
+                  inProgress={refreshInProgress}
+                  dataTestId="refresh-table-button"
+                />
+              </ButtonArray>
             </StyledTableCell>
           </StyledTableRow>
         </TableHead>
