@@ -254,7 +254,7 @@ function Table({
     <TableContainer className={classes.tableContainer}>
       <MaterialTable {...getTableProps()}>
         <TableHead>
-          <StyledTableRow>
+          <StyledTableRow data-testid="header-row">
             {/*Actual headers*/}
             {headers.map((header) => (
               <StyledTableCell {...header.getHeaderProps()}>

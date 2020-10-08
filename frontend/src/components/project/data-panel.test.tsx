@@ -36,4 +36,9 @@ test("data panel functionality", async () => {
   const firstLink = dataPanel.getByText(toProperCase(table1.name))
   expect(firstLink).toBeInTheDocument()
   expect(firstLink.parentElement).toHaveClass("active")
+  // Check headers
+  const headers = dataPanel.getByTestId("header-row")
+  table1.cols.map((c) =>
+    expect(within(headers).getByText(c.name)).toBeInTheDocument()
+  )
 })
