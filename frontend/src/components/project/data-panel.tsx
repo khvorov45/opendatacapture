@@ -264,7 +264,10 @@ function Table({
             {/*Control buttons*/}
             <StyledTableCell>
               <ButtonArray errorMsg={`${refreshError}${deleteError}`}>
-                <CreateButton onClick={() => setNewRow((old) => !old)} />
+                <CreateButton
+                  onClick={() => setNewRow((old) => !old)}
+                  dataTestId="new-row-toggle"
+                />
                 <RefreshButton
                   onClick={onRefresh}
                   inProgress={refreshInProgress}
@@ -273,6 +276,7 @@ function Table({
                 <DeleteButton
                   onClick={onDelete}
                   inProgress={deleteInProgress}
+                  dataTestId="delete-all-table-data-button"
                 />
               </ButtonArray>
             </StyledTableCell>

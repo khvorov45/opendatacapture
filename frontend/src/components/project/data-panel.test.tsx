@@ -11,6 +11,7 @@ import {
 } from "../../tests/util"
 import toProperCase from "../../lib/to-proper-case"
 import { TableRow } from "../../lib/api/project"
+import { API_ROOT } from "../../lib/config"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
@@ -31,6 +32,10 @@ mockedAxios.get.mockImplementation(async (url) => {
 })
 
 const putreq = mockedAxios.put.mockImplementation(async (url, data) => ({
+  status: httpStatusCodes.NO_CONTENT,
+}))
+
+const deletereq = mockedAxios.delete.mockImplementation(async (url) => ({
   status: httpStatusCodes.NO_CONTENT,
 }))
 
@@ -77,7 +82,7 @@ test("data panel functionality", async () => {
   fireEvent.click(within(inputRow).getByTestId("submit-row-button"))
   await waitForDomChange()
   expect(putreq).toHaveBeenCalledWith(
-    expect.anything(),
+    `${API_ROOT}/project/some-project/insert/${table1.name}`,
     [table1data[0]],
     expect.anything()
   )
@@ -85,4 +90,20 @@ test("data panel functionality", async () => {
   Object.entries(table1data[0]).map(([key, val]) => {
     expect(dataPanel.getByText(val.toString())).toBeInTheDocument()
   })
+  // Close, open and close the new row form
+  fireEvent.click(within(headers).getByTestId("new-row-toggle"))
+  expect(inputRow).toHaveClass("nodisplay")
+  fireEvent.click(within(headers).getByTestId("new-row-toggle"))
+  expect(inputRow).not.toHaveClass("nodisplay")
+  fireEvent.click(within(headers).getByTestId("new-row-toggle"))
+  expect(inputRow).toHaveClass("nodisplay")
+  // Delete all table data
+  fireEvent.click(within(headers).getByTestId("delete-all-table-data-button"))
+  await waitForDomChange()
+  expect(deletereq).toHaveBeenCalledWith(
+    `${API_ROOT}/project/some-project/remove/${table1.name}/all`,
+    expect.anything()
+  )
+  // Check that the new row form is opened automatically
+  expect(inputRow).not.toHaveClass("nodisplay")
 })
