@@ -76,6 +76,10 @@ export const table1: TableMeta = {
   ],
 }
 
+export const table1data = [
+  { id: 1, email: "e1@example.com", height: 170, weight: 60 },
+]
+
 // Compound primary key
 export const table2: TableMeta = {
   name: "newtable2",
