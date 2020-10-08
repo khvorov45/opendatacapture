@@ -2,15 +2,13 @@
 import httpStatusCodes from "http-status-codes"
 import { fireEvent, waitForDomChange, within } from "@testing-library/react"
 import axios from "axios"
-import { TableMeta, ColMeta } from "../../lib/api/project"
-import { API_ROOT } from "../../lib/config"
 import {
   renderProjectPage,
   table1,
   table2,
   table3,
   table1data,
-} from "./project.test"
+} from "../../tests/util"
 import toProperCase from "../../lib/to-proper-case"
 
 jest.mock("axios")
@@ -34,5 +32,8 @@ mockedAxios.get.mockImplementation(async (url) => {
 test("data panel functionality", async () => {
   const dataPanel = renderProjectPage("123", "data")
   await waitForDomChange()
-  expect(dataPanel.getByText(toProperCase(table1.name))).toBeInTheDocument()
+  // The first table should be auto-selected
+  const firstLink = dataPanel.getByText(toProperCase(table1.name))
+  expect(firstLink).toBeInTheDocument()
+  expect(firstLink.parentElement).toHaveClass("active")
 })
