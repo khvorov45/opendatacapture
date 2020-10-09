@@ -156,3 +156,13 @@ test("fail to delete", async () => {
   await waitForDomChange()
   expect(dataPanel.getByText("delete error")).toBeInTheDocument()
 })
+
+test("no tables", async () => {
+  mockedAxios.get.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
+    data: [],
+  })
+  const dataPanel = renderProjectPage("123", "data")
+  await waitForDomChange()
+  expect(dataPanel.getByText("No tables found")).toBeInTheDocument()
+})
