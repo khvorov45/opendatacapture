@@ -121,14 +121,12 @@ export function ButtonLink({
   children,
   active,
   to,
-  className,
   dataTestId,
   onClick,
 }: {
   children: ReactNode
   active: boolean
   to: string
-  className?: string
   dataTestId?: string
   onClick?: () => void
 }) {
@@ -136,9 +134,7 @@ export function ButtonLink({
   return (
     <Button
       data-testid={dataTestId}
-      className={`${classes.link}${active ? " active" : ""}${
-        className ? " " + className : ""
-      }`}
+      className={`${classes.link}${active ? " active" : ""}`}
       component={Link}
       to={to}
       onClick={onClick}
