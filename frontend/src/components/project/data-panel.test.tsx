@@ -186,3 +186,13 @@ test("fill a new field entry and then remove what's been filled", async () => {
     expect.anything()
   )
 })
+
+test("attempt to put a string into a number field", async () => {
+  const dataPanel = renderProjectPage("123", "data")
+  await waitForDomChange()
+  const inputRow = dataPanel.getByTestId("input-row")
+  fillNewRow(inputRow, table1data[0])
+  const inputToMod = selectFieldByLabel(inputRow, "id")
+  fireEvent.change(inputToMod, { target: { value: "a" } })
+  expect(inputToMod).toBeInvalid()
+})
