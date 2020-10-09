@@ -2,8 +2,9 @@ import React from "react"
 import { IconButton } from "@material-ui/core"
 import BrightnessMediumIcon from "@material-ui/icons/BrightnessMedium"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
-import { useLocation } from "react-router-dom"
+import { useLocation, useRouteMatch } from "react-router-dom"
 import { ButtonLink } from "./button"
+import toProperCase from "../lib/to-proper-case"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -14,14 +15,10 @@ const useStyles = makeStyles((theme: Theme) =>
       alignItems: "center",
       backgroundColor: "var(--palette-bg-alt)",
       borderBottom: `1px solid ${theme.palette.divider}`,
-      "& .link": {
-        height: 48,
-      },
     },
     projectInfo: {
       display: "flex",
       flexDirection: "column",
-      height: 48,
       "& *": {
         margin: "auto",
       },
@@ -32,6 +29,13 @@ const useStyles = makeStyles((theme: Theme) =>
       "& .name": {
         "font-size": "1.1em",
       },
+    },
+    simpleNav: {
+      backgroundColor: "var(--palette-bg-alt)",
+      borderBottom: `1px solid ${theme.palette.divider}`,
+    },
+    link: {
+      height: 48,
     },
   })
 )
@@ -48,7 +52,7 @@ export default function Nav({
       <div>
         <ButtonLink
           dataTestId="home-link"
-          className="link"
+          className={classes.link}
           active={location.pathname === "/"}
           to="/"
         >
@@ -87,5 +91,36 @@ function ThemeSwitch({ handleThemeChange }: { handleThemeChange: () => void }) {
     <IconButton data-testid="themeswitch" onClick={handleThemeChange}>
       <BrightnessMediumIcon />
     </IconButton>
+  )
+}
+
+export function SimpleNav({
+  links,
+  dataTestId,
+  onClick,
+  active,
+}: {
+  links: string[]
+  dataTestId?: string
+  onClick?: (l: string) => void
+  active?: (l: string) => boolean
+}) {
+  const { url } = useRouteMatch()
+  const { pathname } = useLocation()
+  const classes = useStyles()
+  return (
+    <div className={classes.simpleNav} data-testid={dataTestId}>
+      {links.map((l) => (
+        <ButtonLink
+          key={l}
+          className={classes.link}
+          active={active ? active(l) : pathname.includes(l)}
+          to={`${url}/${l}`}
+          onClick={() => onClick?.(l)}
+        >
+          {toProperCase(l)}
+        </ButtonLink>
+      ))}
+    </div>
   )
 }

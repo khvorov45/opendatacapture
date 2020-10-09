@@ -11,6 +11,7 @@ import {
 import Add from "@material-ui/icons/Add"
 import Refresh from "@material-ui/icons/Refresh"
 import DeleteForever from "@material-ui/icons/DeleteForever"
+import Check from "@material-ui/icons/Check"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -36,6 +37,10 @@ const useStyles = makeStyles((theme: Theme) =>
       width: 48,
       height: 48,
     },
+    error: {
+      backgroundColor: theme.palette.background.default,
+      zIndex: theme.zIndex.tooltip,
+    },
   })
 )
 
@@ -58,7 +63,11 @@ export function ButtonArray({
       className={`${classes.buttonArray}${className ? ` ${className}` : ""}`}
     >
       <div className={`buttons${center ? " center" : ""}`}>{children}</div>
-      <FormHelperText error={true} data-testid={errorTestId}>
+      <FormHelperText
+        error={true}
+        data-testid={errorTestId}
+        className={classes.error}
+      >
         {errorMsg}
       </FormHelperText>
     </div>
@@ -114,12 +123,14 @@ export function ButtonLink({
   to,
   className,
   dataTestId,
+  onClick,
 }: {
   children: ReactNode
   active: boolean
   to: string
   className?: string
   dataTestId?: string
+  onClick?: () => void
 }) {
   const classes = useStyles()
   return (
@@ -130,6 +141,7 @@ export function ButtonLink({
       }`}
       component={Link}
       to={to}
+      onClick={onClick}
     >
       {children}
     </Button>
@@ -161,7 +173,7 @@ export function DeleteButton({
   dataTestId,
   inProgress,
 }: {
-  onClick: () => void
+  onClick?: () => void
   dataTestId?: string
   inProgress?: boolean
 }) {
@@ -173,6 +185,34 @@ export function DeleteButton({
       inProgress={inProgress}
     >
       <DeleteForever htmlColor={theme.palette.error.main} />
+    </IconButtonWithProgress>
+  )
+}
+
+export function CheckButton({
+  onClick,
+  dataTestId,
+  inProgress,
+  disabled,
+}: {
+  onClick?: () => void
+  dataTestId?: string
+  inProgress?: boolean
+  disabled?: boolean
+}) {
+  const theme = useTheme()
+  return (
+    <IconButtonWithProgress
+      onClick={onClick}
+      dataTestId={dataTestId}
+      disabled={disabled}
+      inProgress={inProgress}
+    >
+      <Check
+        htmlColor={
+          disabled ? theme.palette.text.disabled : theme.palette.success.main
+        }
+      />
     </IconButtonWithProgress>
   )
 }

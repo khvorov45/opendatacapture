@@ -1,65 +1,39 @@
 import {
-  Checkbox as MaterialCheckbox,
   createStyles,
-  FormControl,
-  FormControlLabel,
   IconButton,
-  InputLabel,
   MenuItem,
-  Select as MaterialSelect,
   TextField,
   Theme,
   useTheme,
 } from "@material-ui/core"
-import { Redirect, useRouteMatch } from "react-router-dom"
 import makeStyles from "@material-ui/core/styles/makeStyles"
-import React, {
-  ChangeEvent,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useState,
-} from "react"
-import { Route, useParams } from "react-router-dom"
-import {
-  ColMeta,
-  createTable,
-  ForeignKey,
-  getAllMeta,
-  removeTable,
-  TableMeta,
-  TableSpec,
-} from "../lib/api/project"
-import {
-  ButtonArray,
-  ButtonLink,
-  CreateButton,
-  DeleteButton,
-  IconButtonWithProgress,
-  RefreshButton,
-} from "./button"
-import Check from "@material-ui/icons/Check"
 import Clear from "@material-ui/icons/Clear"
 import Remove from "@material-ui/icons/Remove"
 import Edit from "@material-ui/icons/Edit"
-import { NamedDivider } from "./divider"
-import { trackPromise, usePromiseTracker } from "react-promise-tracker"
+import React, { useState, useEffect, useCallback } from "react"
+import { usePromiseTracker, trackPromise } from "react-promise-tracker"
+import {
+  TableSpec,
+  getAllMeta,
+  TableMeta,
+  removeTable,
+  ColMeta,
+  ForeignKey,
+  createTable,
+} from "../../lib/api/project"
+import {
+  ButtonArray,
+  CreateButton,
+  RefreshButton,
+  DeleteButton,
+  CheckButton,
+} from "../button"
+import { NamedDivider } from "../divider"
+import Select from "../select"
+import Checkbox from "../checkbox"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
-    projectPage: {
-      overflow: "auto",
-      "& .hidden": {
-        visibility: "hidden",
-      },
-      "& .nodisplay": {
-        display: "none",
-      },
-    },
-    sidebar: {
-      backgroundColor: "var(--palette-bg-alt)",
-      borderBottom: `1px solid ${theme.palette.divider}`,
-    },
     tablePanel: {
       "&>*": {
         margin: "auto",
@@ -109,51 +83,10 @@ const useStyles = makeStyles((theme: Theme) =>
         marginRight: 0,
       },
     },
-    select: {
-      minWidth: 80,
-    },
   })
 )
 
-export default function ProjectPage({ token }: { token: string | null }) {
-  let { name } = useParams<{ name: string }>()
-  const classes = useStyles()
-  return (
-    <div className={classes.projectPage} data-testid={`project-page-${name}`}>
-      <Sidebar />
-      {token ? <Main token={token} /> : <></>}
-    </div>
-  )
-}
-
-function Sidebar() {
-  const { url } = useRouteMatch()
-  const classes = useStyles()
-  return (
-    <div className={classes.sidebar} data-testid="project-page-links">
-      <ButtonLink active={true} to={`${url}/tables`}>
-        Tables
-      </ButtonLink>
-    </div>
-  )
-}
-
-function Main({ token }: { token: string }) {
-  const { url } = useRouteMatch()
-  const { name } = useParams<{ name: string }>()
-  return (
-    <main>
-      <Route path={url}>
-        <Redirect to={`${url}/tables`} />
-      </Route>
-      <Route path={`${url}/tables`}>
-        <TablePanel token={token} projectName={name} />
-      </Route>
-    </main>
-  )
-}
-
-function TablePanel({
+export default function TablePanel({
   token,
   projectName,
 }: {
@@ -186,7 +119,7 @@ function TablePanel({
 
   const classes = useStyles()
   return (
-    <div className={classes.tablePanel}>
+    <div className={classes.tablePanel} data-testid="table-panel">
       <ButtonArray
         className={classes.tableControl}
         errorMsg={errorMsg}
@@ -509,20 +442,12 @@ function NewTableForm({
         errorMsg={errorMsg}
         errorTestId="table-submit-error"
       >
-        <IconButtonWithProgress
+        <CheckButton
           onClick={handleSubmit}
           dataTestId="submit-table-button"
           disabled={!isViable()}
           inProgress={promiseInProgress}
-        >
-          <Check
-            htmlColor={
-              isViable()
-                ? theme.palette.success.main
-                : theme.palette.text.disabled
-            }
-          />
-        </IconButtonWithProgress>
+        />
         <IconButton onClick={handleClear} data-testid="clear-table-button">
           <Clear htmlColor={theme.palette.error.main} />
         </IconButton>
@@ -568,12 +493,8 @@ function ColumnEntry({
 }) {
   const allowedTypes = ["integer", "text"]
 
-  // Foreign key checkbox
-  const [foreignKeyCheckbox, setForeignKeyCheckbox] = useState(
-    foreignKey !== null
-  )
+  // FK checkbox
   function handleFKChange(newFK: boolean) {
-    setForeignKeyCheckbox(newFK)
     // Make sure the FK is always viable
     if (newFK) {
       handleForeignTableChange(availableForeignTables()[0].name)
@@ -589,12 +510,6 @@ function ColumnEntry({
       (t) => t.cols.filter((c) => c.primary_key).length === 1
     )
   }, [tableSpec])
-  const [foreignTable, setForeignTable] = useState(
-    foreignKey ? foreignKey.table : ""
-  )
-  const [foreignColumn, setForeignColumn] = useState(
-    foreignKey ? foreignKey.column : ""
-  )
   function handleForeignTableChange(newTable: string) {
     // There is only one column option per available table with my constraints
     const newForeignColumn = tableSpec
@@ -604,11 +519,10 @@ function ColumnEntry({
     // available foreign tables
     /* istanbul ignore next */
     if (newForeignColumn) {
-      setForeignTable(newTable)
-      setForeignColumn(newForeignColumn.name)
       onFKChange({ table: newTable, column: newForeignColumn.name })
     }
   }
+  const foreingColumn = foreignKey ? foreignKey.column : ""
 
   const classes = useStyles()
   const theme = useTheme()
@@ -670,7 +584,7 @@ function ColumnEntry({
 
       <div>
         <Checkbox
-          checked={foreignKeyCheckbox}
+          checked={foreignKey !== null}
           onChange={handleFKChange}
           label="Foreign key"
           readOnly={readOnly || availableForeignTables().length === 0}
@@ -678,10 +592,10 @@ function ColumnEntry({
         />
         <Select
           id="fk-table"
-          value={foreignTable}
+          value={foreignKey ? foreignKey.table : ""}
           onChange={handleForeignTableChange}
           label="Table"
-          hidden={!foreignKeyCheckbox}
+          hidden={foreignKey === null}
           readOnly={readOnly || availableForeignTables().length === 0}
           dataTestId={"foreign-table-select"}
         >
@@ -693,13 +607,13 @@ function ColumnEntry({
         </Select>
         <Select
           id="fk-column"
-          value={foreignColumn}
+          value={foreingColumn}
           label="Column"
-          hidden={!foreignKeyCheckbox}
+          hidden={foreignKey === null}
           readOnly={true}
           dataTestId={"foreign-column-select"}
         >
-          <MenuItem value={foreignColumn}>{foreignColumn}</MenuItem>
+          <MenuItem value={foreingColumn}>{foreingColumn}</MenuItem>
         </Select>
       </div>
       <div className={`delete${readOnly ? " hidden" : ""}`}>
@@ -708,75 +622,5 @@ function ColumnEntry({
         </IconButton>
       </div>
     </div>
-  )
-}
-
-function Select({
-  children,
-  value,
-  onChange,
-  id,
-  label,
-  hidden,
-  readOnly,
-  dataTestId,
-}: {
-  children: ReactNode
-  value: string
-  onChange?: (value: string) => void
-  id: string
-  label: string
-  hidden?: boolean
-  readOnly?: boolean
-  dataTestId?: string
-}) {
-  const classes = useStyles()
-  return (
-    <FormControl className={`${classes.select}${hidden ? " hidden" : ""}`}>
-      <InputLabel id={id + "-select-label"}>{label}</InputLabel>
-      <MaterialSelect
-        data-testid={dataTestId}
-        labelId={id + "-select-label"}
-        id={id}
-        value={value}
-        onChange={(e) => onChange?.(e.target.value as string)}
-        disabled={readOnly}
-      >
-        {children}
-      </MaterialSelect>
-    </FormControl>
-  )
-}
-
-function Checkbox({
-  checked,
-  onChange,
-  label,
-  hidden,
-  readOnly,
-  dataTestId,
-}: {
-  checked: boolean
-  onChange: (value: boolean) => void
-  label: string
-  hidden?: boolean
-  readOnly?: boolean
-  dataTestId?: string
-}) {
-  return (
-    <FormControlLabel
-      className={`${hidden ? "hidden" : ""}`}
-      control={
-        <MaterialCheckbox
-          checked={checked}
-          onChange={(e: ChangeEvent<HTMLInputElement>) =>
-            onChange(e.target.checked)
-          }
-          disabled={readOnly}
-          data-testid={dataTestId}
-        />
-      }
-      label={label}
-    />
   )
 }

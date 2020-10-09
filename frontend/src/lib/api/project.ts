@@ -38,7 +38,8 @@ const TableMetaV = t.type({
 export type TableMeta = t.TypeOf<typeof TableMetaV>
 export type TableSpec = TableMeta[]
 
-export type TableData = Object[]
+export type TableData = TableRow[]
+export type TableRow = Record<string, any>
 
 export async function createProject(tok: string, name: string): Promise<void> {
   const res = await axios.put(

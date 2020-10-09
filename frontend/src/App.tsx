@@ -2,7 +2,7 @@ import React, { ReactNode, useState } from "react"
 import { createMuiTheme, ThemeProvider, Theme } from "@material-ui/core/styles"
 import Nav from "./components/nav"
 import Login from "./components/login"
-import Project from "./components/project"
+import Project from "./components/project/project"
 import { tokenFetcher, tokenValidator } from "./lib/api/auth"
 import CssBaseline from "@material-ui/core/CssBaseline"
 import {

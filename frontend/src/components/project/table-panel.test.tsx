@@ -1,40 +1,13 @@
 /* istanbul ignore file */
-import React from "react"
 import httpStatusCodes from "http-status-codes"
-import {
-  fireEvent,
-  render,
-  waitForDomChange,
-  within,
-} from "@testing-library/react"
-import { BrowserRouter, Redirect, Route, Switch } from "react-router-dom"
-
-import ProjectPage from "./project"
-
+import { fireEvent, waitForDomChange, within } from "@testing-library/react"
 import axios from "axios"
-import { ColMeta, TableMeta } from "../lib/api/project"
-import { API_ROOT } from "../lib/config"
+import { TableMeta, ColMeta } from "../../lib/api/project"
+import { API_ROOT } from "../../lib/config"
+import { renderProjectPage, table1, table2, table3 } from "../../tests/util"
+
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
-
-function renderProjectPage(token?: string | null) {
-  let tok: string | null = "123"
-  if (token !== undefined) {
-    tok = token
-  }
-  return render(
-    <BrowserRouter>
-      <Switch>
-        <Route exact path="/">
-          <Redirect to="/project/some-project" />
-        </Route>
-        <Route path="/project/:name">
-          <ProjectPage token={tok} />
-        </Route>
-      </Switch>
-    </BrowserRouter>
-  )
-}
 
 function performSelectAction(selectElement: HTMLElement, value: string) {
   fireEvent.mouseDown(within(selectElement).getByRole("button"))
@@ -110,92 +83,24 @@ function fillTableForm(form: HTMLElement, table: TableMeta) {
   })
 }
 
-const table1: TableMeta = {
-  name: "newtable",
-  cols: [
-    {
-      name: "id",
-      postgres_type: "integer",
-      primary_key: true,
-      not_null: false,
-      unique: false,
-      foreign_key: null,
-    },
-    {
-      name: "email",
-      postgres_type: "text",
-      primary_key: false,
-      not_null: true,
-      unique: true,
-      foreign_key: null,
-    },
-    {
-      name: "height",
-      postgres_type: "integer",
-      primary_key: false,
-      not_null: false,
-      unique: false,
-      foreign_key: null,
-    },
-    {
-      name: "weight",
-      postgres_type: "integer",
-      primary_key: false,
-      not_null: false,
-      unique: false,
-      foreign_key: null,
-    },
-  ],
+// Thanks, Material UI, for easy-to-test components
+function expectMuiSelectToBeEmpty(select: HTMLElement) {
+  const textContent = within(select).getByRole("button").childNodes[0]
+    .textContent
+  // Was this really necessary or was it just to mess with me?
+  expect(textContent).toEqual("\u200B")
 }
 
-// Compound primary key
-const table2: TableMeta = {
-  name: "newtable2",
-  cols: [
-    {
-      name: "id",
-      postgres_type: "integer",
-      primary_key: true,
-      not_null: false,
-      unique: false,
-      foreign_key: { table: table1.name, column: table1.cols[0].name },
-    },
-    {
-      name: "timepoint",
-      postgres_type: "text",
-      primary_key: true,
-      not_null: false,
-      unique: false,
-      foreign_key: null,
-    },
-  ],
+function expectTableFormToBeEmpty(form: HTMLElement) {
+  expect(within(form).getByTestId("new-table-name-field")).toHaveValue("")
+  // The following should fail if there is more than one column entry
+  expect(within(form).getByTestId("new-column-name-field")).toHaveValue("")
+  expectMuiSelectToBeEmpty(within(form).getByTestId("new-column-type-select"))
+  expect(within(form).getByTestId("primary-key")).not.toBeChecked()
+  expect(within(form).getByTestId("not-null")).not.toBeChecked()
+  expect(within(form).getByTestId("unique")).not.toBeChecked()
+  expect(within(form).getByTestId("foreign-key")).not.toBeChecked()
 }
-
-// No primary key
-const table3: TableMeta = {
-  name: "newtable3",
-  cols: [
-    {
-      name: "id",
-      postgres_type: "integer",
-      primary_key: false,
-      not_null: false,
-      unique: true,
-      foreign_key: null,
-    },
-  ],
-}
-
-test("project page with null token", async () => {
-  // Normally the null (or wrong or too old)
-  // token will fail to be verified in App which should
-  // redirect us to login
-  let { getByTestId } = renderProjectPage(null)
-  // The top bar should be there
-  expect(getByTestId("project-page-links")).toBeInTheDocument()
-  // The main section should be absent
-  expect(document.getElementsByTagName("main")).toBeEmpty()
-})
 
 test("table panel functionality - no initial tables", async () => {
   // List of tables
@@ -256,9 +161,7 @@ test("table panel functionality - no initial tables", async () => {
   // The table form should still be visible
   expect(newTableForm).not.toHaveClass("nodisplay")
   // And empty
-  expect(within(newTableForm).getByTestId("new-table-name-field")).toHaveValue(
-    ""
-  )
+  expectTableFormToBeEmpty(newTableForm)
 
   // Create another table
   fillTableForm(newTableForm, table2)
@@ -278,6 +181,7 @@ test("table panel functionality - no initial tables", async () => {
     table2,
     expect.anything()
   )
+  expectTableFormToBeEmpty(newTableForm)
 
   // There should be another table card
   expect(getByTestId(`table-card-${table1.name}`)).toBeInTheDocument()
