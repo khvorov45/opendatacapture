@@ -204,7 +204,7 @@ impl AdminDB {
         let res = sqlx::query_as::<Database, auth::Token>(
             "SELECT * FROM \"token\" WHERE \"token\" = $1",
         )
-        .bind(token)
+        .bind(auth::hash_fast(token)?)
         .fetch_optional(self.get_pool())
         .await?;
         match res {
@@ -222,7 +222,7 @@ impl AdminDB {
             ($1, $2, $3)",
         )
         .bind(tok.user())
-        .bind(tok.token())
+        .bind(auth::hash_fast(tok.token())?)
         .bind(tok.created())
         .execute(self.get_pool())
         .await?;
