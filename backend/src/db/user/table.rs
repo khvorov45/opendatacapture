@@ -211,11 +211,6 @@ impl TableMeta {
     }
 }
 
-/// Drop query
-pub fn construct_drop_query(name: &str) -> String {
-    format!("DROP TABLE \"{}\"", name)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

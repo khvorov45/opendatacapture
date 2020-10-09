@@ -54,7 +54,7 @@ impl UserDB {
 
         self.check_table_exists(table_name).await?;
 
-        sqlx::query(table::construct_drop_query(table_name).as_str())
+        sqlx::query(format!("DROP TABLE \"{}\"", table_name).as_str())
             .execute(self.get_pool())
             .await?;
         Ok(())
