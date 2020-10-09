@@ -156,3 +156,43 @@ test("fail to delete", async () => {
   await waitForDomChange()
   expect(dataPanel.getByText("delete error")).toBeInTheDocument()
 })
+
+test("no tables", async () => {
+  mockedAxios.get.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
+    data: [],
+  })
+  const dataPanel = renderProjectPage("123", "data")
+  await waitForDomChange()
+  expect(dataPanel.getByText("No tables found")).toBeInTheDocument()
+})
+
+test("fill a new field entry and then remove what's been filled", async () => {
+  const dataPanel = renderProjectPage("123", "data")
+  await waitForDomChange()
+  const inputRow = dataPanel.getByTestId("input-row")
+  fillNewRow(inputRow, table1data[0])
+  const newRecord: TableRow = { ...table1data[0] }
+  delete newRecord[Object.keys(table1data)[0]]
+  fireEvent.change(
+    selectFieldByLabel(inputRow, Object.keys(table1data[0])[0]),
+    { target: { value: "" } }
+  )
+  fireEvent.click(within(inputRow).getByTestId("submit-row-button"))
+  await waitForDomChange()
+  expect(putreq).toHaveBeenCalledWith(
+    `${API_ROOT}/project/some-project/insert/${table1.name}`,
+    [newRecord],
+    expect.anything()
+  )
+})
+
+test("attempt to put a string into a number field", async () => {
+  const dataPanel = renderProjectPage("123", "data")
+  await waitForDomChange()
+  const inputRow = dataPanel.getByTestId("input-row")
+  fillNewRow(inputRow, table1data[0])
+  const inputToMod = selectFieldByLabel(inputRow, "id")
+  fireEvent.change(inputToMod, { target: { value: "a" } })
+  expect(inputToMod).toBeInvalid()
+})
