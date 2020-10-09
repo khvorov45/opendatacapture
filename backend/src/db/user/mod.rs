@@ -54,7 +54,7 @@ impl UserDB {
 
         self.check_table_exists(table_name).await?;
 
-        sqlx::query(table::construct_drop_query(table_name).as_str())
+        sqlx::query(format!("DROP TABLE \"{}\"", table_name).as_str())
             .execute(self.get_pool())
             .await?;
         Ok(())
@@ -212,7 +212,7 @@ impl UserDB {
     ) -> Result<Vec<RowJson>> {
         self.check_table_exists(table_name).await?;
         let res = sqlx::query(
-            format!("SELECT ROW_TO_JSON(\"{0}\") FROM \"{0}\"", table_name)
+            format!("SELECT ROW_TO_JSON(\"{0}\".*) FROM \"{0}\"", table_name)
                 .as_str(),
         )
         .fetch_all(self.get_pool())

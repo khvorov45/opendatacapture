@@ -162,50 +162,6 @@ impl TableMeta {
             self.name, all_columns, primary_key_entry
         )
     }
-    /// Select query
-    pub fn construct_select_query(
-        &self,
-        cols: &[&str],
-        custom_post: &str,
-    ) -> Result<String> {
-        // No specific columns - wildcard
-        if cols.is_empty() {
-            return Ok(format!(
-                "SELECT * FROM \"{}\" {}",
-                self.name, custom_post
-            ));
-        }
-        // Check that all requested are present
-        self.verify_cols_present(cols)?;
-        // Join into a comma-separated string
-        let cols_string = cols
-            .iter()
-            .map(|c| format!("\"{}\"", c))
-            .collect::<Vec<String>>()
-            .join(",");
-        Ok(format!(
-            "SELECT {} FROM \"{}\" {}",
-            cols_string, self.name, custom_post
-        ))
-    }
-    /// Select query with a json map per row
-    pub fn construct_select_json_query(
-        &self,
-        cols: &[&str],
-        custom_post: &str,
-    ) -> Result<String> {
-        if cols.is_empty() && custom_post.is_empty() {
-            return Ok(format!(
-                "SELECT ROW_TO_JSON(\"{0}\") FROM \"{0}\"",
-                self.name
-            ));
-        }
-        let inner_query = self.construct_select_query(cols, custom_post)?;
-        Ok(format!(
-            "SELECT ROW_TO_JSON(\"{0}\") FROM ({1}) AS \"{0}\"",
-            self.name, inner_query
-        ))
-    }
     /// Insert query with parameters
     pub fn construct_param_insert_query<T: AsRef<str>>(
         &self,
@@ -253,11 +209,6 @@ impl TableMeta {
         }
         Ok(())
     }
-}
-
-/// Drop query
-pub fn construct_drop_query(name: &str) -> String {
-    format!("DROP TABLE \"{}\"", name)
 }
 
 #[cfg(test)]
@@ -363,56 +314,6 @@ mod tests {
                 )"
             );
         }
-    }
-    #[test]
-    fn select_table() {
-        let _ = pretty_env_logger::try_init();
-        let mut cols = Vec::new();
-        cols.push(ColMeta::new().name("name").postgres_type("TEXT"));
-        cols.push(
-            ColMeta::new()
-                .name("id")
-                .postgres_type("INTEGER")
-                .primary_key(true),
-        );
-        let table = TableMeta::new("table", cols);
-        assert_eq!(
-            table.construct_select_query(&[], "").unwrap(),
-            "SELECT * FROM \"table\" "
-        );
-        assert_eq!(
-            table.construct_select_json_query(&[], "").unwrap(),
-            "SELECT ROW_TO_JSON(\"table\") FROM \"table\""
-        );
-        assert_eq!(
-            table.construct_select_query(&["name", "id"], "").unwrap(),
-            "SELECT \"name\",\"id\" FROM \"table\" "
-        );
-        assert_eq!(
-            table
-                .construct_select_json_query(&["name", "id"], "")
-                .unwrap(),
-            "SELECT ROW_TO_JSON(\"table\") FROM \
-            (SELECT \"name\",\"id\" FROM \"table\" ) AS \"table\""
-        );
-        assert_eq!(
-            table
-                .construct_select_json_query(
-                    &["name", "id"],
-                    "WHERE \"name\" = $1"
-                )
-                .unwrap(),
-            "SELECT ROW_TO_JSON(\"table\") FROM \
-            (SELECT \"name\",\"id\" FROM \"table\" WHERE \"name\" = $1) \
-            AS \"table\""
-        );
-        let err = table
-            .construct_select_query(&["extra", "id"], "")
-            .unwrap_err();
-        assert!(matches!(
-            err,
-            Error::NoSuchColumns(cont) if cont == vec![String::from("extra")]
-        ));
     }
     #[test]
     fn insert_table() {
