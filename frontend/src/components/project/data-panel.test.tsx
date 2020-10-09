@@ -147,3 +147,12 @@ test("fail to submit", async () => {
   await waitForDomChange()
   expect(dataPanel.getByText("submit error")).toBeInTheDocument()
 })
+
+test("fail to delete", async () => {
+  const dataPanel = renderProjectPage("123", "data")
+  await waitForDomChange()
+  mockedAxios.delete.mockRejectedValueOnce(Error("delete error"))
+  fireEvent.click(dataPanel.getByTestId("delete-all-table-data-button"))
+  await waitForDomChange()
+  expect(dataPanel.getByText("delete error")).toBeInTheDocument()
+})
