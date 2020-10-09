@@ -212,7 +212,7 @@ impl UserDB {
     ) -> Result<Vec<RowJson>> {
         self.check_table_exists(table_name).await?;
         let res = sqlx::query(
-            format!("SELECT ROW_TO_JSON(\"{0}\") FROM \"{0}\"", table_name)
+            format!("SELECT ROW_TO_JSON(\"{0}\".*) FROM \"{0}\"", table_name)
                 .as_str(),
         )
         .fetch_all(self.get_pool())
