@@ -3,7 +3,7 @@ import React from "react"
 import { render } from "@testing-library/react"
 import { Redirect, Route, Switch, MemoryRouter } from "react-router-dom"
 import ProjectPage from "../components/project/project"
-import { TableMeta } from "../lib/api/project"
+import { TableData, TableMeta } from "../lib/api/project"
 
 export function renderProjectPage(
   token?: string | null,
@@ -29,6 +29,20 @@ export function renderProjectPage(
   )
 }
 
+/* NOTE on postgres and primary keys:
+
+When a column is marked as PRIMARY_KEY, the UNIQUE constraint is always absent
+and the NOT_NULL "constraint" is always present regardless of what
+SQL you write.
+
+So all of the following will produce the same table:
+
+CREATE TABLE some_table (id INT PRIMARY KEY)
+CREATE TABLE some_table (id INT PRIMARY KEY NOT_NULL)
+CREATE TABLE some_table (id INT PRIMARY KEY UNIQUE)
+CREATE TABLE some_table (id INT PRIMARY KEY NOT_NULL UNIQUE)
+*/
+
 export const table1: TableMeta = {
   name: "newtable",
   cols: [
@@ -36,7 +50,7 @@ export const table1: TableMeta = {
       name: "id",
       postgres_type: "integer",
       primary_key: true,
-      not_null: false,
+      not_null: true,
       unique: false,
       foreign_key: null,
     },
@@ -67,8 +81,9 @@ export const table1: TableMeta = {
   ],
 }
 
-export const table1data = [
+export const table1data: TableData = [
   { id: 1, email: "e1@example.com", height: 170, weight: 60 },
+  { id: 2, email: "e2@example.com", height: 180, weight: 70 },
 ]
 
 // Compound primary key
@@ -79,7 +94,7 @@ export const table2: TableMeta = {
       name: "id",
       postgres_type: "integer",
       primary_key: true,
-      not_null: false,
+      not_null: true,
       unique: false,
       foreign_key: { table: table1.name, column: table1.cols[0].name },
     },
@@ -87,7 +102,7 @@ export const table2: TableMeta = {
       name: "timepoint",
       postgres_type: "text",
       primary_key: true,
-      not_null: false,
+      not_null: true,
       unique: false,
       foreign_key: null,
     },
@@ -108,3 +123,20 @@ export const table3: TableMeta = {
     },
   ],
 }
+
+// Has the same name as one of its columns
+export const tableTitre: TableMeta = {
+  name: "titre",
+  cols: [
+    {
+      name: "titre",
+      postgres_type: "integer",
+      primary_key: false,
+      not_null: false,
+      unique: false,
+      foreign_key: null,
+    },
+  ],
+}
+
+export const tableTitreData: TableData = [{ titre: 20 }, { titre: 40 }]
