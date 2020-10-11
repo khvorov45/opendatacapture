@@ -21,15 +21,14 @@ pub fn hash(password: &str) -> Result<String> {
 }
 
 /// Hash a string but quickly
-pub fn hash_fast(token: &str) -> Result<String> {
+pub fn hash_fast(token: &str) -> String {
     use sha2::Digest;
     let mut hasher = sha2::Sha256::new();
     hasher.update(token.as_bytes());
     let hash_result = hasher.finalize();
     let mut out = [0u8; 32];
     out.copy_from_slice(&hash_result);
-    let hash = hex::encode(&out);
-    Ok(hash)
+    hex::encode(&out)
 }
 
 /// Generates a random string

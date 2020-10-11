@@ -1105,7 +1105,7 @@ mod tests {
                         "UPDATE \"token\" \
                         SET \"created\" = '2000-08-14 08:15:29.425665+10' \
                         WHERE \"token\" = '{}'",
-                        auth::hash_fast(old_token).unwrap()
+                        auth::hash_fast(old_token)
                     )
                     .as_str(),
                 )
