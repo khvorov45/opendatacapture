@@ -3,7 +3,7 @@ import React from "react"
 import { render } from "@testing-library/react"
 import { Redirect, Route, Switch, MemoryRouter } from "react-router-dom"
 import ProjectPage from "../components/project/project"
-import { TableMeta } from "../lib/api/project"
+import { TableData, TableMeta } from "../lib/api/project"
 
 export function renderProjectPage(
   token?: string | null,
@@ -81,7 +81,7 @@ export const table1: TableMeta = {
   ],
 }
 
-export const table1data = [
+export const table1data: TableData = [
   { id: 1, email: "e1@example.com", height: 170, weight: 60 },
   { id: 2, email: "e2@example.com", height: 180, weight: 70 },
 ]
@@ -123,3 +123,20 @@ export const table3: TableMeta = {
     },
   ],
 }
+
+// Has the same name as one of its columns
+export const tableTitre: TableMeta = {
+  name: "titre",
+  cols: [
+    {
+      name: "titre",
+      postgres_type: "integer",
+      primary_key: false,
+      not_null: false,
+      unique: false,
+      foreign_key: null,
+    },
+  ],
+}
+
+export const tableTitreData: TableData = [{ titre: 20 }, { titre: 40 }]

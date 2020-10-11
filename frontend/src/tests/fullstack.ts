@@ -24,7 +24,7 @@ import {
   getTableData,
   removeAllTableData,
 } from "../lib/api/project"
-import { table1, table2, table1data } from "./util"
+import { table1, table2, table1data, tableTitre, tableTitreData } from "./util"
 
 test("wrong token", async () => {
   expect.assertions(1)
@@ -284,6 +284,13 @@ describe("need credentials", () => {
       expect(await getAllTableNames(token, "test")).toEqual([table1.name])
       await removeTable(token, "test", table1.name)
       expect(await getAllTableNames(token, "test")).toEqual([])
+    })
+
+    test("data push/pull from a table that has the same name as its column", async () => {
+      await createTable(token, "test", tableTitre)
+      await insertData(token, "test", tableTitre.name, tableTitreData)
+      const dataObtained = await getTableData(token, "test", tableTitre.name)
+      expect(dataObtained).toEqual(tableTitreData)
     })
 
     describe("nonexistent table", () => {
