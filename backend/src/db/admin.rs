@@ -188,19 +188,15 @@ impl AdminDB {
     /// Gets the user who the given token belongs to
     pub async fn get_user_by_token(&self, tok: &str) -> Result<User> {
         log::debug!("getting user by token {}", tok);
-        let tok = self.get_token(tok).await?;
-        log::debug!("got token: {:?}", tok);
-        if tok.age_hours() > auth::AUTH_TOKEN_HOURS_TO_LIVE {
-            return Err(Error::Unauthorized(Unauthorized::TokenTooOld));
-        }
+        let tok = self.get_token_valid(tok).await?;
         // DB guarantees that there will be a user
         self.get_user_by_id(tok.user()).await
     }
 
     // Token table ------------------------------------------------------------
 
-    /// Get token by the unique string
-    async fn get_token(&self, token: &str) -> Result<auth::Token> {
+    /// Get token by the unique string and makes sure it's valid
+    async fn get_token_valid(&self, token: &str) -> Result<auth::Token> {
         let res = sqlx::query_as::<Database, auth::Token>(
             "SELECT * FROM \"token\" WHERE \"token\" = $1",
         )
@@ -208,7 +204,13 @@ impl AdminDB {
         .fetch_optional(self.get_pool())
         .await?;
         match res {
-            Some(tok) => Ok(tok),
+            Some(tok) => {
+                if tok.age_hours() > auth::AUTH_TOKEN_HOURS_TO_LIVE {
+                    Err(Error::Unauthorized(Unauthorized::TokenTooOld))
+                } else {
+                    Ok(tok)
+                }
+            }
             None => Err(Error::Unauthorized(Unauthorized::NoSuchToken(
                 token.to_string(),
             ))),
@@ -258,6 +260,11 @@ impl AdminDB {
             )))
         }
     }
+    /*
+    /// Refresh a token - change the string and date created
+    pub async fn refresh_token(&self, token: &str) -> Result<auth::Token> {
+        let token
+    }*/
 
     // Project table ----------------------------------------------------------
 
