@@ -204,7 +204,7 @@ impl AdminDB {
         let res = sqlx::query_as::<Database, auth::Token>(
             "SELECT * FROM \"token\" WHERE \"token\" = $1",
         )
-        .bind(token)
+        .bind(auth::hash_fast(token))
         .fetch_optional(self.get_pool())
         .await?;
         match res {
@@ -222,7 +222,7 @@ impl AdminDB {
             ($1, $2, $3)",
         )
         .bind(tok.user())
-        .bind(tok.token())
+        .bind(auth::hash_fast(tok.token()))
         .bind(tok.created())
         .execute(self.get_pool())
         .await?;
@@ -695,7 +695,10 @@ mod tests {
         // Generate token
         let user1 = extract_first_user(&test_db).await;
         let tok1 = gen_tok(&test_db).await;
-        assert_eq!(extract_first_user_token(&test_db).await, tok1);
+        let tok1_stored = extract_first_user_token(&test_db).await;
+        assert_eq!(tok1.user(), tok1_stored.user());
+        assert_eq!(tok1.created(), tok1_stored.created());
+        assert_eq!(auth::hash_fast(tok1.token()), tok1_stored.token());
 
         // Restart
         log::info!("restart");
@@ -708,12 +711,12 @@ mod tests {
         .await;
         // Data should not be modified
         let user2 = extract_first_user(&test_db).await;
-        let tok2 = extract_first_user_token(&test_db).await;
+        let tok2_stored = extract_first_user_token(&test_db).await;
         assert_eq!(user1, user2);
-        assert_eq!(tok1, tok2);
+        assert_eq!(tok1_stored, tok2_stored);
         // Next generated token should be different
         let tok2_next = gen_tok(&test_db).await;
-        assert_ne!(tok2.token(), tok2_next.token());
+        assert_ne!(tok2_stored.token(), auth::hash_fast(tok2_next.token()));
 
         // Start clean again
         log::info!("start clean again");

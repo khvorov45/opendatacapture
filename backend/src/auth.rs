@@ -20,6 +20,15 @@ pub fn hash(password: &str) -> Result<String> {
     Ok(hash)
 }
 
+/// Hash a string but quickly
+pub fn hash_fast(token: &str) -> String {
+    use sha2::Digest;
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(token.as_bytes());
+    let hash_result = hasher.finalize();
+    hex::encode(&hash_result)
+}
+
 /// Generates a random string
 fn gen_rand_string(len: usize) -> String {
     use rand::Rng;
