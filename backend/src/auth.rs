@@ -26,9 +26,7 @@ pub fn hash_fast(token: &str) -> String {
     let mut hasher = sha2::Sha256::new();
     hasher.update(token.as_bytes());
     let hash_result = hasher.finalize();
-    let mut out = [0u8; 32];
-    out.copy_from_slice(&hash_result);
-    hex::encode(&out)
+    hex::encode(&hash_result)
 }
 
 /// Generates a random string
