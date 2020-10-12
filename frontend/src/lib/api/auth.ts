@@ -2,7 +2,7 @@ import axios from "axios"
 import httpStatusCodes from "http-status-codes"
 import * as t from "io-ts"
 import { API_ROOT } from "../config"
-import { fromEnum } from "./io-validation"
+import { decode, fromEnum } from "./io-validation"
 
 export interface EmailPassword {
   email: string
@@ -60,4 +60,15 @@ export async function tokenValidator(tok: string): Promise<User> {
     throw Error("unexpected response data: " + JSON.stringify(res.data))
   }
   return res.data as User
+}
+
+export async function refreshToken(tok: string): Promise<string> {
+  const res = await axios.post(`${API_ROOT}/auth/refresh-token/${tok}`, {
+    validateStatus: (s: number) =>
+      [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),
+  })
+  if (res.status !== httpStatusCodes.OK) {
+    throw Error(res.data)
+  }
+  return await decode(t.string, res.data)
 }

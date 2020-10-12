@@ -7,6 +7,7 @@
 import {
   Access,
   LoginFailure,
+  refreshToken,
   tokenFetcher,
   tokenValidator,
 } from "../lib/api/auth"
@@ -164,6 +165,11 @@ describe("need credentials", () => {
       email: "admin@example.com",
       password: "admin",
     })
+  })
+
+  test("token refresh", async () => {
+    const newTok = await refreshToken(token)
+    expect(newTok).not.toEqual(token)
   })
 
   test("project manipulation", async () => {
