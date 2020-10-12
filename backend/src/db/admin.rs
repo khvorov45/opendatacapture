@@ -260,11 +260,13 @@ impl AdminDB {
             )))
         }
     }
-    /*
-    /// Refresh a token - change the string and date created
+    /// Refresh a token - get valid old and insert and return new
     pub async fn refresh_token(&self, token: &str) -> Result<auth::Token> {
-        let token
-    }*/
+        let old_token = self.get_token_valid(token).await?;
+        let new_token = auth::Token::new(old_token.user());
+        self.insert_token(&new_token).await?;
+        Ok(new_token)
+    }
 
     // Project table ----------------------------------------------------------
 
@@ -759,6 +761,13 @@ mod tests {
             .unwrap();
         let user = test_db.get_user_by_token(user_tok.token()).await.unwrap();
         assert_eq!(user.id, user_tok.user());
+
+        // Refresh that token
+        let user_tok_refreshed =
+            test_db.refresh_token(user_tok.token()).await.unwrap();
+        assert_eq!(user_tok.user(), user_tok_refreshed.user());
+        assert!(user_tok.created() < user_tok_refreshed.created());
+        assert_ne!(user_tok.token(), user_tok_refreshed.token());
 
         // Make that token appear older
         sqlx::query(
