@@ -33,9 +33,6 @@ export async function tokenFetcher(cred: EmailPassword): Promise<string> {
     validateStatus: (s: number) =>
       [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),
   })
-  if (typeof res.data !== "string") {
-    throw Error("unexpected response data: " + JSON.stringify(res.data))
-  }
   if (res.status !== httpStatusCodes.OK) {
     if (res.data.startsWith("NoSuchUserEmail")) {
       throw Error(LoginFailure.EmailNotFound)
@@ -45,7 +42,7 @@ export async function tokenFetcher(cred: EmailPassword): Promise<string> {
     }
     throw Error(res.data)
   }
-  return res.data
+  return await decode(t.string, res.data)
 }
 
 export async function tokenValidator(tok: string): Promise<User> {
@@ -56,10 +53,7 @@ export async function tokenValidator(tok: string): Promise<User> {
   if (res.status !== httpStatusCodes.OK) {
     throw Error(res.data)
   }
-  if (!UserV.is(res.data)) {
-    throw Error("unexpected response data: " + JSON.stringify(res.data))
-  }
-  return res.data as User
+  return await decode(UserV, res.data)
 }
 
 export async function refreshToken(tok: string): Promise<string> {

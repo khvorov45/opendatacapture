@@ -29,10 +29,13 @@ function createThemeFromPalette(palette: "dark" | "light"): Theme {
 export default function App({
   initPalette,
   initToken,
+  initLastRefresh,
 }: {
   initPalette: "dark" | "light"
   initToken: string | null
+  initLastRefresh: Date
 }) {
+  // Theme
   const [darkState, setDarkState] = useState(initPalette === "dark")
   const [theme, setTheme] = useState(createThemeFromPalette(initPalette))
   const handleThemeChange = () => {
@@ -43,10 +46,15 @@ export default function App({
     document.documentElement.setAttribute("theme", newPalette)
     localStorage.setItem("theme", newPalette)
   }
+  // Token
   const [token, setToken] = useState<string | null>(initToken)
+  const [lastRefresh, setLastRefresh] = useState(initLastRefresh)
   function updateToken(tok: string) {
     setToken(tok)
     localStorage.setItem("token", tok)
+    const newLastRefresh = new Date()
+    setLastRefresh(newLastRefresh)
+    localStorage.setItem("last-refresh", newLastRefresh.toISOString())
   }
   const { auth } = useToken(token, tokenValidator)
   return (

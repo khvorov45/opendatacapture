@@ -12,10 +12,15 @@ const initPalette = themeInit()
 
 // Work out the initial token
 const initToken = localStorage.getItem("token")
+const lastRefresh = new Date(localStorage.getItem("last-refresh") ?? 0)
 
 ReactDOM.render(
   <React.StrictMode>
-    <App initPalette={initPalette} initToken={initToken} />
+    <App
+      initPalette={initPalette}
+      initToken={initToken}
+      initLastRefresh={lastRefresh}
+    />
   </React.StrictMode>,
   document.getElementById("root")
 )
