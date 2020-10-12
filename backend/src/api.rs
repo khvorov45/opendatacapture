@@ -15,6 +15,7 @@ pub fn routes(
 ) -> impl Filter<Extract = impl Reply, Error = warp::Rejection> + Clone {
     let routes = health(db.clone())
         .or(generate_session_token(db.clone()))
+        .or(refresh_token(db.clone()))
         .or(get_user_by_token(db.clone()))
         .or(get_users(db.clone()))
         .or(create_project(db.clone()))
@@ -207,6 +208,21 @@ fn generate_session_token(
         .and(with_db(db))
         .and_then(move |cred: auth::EmailPassword, db: DBRef| async move {
             match db.lock().await.generate_session_token(cred).await {
+                Ok(t) => Ok(warp::reply::json(&t.token().to_string())),
+                Err(e) => Err(warp::reject::custom(e)),
+            }
+        })
+}
+
+/// Refresh a token, i.e. generate new given old
+fn refresh_token(
+    db: DBRef,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("auth" / "refresh-token" / String)
+        .and(warp::post())
+        .and(with_db(db))
+        .and_then(move |old_token: String, db: DBRef| async move {
+            match db.lock().await.refresh_token(old_token.as_str()).await {
                 Ok(t) => Ok(warp::reply::json(&t.token().to_string())),
                 Err(e) => Err(warp::reject::custom(e)),
             }
@@ -589,7 +605,7 @@ mod tests {
         }
 
         // Generate tokens to be used below
-        let admin_token = admindb_ref
+        let admin_token_full = admindb_ref
             .lock()
             .await
             .generate_session_token(auth::EmailPassword {
@@ -598,8 +614,8 @@ mod tests {
             })
             .await
             .unwrap();
-        let admin_token = admin_token.token();
-        let user_token = admindb_ref
+        let admin_token = admin_token_full.token();
+        let user_token_full = admindb_ref
             .lock()
             .await
             .generate_session_token(auth::EmailPassword {
@@ -608,7 +624,24 @@ mod tests {
             })
             .await
             .unwrap();
-        let user_token = user_token.token();
+        let user_token = user_token_full.token();
+
+        // Refresh session token
+        {
+            let resp = warp::test::request()
+                .method("POST")
+                .path(format!("/auth/refresh-token/{}", admin_token).as_str())
+                .json(&auth::EmailPassword {
+                    email: "user@example.com".to_string(),
+                    password: "user".to_string(),
+                })
+                .reply(&refresh_token(admindb_ref.clone()))
+                .await;
+            assert_eq!(resp.status(), StatusCode::OK);
+            let token_obtained: String =
+                serde_json::from_slice(&*resp.body()).unwrap();
+            assert_ne!(token_obtained, admin_token);
+        }
 
         // Get user by token
         {
