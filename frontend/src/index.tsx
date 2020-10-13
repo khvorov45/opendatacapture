@@ -7,15 +7,12 @@ import { themeInit } from "./lib/theme"
 
 /* istanbul ignore file */
 
-// Work out the theme before rendering
-const initPalette = themeInit()
-
 // Work out the initial token
 const initToken = localStorage.getItem("token")
 
 ReactDOM.render(
   <React.StrictMode>
-    <App initPalette={initPalette} initToken={initToken} />
+    <App initToken={initToken} />
   </React.StrictMode>,
   document.getElementById("root")
 )

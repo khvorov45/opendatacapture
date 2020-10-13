@@ -17,7 +17,7 @@ jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
 function renderApp(token?: string) {
-  return render(<App initPalette="dark" initToken={token ?? null} />)
+  return render(<App initToken={token ?? null} />)
 }
 
 function expectTheme(theme: "dark" | "light") {

@@ -13,6 +13,7 @@ import {
 } from "react-router-dom"
 import Home from "./components/home"
 import { AuthStatus, useToken } from "./lib/hooks"
+import { themeInit } from "./lib/theme"
 
 function createThemeFromPalette(palette: "dark" | "light"): Theme {
   return createMuiTheme({
@@ -26,16 +27,11 @@ function createThemeFromPalette(palette: "dark" | "light"): Theme {
   })
 }
 
-export default function App({
-  initPalette,
-  initToken,
-}: {
-  initPalette: "dark" | "light"
-  initToken: string | null
-}) {
+export default function App({ initToken }: { initToken: string | null }) {
   // Theme
-  const [darkState, setDarkState] = useState(initPalette === "dark")
-  const [theme, setTheme] = useState(createThemeFromPalette(initPalette))
+  const palette = themeInit()
+  const [darkState, setDarkState] = useState(palette === "dark")
+  const [theme, setTheme] = useState(createThemeFromPalette(palette))
   const handleThemeChange = () => {
     let newDarkState = !darkState
     setDarkState(newDarkState)
