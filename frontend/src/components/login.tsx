@@ -1,7 +1,7 @@
 import React, { useState } from "react"
 import { TextField, Button, FormHelperText } from "@material-ui/core"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
-import { EmailPassword, LoginFailure } from "../lib/api/auth"
+import { LoginFailure, Token, tokenFetcher } from "../lib/api/auth"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -23,26 +23,18 @@ const useStyles = makeStyles((theme: Theme) =>
 
 export default function Login({
   updateToken,
-  tokenFetcher,
 }: {
-  updateToken: (tok: string) => void
-  tokenFetcher: (cred: EmailPassword) => Promise<string>
+  updateToken: (tok: Token) => void
 }) {
   const classes = useStyles()
   return (
     <div className={classes.loginPage}>
-      <LoginForm updateToken={updateToken} tokenFetcher={tokenFetcher} />
+      <LoginForm updateToken={updateToken} />
     </div>
   )
 }
 
-function LoginForm({
-  updateToken,
-  tokenFetcher,
-}: {
-  updateToken: (tok: string) => void
-  tokenFetcher: (cred: EmailPassword) => Promise<string>
-}) {
+function LoginForm({ updateToken }: { updateToken: (tok: Token) => void }) {
   const classes = useStyles()
   let [email, setEmail] = useState("")
   let [emailError, setEmailError] = useState(false)
