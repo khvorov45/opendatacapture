@@ -208,7 +208,7 @@ fn generate_session_token(
         .and(with_db(db))
         .and_then(move |cred: auth::EmailPassword, db: DBRef| async move {
             match db.lock().await.generate_session_token(cred).await {
-                Ok(t) => Ok(warp::reply::json(&t.token().to_string())),
+                Ok(t) => Ok(warp::reply::json(&t)),
                 Err(e) => Err(warp::reject::custom(e)),
             }
         })
@@ -223,7 +223,7 @@ fn refresh_token(
         .and(with_db(db))
         .and_then(move |old_token: String, db: DBRef| async move {
             match db.lock().await.refresh_token(old_token.as_str()).await {
-                Ok(t) => Ok(warp::reply::json(&t.token().to_string())),
+                Ok(t) => Ok(warp::reply::json(&t)),
                 Err(e) => Err(warp::reject::custom(e)),
             }
         })
@@ -638,9 +638,9 @@ mod tests {
                 .reply(&refresh_token(admindb_ref.clone()))
                 .await;
             assert_eq!(resp.status(), StatusCode::OK);
-            let token_obtained: String =
+            let token_obtained: auth::Token =
                 serde_json::from_slice(&*resp.body()).unwrap();
-            assert_ne!(token_obtained, admin_token);
+            assert_ne!(token_obtained.token(), admin_token);
         }
 
         // Get user by token
