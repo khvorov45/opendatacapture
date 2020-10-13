@@ -3,7 +3,7 @@ import { createMuiTheme, ThemeProvider, Theme } from "@material-ui/core/styles"
 import Nav from "./components/nav"
 import Login from "./components/login"
 import Project from "./components/project/project"
-import { tokenFetcher, tokenValidator } from "./lib/api/auth"
+import { Token, tokenValidator } from "./lib/api/auth"
 import CssBaseline from "@material-ui/core/CssBaseline"
 import {
   BrowserRouter as Router,
@@ -49,12 +49,11 @@ export default function App({
   // Token
   const [token, setToken] = useState<string | null>(initToken)
   const [lastRefresh, setLastRefresh] = useState(initLastRefresh)
-  function updateToken(tok: string) {
-    setToken(tok)
-    localStorage.setItem("token", tok)
-    const newLastRefresh = new Date()
-    setLastRefresh(newLastRefresh)
-    localStorage.setItem("last-refresh", newLastRefresh.toISOString())
+  function updateToken(tok: Token) {
+    setToken(tok.token)
+    localStorage.setItem("token", tok.token)
+    setLastRefresh(tok.created)
+    localStorage.setItem("last-refresh", tok.created.toISOString())
   }
   const { auth } = useToken(token, tokenValidator)
   return (
@@ -67,7 +66,7 @@ export default function App({
             {auth === AuthStatus.Ok ? (
               <Redirect to="/" />
             ) : (
-              <Login updateToken={updateToken} tokenFetcher={tokenFetcher} />
+              <Login updateToken={updateToken} />
             )}
           </Route>
           <AuthRoute exact path="/" auth={auth}>
