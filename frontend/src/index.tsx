@@ -3,16 +3,12 @@ import ReactDOM from "react-dom"
 import "./index.css"
 import App from "./App"
 import * as serviceWorker from "./serviceWorker"
-import { themeInit } from "./lib/theme"
 
 /* istanbul ignore file */
 
-// Work out the initial token
-const initToken = localStorage.getItem("token")
-
 ReactDOM.render(
   <React.StrictMode>
-    <App initToken={initToken} />
+    <App />
   </React.StrictMode>,
   document.getElementById("root")
 )

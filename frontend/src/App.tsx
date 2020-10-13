@@ -27,7 +27,7 @@ function createThemeFromPalette(palette: "dark" | "light"): Theme {
   })
 }
 
-export default function App({ initToken }: { initToken: string | null }) {
+export default function App() {
   // Theme
   const palette = themeInit()
   const [darkState, setDarkState] = useState(palette === "dark")
@@ -41,7 +41,9 @@ export default function App({ initToken }: { initToken: string | null }) {
     localStorage.setItem("theme", newPalette)
   }
   // Token
-  const [token, setToken] = useState<string | null>(initToken)
+  const [token, setToken] = useState<string | null>(
+    localStorage.getItem("token")
+  )
   const [lastRefresh, setLastRefresh] = useState(
     new Date(localStorage.getItem("last-refresh") ?? 0)
   )
