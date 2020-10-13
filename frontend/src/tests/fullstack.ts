@@ -68,7 +68,7 @@ test("correct credentials", async () => {
     email: "admin@example.com",
     password: "admin",
   })
-  let admin = await tokenValidator(token)
+  let admin = await tokenValidator(token.token)
   expect(admin.access).toBe(Access.Admin)
   expect(admin.email).toBe("admin@example.com")
   expect(admin.id).toBe(1)
@@ -161,10 +161,12 @@ describe("need credentials", () => {
   let token: string
 
   beforeAll(async () => {
-    token = await tokenFetcher({
-      email: "admin@example.com",
-      password: "admin",
-    })
+    token = (
+      await tokenFetcher({
+        email: "admin@example.com",
+        password: "admin",
+      })
+    ).token
   })
 
   test("token refresh", async () => {
