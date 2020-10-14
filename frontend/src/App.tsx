@@ -1,9 +1,9 @@
-import React, { ReactNode, useState } from "react"
+import React, { ReactNode, useEffect, useState } from "react"
 import { createMuiTheme, ThemeProvider, Theme } from "@material-ui/core/styles"
 import Nav from "./components/nav"
 import Login from "./components/login"
 import Project from "./components/project/project"
-import { Token, tokenValidator } from "./lib/api/auth"
+import { refreshToken, Token, tokenValidator } from "./lib/api/auth"
 import CssBaseline from "@material-ui/core/CssBaseline"
 import {
   BrowserRouter as Router,
@@ -14,6 +14,7 @@ import {
 import Home from "./components/home"
 import { AuthStatus, useToken } from "./lib/hooks"
 import { themeInit } from "./lib/theme"
+import { TOKEN_HOURS_TO_REFRESH } from "./lib/config"
 
 function createThemeFromPalette(palette: "dark" | "light"): Theme {
   return createMuiTheme({
@@ -48,11 +49,30 @@ export default function App() {
     new Date(localStorage.getItem("last-refresh") ?? 0)
   )
   function updateToken(tok: Token) {
-    setToken(tok.token)
-    localStorage.setItem("token", tok.token)
     setLastRefresh(tok.created)
     localStorage.setItem("last-refresh", tok.created.toISOString())
+    setToken(tok.token)
+    localStorage.setItem("token", tok.token)
   }
+  useEffect(() => {
+    function conditionalRefresh() {
+      // Gotta wait until we actually get a token from somewhere
+      if (!token) {
+        return
+      }
+      if (
+        new Date().getTime() - lastRefresh.getTime() >
+        TOKEN_HOURS_TO_REFRESH * 60 * 60 * 1000
+      ) {
+        refreshToken(token)
+          .then(updateToken)
+          .catch((e) => setToken(null))
+      }
+    }
+    conditionalRefresh()
+    const interval = setInterval(conditionalRefresh, 60 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [lastRefresh, token])
   const { auth } = useToken(token, tokenValidator)
   return (
     <ThemeProvider theme={theme}>

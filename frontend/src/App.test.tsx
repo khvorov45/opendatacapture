@@ -125,3 +125,21 @@ test("route to project page", async () => {
   expect(getByTestId("homepage")).toBeInTheDocument()
   expect(getByTestId("home-link")).toHaveClass("active")
 })
+
+test.only("token refresh", async () => {
+  const curTime = new Date().toISOString()
+  mockedAxios.post.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
+    data: {
+      user: 1,
+      token: "234",
+      created: curTime,
+    },
+  })
+  localStorage.removeItem("last-refresh")
+  const app = renderApp("123")
+  await wait(() => {
+    expect(localStorage.getItem("last-refresh")).toBe(curTime)
+  })
+  expect(localStorage.getItem("token")).toBe("234")
+})
