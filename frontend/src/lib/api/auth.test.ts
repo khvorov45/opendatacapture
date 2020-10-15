@@ -15,7 +15,7 @@ test("tokenFetcher", async () => {
   try {
     await tokenFetcher(cred)
   } catch (e) {
-    expect(e.message).toBe("unexpected response data: 123")
+    expect(e.message).toStartWith("decode error")
   }
   // Some random error
   mockedAxios.post.mockResolvedValue({
@@ -39,7 +39,7 @@ test("string id user", async () => {
   }
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: user })
   tokenValidator("123").catch((e) =>
-    expect(e.message).toStartWith("unexpected response data")
+    expect(e.message).toStartWith("decode error")
   )
 })
 
@@ -48,7 +48,7 @@ test("null user", async () => {
   const user = null
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: user })
   tokenValidator("123").catch((e) =>
-    expect(e.message).toBe("unexpected response data: null")
+    expect(e.message).toStartWith("decode error")
   )
 })
 
@@ -62,7 +62,7 @@ test("number email", async () => {
   }
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: user4 })
   tokenValidator("123").catch((e) =>
-    expect(e.message).toStartWith("unexpected response data")
+    expect(e.message).toStartWith("decode error")
   )
 })
 
@@ -76,7 +76,7 @@ test("number password hash", async () => {
   }
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: user })
   tokenValidator("123").catch((e) =>
-    expect(e.message).toStartWith("unexpected response data")
+    expect(e.message).toStartWith("decode error")
   )
 })
 
@@ -90,7 +90,7 @@ test("wrong access", async () => {
   }
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: user })
   tokenValidator("123").catch((e) =>
-    expect(e.message).toStartWith("unexpected response data")
+    expect(e.message).toStartWith("decode error")
   )
 })
 
@@ -103,6 +103,6 @@ test("not enough fields", async () => {
   }
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: user })
   tokenValidator("123").catch((e) =>
-    expect(e.message).toStartWith("unexpected response data")
+    expect(e.message).toStartWith("decode error")
   )
 })
