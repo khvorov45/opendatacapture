@@ -64,10 +64,14 @@ export async function tokenValidator(tok: string): Promise<User> {
 }
 
 export async function refreshToken(tok: string): Promise<Token> {
-  const res = await axios.post(`${API_ROOT}/auth/refresh-token/${tok}`, {
-    validateStatus: (s: number) =>
-      [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),
-  })
+  const res = await axios.post(
+    `${API_ROOT}/auth/refresh-token/${tok}`,
+    undefined,
+    {
+      validateStatus: (s: number) =>
+        [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),
+    }
+  )
   if (res.status !== httpStatusCodes.OK) {
     throw Error(res.data)
   }

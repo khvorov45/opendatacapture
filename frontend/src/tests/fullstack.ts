@@ -155,6 +155,14 @@ describe("bad token", () => {
       expect(e.message).toBe('NoSuchToken("123")')
     }
   })
+  test("token refresh", async () => {
+    expect.assertions(1)
+    try {
+      await refreshToken("123")
+    } catch (e) {
+      expect(e.message).toBe('NoSuchToken("123")')
+    }
+  })
 })
 
 describe("need credentials", () => {
