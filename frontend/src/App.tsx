@@ -54,6 +54,12 @@ export default function App() {
     setToken(tok.token)
     localStorage.setItem("token", tok.token)
   }
+  function removeToken() {
+    localStorage.removeItem("last-refresh")
+    localStorage.removeItem("token")
+    setLastRefresh(new Date(0))
+    setToken(null)
+  }
   const { auth } = useToken(token, tokenValidator)
   useEffect(() => {
     function conditionalRefresh() {
@@ -78,7 +84,7 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
-        <Nav handleThemeChange={handleThemeChange} />
+        <Nav handleThemeChange={handleThemeChange} onLogout={removeToken} />
         <Switch>
           <Route exact path="/login">
             {auth === AuthStatus.Ok ? (

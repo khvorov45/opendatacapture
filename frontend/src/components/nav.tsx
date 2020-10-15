@@ -1,5 +1,5 @@
 import React from "react"
-import { IconButton } from "@material-ui/core"
+import { Button, IconButton } from "@material-ui/core"
 import BrightnessMediumIcon from "@material-ui/icons/BrightnessMedium"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 import { useLocation, useRouteMatch } from "react-router-dom"
@@ -42,8 +42,10 @@ const useStyles = makeStyles((theme: Theme) =>
 
 export default function Nav({
   handleThemeChange,
+  onLogout,
 }: {
   handleThemeChange: () => void
+  onLogout: () => void
 }) {
   const location = useLocation()
   const classes = useStyles()
@@ -63,6 +65,7 @@ export default function Nav({
         <ProjectInfo />
       </div>
       <div>
+        <Button onClick={onLogout}>Logout</Button>
         <ThemeSwitch handleThemeChange={handleThemeChange} />
       </div>
     </div>
