@@ -1,9 +1,9 @@
-import React, { ReactNode, useState } from "react"
+import React, { ReactNode, useEffect, useState } from "react"
 import { createMuiTheme, ThemeProvider, Theme } from "@material-ui/core/styles"
 import Nav from "./components/nav"
 import Login from "./components/login"
 import Project from "./components/project/project"
-import { tokenFetcher, tokenValidator } from "./lib/api/auth"
+import { refreshToken, Token, tokenValidator } from "./lib/api/auth"
 import CssBaseline from "@material-ui/core/CssBaseline"
 import {
   BrowserRouter as Router,
@@ -13,6 +13,8 @@ import {
 } from "react-router-dom"
 import Home from "./components/home"
 import { AuthStatus, useToken } from "./lib/hooks"
+import { themeInit } from "./lib/theme"
+import { TOKEN_HOURS_TO_REFRESH } from "./lib/config"
 
 function createThemeFromPalette(palette: "dark" | "light"): Theme {
   return createMuiTheme({
@@ -26,15 +28,11 @@ function createThemeFromPalette(palette: "dark" | "light"): Theme {
   })
 }
 
-export default function App({
-  initPalette,
-  initToken,
-}: {
-  initPalette: "dark" | "light"
-  initToken: string | null
-}) {
-  const [darkState, setDarkState] = useState(initPalette === "dark")
-  const [theme, setTheme] = useState(createThemeFromPalette(initPalette))
+export default function App() {
+  // Theme
+  const palette = themeInit()
+  const [darkState, setDarkState] = useState(palette === "dark")
+  const [theme, setTheme] = useState(createThemeFromPalette(palette))
   const handleThemeChange = () => {
     let newDarkState = !darkState
     setDarkState(newDarkState)
@@ -43,12 +41,39 @@ export default function App({
     document.documentElement.setAttribute("theme", newPalette)
     localStorage.setItem("theme", newPalette)
   }
-  const [token, setToken] = useState<string | null>(initToken)
-  function updateToken(tok: string) {
-    setToken(tok)
-    localStorage.setItem("token", tok)
+  // Token
+  const [token, setToken] = useState<string | null>(
+    localStorage.getItem("token")
+  )
+  const [lastRefresh, setLastRefresh] = useState(
+    new Date(localStorage.getItem("last-refresh") ?? 0)
+  )
+  function updateToken(tok: Token) {
+    setLastRefresh(tok.created)
+    localStorage.setItem("last-refresh", tok.created.toISOString())
+    setToken(tok.token)
+    localStorage.setItem("token", tok.token)
   }
   const { auth } = useToken(token, tokenValidator)
+  useEffect(() => {
+    function conditionalRefresh() {
+      // Gotta wait until we actually get a good token from somewhere
+      if (auth !== AuthStatus.Ok || !token) {
+        return
+      }
+      if (
+        new Date().getTime() - lastRefresh.getTime() >
+        TOKEN_HOURS_TO_REFRESH * 60 * 60 * 1000
+      ) {
+        refreshToken(token)
+          .then(updateToken)
+          .catch((e) => console.error(e.message))
+      }
+    }
+    conditionalRefresh()
+    const interval = setInterval(conditionalRefresh, 60 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [lastRefresh, token, auth])
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -59,7 +84,7 @@ export default function App({
             {auth === AuthStatus.Ok ? (
               <Redirect to="/" />
             ) : (
-              <Login updateToken={updateToken} tokenFetcher={tokenFetcher} />
+              <Login updateToken={updateToken} />
             )}
           </Route>
           <AuthRoute exact path="/" auth={auth}>

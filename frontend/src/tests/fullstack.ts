@@ -7,6 +7,7 @@
 import {
   Access,
   LoginFailure,
+  refreshToken,
   tokenFetcher,
   tokenValidator,
 } from "../lib/api/auth"
@@ -67,7 +68,7 @@ test("correct credentials", async () => {
     email: "admin@example.com",
     password: "admin",
   })
-  let admin = await tokenValidator(token)
+  let admin = await tokenValidator(token.token)
   expect(admin.access).toBe(Access.Admin)
   expect(admin.email).toBe("admin@example.com")
   expect(admin.id).toBe(1)
@@ -154,16 +155,31 @@ describe("bad token", () => {
       expect(e.message).toBe('NoSuchToken("123")')
     }
   })
+  test("token refresh", async () => {
+    expect.assertions(1)
+    try {
+      await refreshToken("123")
+    } catch (e) {
+      expect(e.message).toBe('NoSuchToken("123")')
+    }
+  })
 })
 
 describe("need credentials", () => {
   let token: string
 
   beforeAll(async () => {
-    token = await tokenFetcher({
-      email: "admin@example.com",
-      password: "admin",
-    })
+    token = (
+      await tokenFetcher({
+        email: "admin@example.com",
+        password: "admin",
+      })
+    ).token
+  })
+
+  test("token refresh", async () => {
+    const newTok = await refreshToken(token)
+    expect(newTok).not.toEqual(token)
   })
 
   test("project manipulation", async () => {

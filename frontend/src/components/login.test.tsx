@@ -1,5 +1,7 @@
 /* istanbul ignore file */
 import React from "react"
+import axios from "axios"
+import httpStatusCodes from "http-status-codes"
 import {
   render,
   fireEvent,
@@ -7,61 +9,46 @@ import {
   wait,
 } from "@testing-library/react"
 import Login from "./login"
-import { BrowserRouter, Switch, Route, Redirect } from "react-router-dom"
-import { LoginFailure } from "../lib/api/auth"
+import { EmailPassword, LoginFailure, Token } from "../lib/api/auth"
+import { API_ROOT } from "../lib/config"
 
-test("basic functionality", async () => {
-  let token: string | null = null
-  let token_expected = "123"
-  let { getByTestId, getByText } = render(
-    <BrowserRouter>
-      <Switch>
-        <Route path="/login">
-          <Login
-            updateToken={(t) => (token = t)}
-            tokenFetcher={(c) =>
-              new Promise((resolve, reject) => resolve(token_expected))
-            }
-          />
-        </Route>
-        <Route path="/">
-          <Redirect to="/login" />
-        </Route>
-      </Switch>
-    </BrowserRouter>
-  )
-  let emailInput = getByTestId("email-input") as HTMLInputElement
-  let passwordInput = getByTestId("password-input") as HTMLInputElement
-  let submitButton = getByText("Submit")
-  expect(emailInput.value).toBe("")
-  fireEvent.change(emailInput, { target: { value: "admin@example.com" } })
-  expect(emailInput.value).toBe("admin@example.com")
-  expect(passwordInput.value).toBe("")
-  fireEvent.change(passwordInput, { target: { value: "admin" } })
-  expect(passwordInput.value).toBe("admin")
-  expect(token).toBe(null)
-  fireEvent.click(submitButton)
-  await wait(() => {
-    expect(token).toBe(token_expected)
-  })
+jest.mock("axios")
+const mockedAxios = axios as jest.Mocked<typeof axios>
+
+const post = mockedAxios.post.mockImplementation(async () => {
+  return {
+    status: httpStatusCodes.OK,
+    data: { user: 1, token: "123", created: new Date().toISOString() },
+  }
 })
 
-test("login when can't connect to server", async () => {
-  const { getByTestId, getByText } = render(
-    <Login
-      updateToken={(token: string) => {}}
-      tokenFetcher={(c) =>
-        new Promise((resolve, reject) => reject(Error("Network Error")))
-      }
-    />
-  )
-  let submitButton = getByText("Submit")
-  let submitButtonMsg = getByTestId("login-button-msg")
-  expect(submitButtonMsg.innerHTML).toBe("")
-  spyOn(console, "error") // There is expected to be an error
+function renderLogin(updateToken?: (t: Token) => void) {
+  return render(<Login updateToken={updateToken ?? ((t) => {})} />)
+}
+
+test("login - basic functionality", async () => {
+  let login = renderLogin()
+  let emailInput = login.getByTestId("email-input") as HTMLInputElement
+  let passwordInput = login.getByTestId("password-input") as HTMLInputElement
+  let submitButton = login.getByText("Submit")
+  let cred: EmailPassword = {
+    email: "admin@example.com",
+    password: "admin",
+  }
+  expect(emailInput.value).toBe("")
+  fireEvent.change(emailInput, { target: { value: cred.email } })
+  expect(emailInput.value).toBe(cred.email)
+  expect(passwordInput.value).toBe("")
+  fireEvent.change(passwordInput, { target: { value: cred.password } })
+  expect(passwordInput.value).toBe(cred.password)
   fireEvent.click(submitButton)
-  await waitForDomChange()
-  expect(submitButtonMsg.innerHTML).toBe("Network Error")
+  await wait(() => {
+    expect(post).toHaveBeenCalledWith(
+      `${API_ROOT}/auth/session-token`,
+      cred,
+      expect.anything()
+    )
+  })
 })
 
 function verifyFieldError(element: HTMLElement, expected: string) {
@@ -74,38 +61,8 @@ function verifyFieldError(element: HTMLElement, expected: string) {
   }
 }
 
-test("login when email is wrong", async () => {
-  const { getByTestId, getByText } = render(
-    <Login
-      updateToken={(token: string) => {}}
-      tokenFetcher={(c) =>
-        new Promise((resolve, reject) => reject(Error("EmailNotFound")))
-      }
-    />
-  )
-  let emailField = getByTestId("email-field")
-  let submitButton = getByText("Submit")
-  spyOn(console, "error") // There is expected to be an error
-  fireEvent.click(submitButton)
-  await waitForDomChange()
-  verifyFieldError(emailField, "Email not found")
-})
-
-test("errors reset", async () => {
-  let rejectIndex = 0
-  let rejections = [
-    Error(LoginFailure.EmailNotFound),
-    Error(LoginFailure.WrongPassword),
-    Error("Network Error"),
-  ]
-  const { getByTestId, getByText } = render(
-    <Login
-      updateToken={(token: string) => {}}
-      tokenFetcher={(c) =>
-        new Promise((resolve, reject) => reject(rejections[rejectIndex++]))
-      }
-    />
-  )
+test("login errors", async () => {
+  const { getByTestId, getByText } = renderLogin()
   let emailField = getByTestId("email-field")
   let passwordField = getByTestId("password-field")
   let submitButton = getByText("Submit")
@@ -115,6 +72,11 @@ test("errors reset", async () => {
   expect(submitButtonMsg.innerHTML).toBe("")
   verifyFieldError(emailField, "")
   verifyFieldError(passwordField, "")
+
+  mockedAxios.post
+    .mockRejectedValueOnce(Error(LoginFailure.EmailNotFound))
+    .mockRejectedValueOnce(Error(LoginFailure.WrongPassword))
+    .mockRejectedValueOnce(Error("Network Error"))
 
   fireEvent.click(submitButton)
   await waitForDomChange()
