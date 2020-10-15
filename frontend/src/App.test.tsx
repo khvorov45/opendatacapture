@@ -136,10 +136,43 @@ test("token refresh", async () => {
       created: curTime,
     },
   })
+  // Token verification
+  mockedAxios.get.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
+    data: {
+      id: 1,
+      email: "test@example.com",
+      password_hash: "123",
+      access: "Admin",
+    },
+  })
   localStorage.removeItem("last-refresh")
   const app = renderApp("123")
   await wait(() => {
     expect(localStorage.getItem("last-refresh")).toBe(curTime)
   })
   expect(localStorage.getItem("token")).toBe("234")
+})
+
+test("token refresh error", async () => {
+  const consoleSpy = jest
+    .spyOn(console, "error")
+    .mockImplementation((message) => {})
+  // Token verification
+  mockedAxios.get.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
+    data: {
+      id: 1,
+      email: "test@example.com",
+      password_hash: "123",
+      access: "Admin",
+    },
+  })
+  mockedAxios.post.mockRejectedValueOnce(Error("some refresh error"))
+  localStorage.removeItem("last-refresh")
+  const app = renderApp("123")
+  await wait(() => {
+    expect(console.error).toHaveBeenLastCalledWith("some refresh error")
+  })
+  consoleSpy.mockRestore()
 })

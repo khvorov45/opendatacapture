@@ -54,10 +54,11 @@ export default function App() {
     setToken(tok.token)
     localStorage.setItem("token", tok.token)
   }
+  const { auth } = useToken(token, tokenValidator)
   useEffect(() => {
     function conditionalRefresh() {
-      // Gotta wait until we actually get a token from somewhere
-      if (!token) {
+      // Gotta wait until we actually get a good token from somewhere
+      if (auth !== AuthStatus.Ok || !token) {
         return
       }
       if (
@@ -66,14 +67,13 @@ export default function App() {
       ) {
         refreshToken(token)
           .then(updateToken)
-          .catch((e) => setToken(null))
+          .catch((e) => console.error(e.message))
       }
     }
     conditionalRefresh()
     const interval = setInterval(conditionalRefresh, 60 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [lastRefresh, token])
-  const { auth } = useToken(token, tokenValidator)
+  }, [lastRefresh, token, auth])
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
