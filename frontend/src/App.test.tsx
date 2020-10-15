@@ -126,7 +126,7 @@ test("route to project page", async () => {
   expect(getByTestId("home-link")).toHaveClass("active")
 })
 
-test.only("token refresh", async () => {
+test("token refresh", async () => {
   const curTime = new Date().toISOString()
   mockedAxios.post.mockResolvedValueOnce({
     status: httpStatusCodes.OK,
