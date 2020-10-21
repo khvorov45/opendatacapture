@@ -210,3 +210,28 @@ test("logout", async () => {
   )
   consoleSpy.mockRestore()
 })
+
+test("fail to remove token", async () => {
+  const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {})
+  mockedAxios.delete.mockRejectedValueOnce(Error("some delete token error"))
+  // Token verification
+  mockedAxios.get.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
+    data: {
+      id: 1,
+      email: "test@example.com",
+      password_hash: "123",
+      access: "Admin",
+    },
+  })
+  localStorage.setItem("last-refresh", new Date().toISOString())
+  const app = renderApp("123")
+  await wait(() => {
+    expect(app.getByTestId("homepage")).toBeInTheDocument()
+  })
+  fireEvent.click(app.getByTestId("logout-button"))
+  await wait(() => {
+    expect(consoleSpy).toHaveBeenLastCalledWith("some delete token error")
+  })
+  consoleSpy.mockRestore()
+})
