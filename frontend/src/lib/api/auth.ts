@@ -77,3 +77,9 @@ export async function refreshToken(tok: string): Promise<Token> {
   }
   return await decode(TokenV, res.data)
 }
+
+export async function removeToken(tok: string): Promise<void> {
+  await axios.delete(`${API_ROOT}/auth/remove-token/${tok}`, {
+    validateStatus: (s: number) => [httpStatusCodes.NO_CONTENT].includes(s),
+  })
+}
