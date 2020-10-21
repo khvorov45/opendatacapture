@@ -64,7 +64,7 @@ export const table1: TableMeta = {
     },
     {
       name: "height",
-      postgres_type: "integer",
+      postgres_type: "real",
       primary_key: false,
       not_null: false,
       unique: false,
@@ -72,7 +72,7 @@ export const table1: TableMeta = {
     },
     {
       name: "weight",
-      postgres_type: "integer",
+      postgres_type: "real",
       primary_key: false,
       not_null: false,
       unique: false,
@@ -82,8 +82,8 @@ export const table1: TableMeta = {
 }
 
 export const table1data: TableData = [
-  { id: 1, email: "e1@example.com", height: 170, weight: 60 },
-  { id: 2, email: "e2@example.com", height: 180, weight: 70 },
+  { id: 1, email: "e1@example.com", height: 170.5, weight: 60 },
+  { id: 2, email: "e2@example.com", height: 180, weight: 70.0 },
 ]
 
 // Compound primary key

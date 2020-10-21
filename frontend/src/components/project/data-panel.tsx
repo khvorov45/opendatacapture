@@ -329,26 +329,40 @@ function InputRow({
   hidden: boolean
   onSubmit: () => void
 }) {
-  const [record, setRecord] = useState<TableRow>({})
-  function handleChange(fieldName: string, val: number | string) {
-    const newRecord = { ...record }
-    if (val === "") {
-      delete newRecord[fieldName]
-    } else {
-      newRecord[fieldName] = val
+  // To handle the duality of input (i.e. what I can sent to the DB vs what
+  // the user types) I let each individual input field handle its own input
+  // string which it attempts to validate (but not change) before sending it
+  // here where it will be parsed into the row. Invalid strings are sent as
+  // empty strings, so invalid input is empty input
+  function convertValue(val: string, type: string): string | number {
+    if (type === "integer") {
+      return parseInt(val)
     }
-    setRecord(newRecord)
+    if (type === "real") {
+      return parseFloat(val)
+    }
+    return val
+  }
+  const [parsedRecord, setParsedRecord] = useState<TableRow>({})
+  function handleChange(col: ColMeta, val: string) {
+    const newParsedRecord = { ...parsedRecord }
+    if (val === "") {
+      delete newParsedRecord[col.name]
+    } else {
+      newParsedRecord[col.name] = convertValue(val, col.postgres_type)
+    }
+    setParsedRecord(newParsedRecord)
   }
   const [errorMsg, setErrorMsg] = useState("")
   // Submit row
+  const { promiseInProgress } = usePromiseTracker({ area: "submit-row" })
   function submitRow() {
     trackPromise(
-      insertData(token, projectName, meta.name, [record]),
-      "sumbit-row"
+      insertData(token, projectName, meta.name, [parsedRecord]),
+      "submit-row"
     )
       .then(() => {
         setErrorMsg("")
-        setRecord({})
         onSubmit()
       })
       .catch((e) => setErrorMsg(e.message))
@@ -360,12 +374,16 @@ function InputRow({
     >
       {meta.cols.map((c) => (
         <StyledTableCell key={c.name}>
-          <Input col={c} onChange={handleChange} val={record[c.name] ?? ""} />
+          <Input col={c} onChange={handleChange} />
         </StyledTableCell>
       ))}
       <StyledTableCell>
         <ButtonArray errorMsg={errorMsg}>
-          <CheckButton dataTestId="submit-row-button" onClick={submitRow} />
+          <CheckButton
+            dataTestId="submit-row-button"
+            onClick={submitRow}
+            inProgress={promiseInProgress}
+          />
         </ButtonArray>
       </StyledTableCell>
     </StyledTableRow>
@@ -375,41 +393,36 @@ function InputRow({
 function Input({
   col,
   onChange,
-  val,
 }: {
   col: ColMeta
-  onChange: (fieldName: string, val: number | string) => void
-  val: string | number
+  onChange: (col: ColMeta, val: string) => void
 }) {
-  function convertValue(val: string): string | number {
-    if (col.postgres_type === "integer") {
-      return parseInt(val)
-    }
-    return val
-  }
-  const [error, setError] = useState(false)
-  function handleChange(val: string) {
-    // Deleted everything
+  // Not a fan of how lax JS number parsing is (e.g. '123ggg' parses as '123')
+  function validate(val: string): boolean {
     if (val === "") {
-      setError(false)
-      onChange(col.name, val)
-      return
+      return true
     }
-    // Some input, need to convert
-    const convertedVal = convertValue(val)
-    // Conversion errors - don't notify parent
-    if (typeof convertedVal === "number" && isNaN(convertedVal)) {
-      setError(true)
-      return
+    if (col.postgres_type === "integer") {
+      return !isNaN(parseInt(val))
     }
-    // Successfull conversion
-    setError(false)
-    onChange(col.name, convertedVal)
+    if (col.postgres_type === "real") {
+      return !isNaN(parseFloat(val))
+    }
+    return true
+  }
+  const [value, setValue] = useState("")
+  const [valid, setValid] = useState(true)
+  // Invalid value is equivalent to an empty entry
+  function handleChange(val: string) {
+    setValue(val)
+    const valIsValid = validate(val)
+    setValid(valIsValid)
+    onChange(col, valIsValid ? val : "")
   }
   return (
     <TextField
-      value={val}
-      error={error}
+      value={value}
+      error={!valid}
       label={col.name}
       onChange={(e) => handleChange(e.target.value)}
     />
