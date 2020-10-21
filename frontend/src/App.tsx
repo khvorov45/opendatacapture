@@ -3,7 +3,12 @@ import { createMuiTheme, ThemeProvider, Theme } from "@material-ui/core/styles"
 import Nav from "./components/nav"
 import Login from "./components/login"
 import Project from "./components/project/project"
-import { refreshToken, Token, tokenValidator } from "./lib/api/auth"
+import {
+  refreshToken,
+  removeToken,
+  Token,
+  tokenValidator,
+} from "./lib/api/auth"
 import CssBaseline from "@material-ui/core/CssBaseline"
 import {
   BrowserRouter as Router,
@@ -54,6 +59,16 @@ export default function App() {
     setToken(tok.token)
     localStorage.setItem("token", tok.token)
   }
+  function handleLogout() {
+    const old_token = token
+    localStorage.removeItem("last-refresh")
+    localStorage.removeItem("token")
+    setLastRefresh(new Date(0))
+    setToken(null)
+    if (old_token) {
+      removeToken(old_token).catch((e) => console.error(e.message))
+    }
+  }
   const { auth } = useToken(token, tokenValidator)
   useEffect(() => {
     function conditionalRefresh() {
@@ -78,7 +93,7 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
-        <Nav handleThemeChange={handleThemeChange} />
+        <Nav handleThemeChange={handleThemeChange} onLogout={handleLogout} />
         <Switch>
           <Route exact path="/login">
             {auth === AuthStatus.Ok ? (

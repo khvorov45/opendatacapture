@@ -1,6 +1,7 @@
 import React from "react"
 import { IconButton } from "@material-ui/core"
 import BrightnessMediumIcon from "@material-ui/icons/BrightnessMedium"
+import PowerSettingsNewIcon from "@material-ui/icons/PowerSettingsNew"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 import { useLocation, useRouteMatch } from "react-router-dom"
 import { ButtonLink } from "./button"
@@ -42,17 +43,20 @@ const useStyles = makeStyles((theme: Theme) =>
 
 export default function Nav({
   handleThemeChange,
+  onLogout,
 }: {
   handleThemeChange: () => void
+  onLogout: () => void
 }) {
   const location = useLocation()
   const classes = useStyles()
+  const loginHide = location.pathname.startsWith("/login") ? "nodisplay" : ""
   return (
     <div className={classes.nav}>
       <div>
         <ButtonLink
           dataTestId="home-link"
-          className={classes.link}
+          className={`${classes.link} ${loginHide}`}
           active={location.pathname === "/"}
           to="/"
         >
@@ -63,6 +67,13 @@ export default function Nav({
         <ProjectInfo />
       </div>
       <div>
+        <IconButton
+          onClick={onLogout}
+          className={loginHide}
+          data-testid="logout-button"
+        >
+          <PowerSettingsNewIcon />
+        </IconButton>
         <ThemeSwitch handleThemeChange={handleThemeChange} />
       </div>
     </div>

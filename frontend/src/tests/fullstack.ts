@@ -8,6 +8,7 @@ import {
   Access,
   LoginFailure,
   refreshToken,
+  removeToken,
   tokenFetcher,
   tokenValidator,
 } from "../lib/api/auth"
@@ -15,7 +16,6 @@ import {
   createProject,
   getUserProjects,
   deleteProject,
-  TableMeta,
   createTable,
   getAllTableNames,
   getAllMeta,
@@ -72,6 +72,22 @@ test("correct credentials", async () => {
   expect(admin.access).toBe(Access.Admin)
   expect(admin.email).toBe("admin@example.com")
   expect(admin.id).toBe(1)
+})
+
+test("remove token", async () => {
+  expect.assertions(2)
+  let token = await tokenFetcher({
+    email: "admin@example.com",
+    password: "admin",
+  })
+  let admin = await tokenValidator(token.token)
+  expect(admin.email).toBe("admin@example.com")
+  await removeToken(token.token)
+  try {
+    await tokenValidator(token.token)
+  } catch (e) {
+    expect(e.message).toStartWith("NoSuchToken")
+  }
 })
 
 describe("bad token", () => {

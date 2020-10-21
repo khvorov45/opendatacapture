@@ -12,6 +12,7 @@ import { themeInit } from "./lib/theme"
 import httpStatusCodes from "http-status-codes"
 import axios from "axios"
 import { Access, User } from "./lib/api/auth"
+import { API_ROOT } from "./lib/config"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
@@ -174,5 +175,72 @@ test("token refresh error", async () => {
   await wait(() => {
     expect(console.error).toHaveBeenLastCalledWith("some refresh error")
   })
+  consoleSpy.mockRestore()
+})
+
+test("logout", async () => {
+  const consoleSpy = jest
+    .spyOn(console, "error")
+    .mockImplementation((message) => {})
+  // Token verification
+  mockedAxios.get.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
+    data: {
+      id: 1,
+      email: "test@example.com",
+      password_hash: "123",
+      access: "Admin",
+    },
+  })
+  // Token removal
+  const del = mockedAxios.delete.mockImplementationOnce(async () => {})
+  localStorage.setItem("last-refresh", new Date().toISOString())
+  const app = renderApp("123")
+  await wait(() => {
+    expect(app.getByTestId("homepage")).toBeInTheDocument()
+  })
+  const logout = app.getByTestId("logout-button")
+  expect(logout).not.toHaveClass("nodisplay")
+  fireEvent.click(logout)
+  expect(logout).toHaveClass("nodisplay")
+  expect(app.getByTestId("login-form")).toBeInTheDocument()
+  expect(del).toHaveBeenLastCalledWith(
+    `${API_ROOT}/auth/remove-token/123`,
+    expect.anything()
+  )
+  consoleSpy.mockRestore()
+})
+
+test("fail to remove token", async () => {
+  const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {})
+  mockedAxios.delete.mockRejectedValue(Error("some delete token error"))
+  // Token verification
+  mockedAxios.get.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
+    data: {
+      id: 1,
+      email: "test@example.com",
+      password_hash: "123",
+      access: "Admin",
+    },
+  })
+  localStorage.setItem("last-refresh", new Date().toISOString())
+  const app = renderApp("123")
+  await wait(() => {
+    expect(app.getByTestId("homepage")).toBeInTheDocument()
+  })
+  fireEvent.click(app.getByTestId("logout-button"))
+  await wait(() => {
+    expect(consoleSpy).toHaveBeenLastCalledWith("some delete token error")
+  })
+  // If we somehow manage to logout with no current token then the api call
+  // shouldn't happen
+  expect(consoleSpy).toHaveBeenCalledTimes(1)
+  localStorage.setItem("last-refresh", new Date().toISOString())
+  fireEvent.click(app.getByTestId("logout-button"))
+  await wait(() => {
+    expect(localStorage.getItem("last-refresh")).toBeNull()
+  })
+  expect(consoleSpy).toHaveBeenCalledTimes(1)
   consoleSpy.mockRestore()
 })

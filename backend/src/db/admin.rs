@@ -185,7 +185,7 @@ impl AdminDB {
             None => Err(Error::NoSuchUserEmail(email.to_string())),
         }
     }
-    /// Gets the user who the given token belongs to
+    /// Gets the user who the given valid token belongs to
     pub async fn get_user_by_token(&self, tok: &str) -> Result<User> {
         log::debug!("getting user by token {}", tok);
         let tok = self.get_token_valid(tok).await?;
@@ -266,6 +266,15 @@ impl AdminDB {
         let new_token = auth::Token::new(old_token.user());
         self.insert_token(&new_token).await?;
         Ok(new_token)
+    }
+    /// Remove the given token regardless of its validity
+    pub async fn remove_token(&self, token: &str) -> Result<()> {
+        log::debug!("removing token {}", token);
+        sqlx::query("DELETE FROM \"token\" WHERE \"token\" = $1")
+            .bind(auth::hash_fast(token))
+            .execute(self.get_pool())
+            .await?;
+        Ok(())
     }
 
     // Project table ----------------------------------------------------------
@@ -783,6 +792,16 @@ mod tests {
             user,
             Err(Error::Unauthorized(Unauthorized::TokenTooOld))
         ));
+
+        // Remove that token
+        test_db.remove_token(user_tok.token()).await.unwrap();
+        let user = test_db.get_user_by_token(user_tok.token()).await;
+        assert!(matches!(
+            user,
+            Err(Error::Unauthorized(Unauthorized::NoSuchToken(_)))
+        ));
+
+        // User manipulation --------------------------------------------------
 
         // User 3 should not exist
         let user3 = test_db.get_user_by_id(3).await;
