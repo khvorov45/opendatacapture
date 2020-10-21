@@ -12,6 +12,7 @@ import { themeInit } from "./lib/theme"
 import httpStatusCodes from "http-status-codes"
 import axios from "axios"
 import { Access, User } from "./lib/api/auth"
+import { API_ROOT } from "./lib/config"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
@@ -191,6 +192,8 @@ test("logout", async () => {
       access: "Admin",
     },
   })
+  // Token removal
+  const del = mockedAxios.delete.mockImplementationOnce(async () => {})
   localStorage.setItem("last-refresh", new Date().toISOString())
   const app = renderApp("123")
   await wait(() => {
@@ -201,5 +204,9 @@ test("logout", async () => {
   fireEvent.click(logout)
   expect(logout).toHaveClass("nodisplay")
   expect(app.getByTestId("login-form")).toBeInTheDocument()
+  expect(del).toHaveBeenLastCalledWith(
+    `${API_ROOT}/auth/remove-token/123`,
+    expect.anything()
+  )
   consoleSpy.mockRestore()
 })
