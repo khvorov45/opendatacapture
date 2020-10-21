@@ -1,5 +1,5 @@
 import React from "react"
-import { Button, IconButton } from "@material-ui/core"
+import { IconButton } from "@material-ui/core"
 import BrightnessMediumIcon from "@material-ui/icons/BrightnessMedium"
 import PowerSettingsNewIcon from "@material-ui/icons/PowerSettingsNew"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
