@@ -49,12 +49,13 @@ export default function Nav({
 }) {
   const location = useLocation()
   const classes = useStyles()
+  const loginHide = location.pathname.startsWith("/login") ? "nodisplay" : ""
   return (
     <div className={classes.nav}>
       <div>
         <ButtonLink
           dataTestId="home-link"
-          className={classes.link}
+          className={`${classes.link} ${loginHide}`}
           active={location.pathname === "/"}
           to="/"
         >
@@ -65,7 +66,9 @@ export default function Nav({
         <ProjectInfo />
       </div>
       <div>
-        <Button onClick={onLogout}>Logout</Button>
+        <Button onClick={onLogout} className={loginHide}>
+          Logout
+        </Button>
         <ThemeSwitch handleThemeChange={handleThemeChange} />
       </div>
     </div>
