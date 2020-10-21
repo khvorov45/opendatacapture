@@ -176,3 +176,30 @@ test("token refresh error", async () => {
   })
   consoleSpy.mockRestore()
 })
+
+test("logout", async () => {
+  const consoleSpy = jest
+    .spyOn(console, "error")
+    .mockImplementation((message) => {})
+  // Token verification
+  mockedAxios.get.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
+    data: {
+      id: 1,
+      email: "test@example.com",
+      password_hash: "123",
+      access: "Admin",
+    },
+  })
+  localStorage.setItem("last-refresh", new Date().toISOString())
+  const app = renderApp("123")
+  await wait(() => {
+    expect(app.getByTestId("homepage")).toBeInTheDocument()
+  })
+  const logout = app.getByTestId("logout-button")
+  expect(logout).not.toHaveClass("nodisplay")
+  fireEvent.click(logout)
+  expect(logout).toHaveClass("nodisplay")
+  expect(app.getByTestId("login-form")).toBeInTheDocument()
+  consoleSpy.mockRestore()
+})

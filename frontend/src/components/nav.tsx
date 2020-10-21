@@ -67,7 +67,11 @@ export default function Nav({
         <ProjectInfo />
       </div>
       <div>
-        <IconButton onClick={onLogout} className={loginHide}>
+        <IconButton
+          onClick={onLogout}
+          className={loginHide}
+          data-testid="logout-button"
+        >
           <PowerSettingsNewIcon />
         </IconButton>
         <ThemeSwitch handleThemeChange={handleThemeChange} />
