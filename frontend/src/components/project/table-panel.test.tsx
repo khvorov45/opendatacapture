@@ -376,6 +376,11 @@ test("table panel - column removal", async () => {
 
   // Remove from the bottom
   fireEvent.click(
+    within(within(newTableForm).getByTestId("new-column-entry-2")).getByTestId(
+      "remove-column"
+    )
+  )
+  fireEvent.click(
     within(within(newTableForm).getByTestId("new-column-entry-1")).getByTestId(
       "remove-column"
     )

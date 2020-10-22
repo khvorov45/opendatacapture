@@ -242,7 +242,14 @@ function Table({
   }, [data])
   // Table stuff
   const columns = useMemo(
-    () => meta.cols.map((c) => ({ Header: c.name, accessor: c.name })),
+    () =>
+      meta.cols.map((c) => {
+        let accessor = (row: TableRow) => row[c.name]
+        if (c.postgres_type === "boolean") {
+          accessor = (row) => row[c.name].toString()
+        }
+        return { Header: c.name, accessor: accessor }
+      }),
     [meta]
   )
   const {
@@ -334,12 +341,15 @@ function InputRow({
   // string which it attempts to validate (but not change) before sending it
   // here where it will be parsed into the row. Invalid strings are sent as
   // empty strings, so invalid input is empty input
-  function convertValue(val: string, type: string): string | number {
+  function convertValue(val: string, type: string): string | number | boolean {
     if (type === "integer") {
       return parseInt(val)
     }
     if (type === "real") {
       return parseFloat(val)
+    }
+    if (type === "boolean") {
+      return val === "true"
     }
     return val
   }
@@ -407,6 +417,9 @@ function Input({
     }
     if (col.postgres_type === "real") {
       return !isNaN(parseFloat(val))
+    }
+    if (col.postgres_type === "boolean") {
+      return val === "true" || val === "false"
     }
     return true
   }
