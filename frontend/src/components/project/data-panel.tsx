@@ -341,7 +341,10 @@ function InputRow({
   // string which it attempts to validate (but not change) before sending it
   // here where it will be parsed into the row. Invalid strings are sent as
   // empty strings, so invalid input is empty input
-  function convertValue(val: string, type: string): string | number | boolean {
+  function convertValue(
+    val: string,
+    type: string
+  ): string | number | boolean | Date {
     if (type === "integer") {
       return parseInt(val)
     }
@@ -350,6 +353,11 @@ function InputRow({
     }
     if (type === "boolean") {
       return val === "true"
+    }
+    if (type === "timestamp with time zone") {
+      console.log(val)
+      console.log(new Date(val))
+      return new Date(val)
     }
     return val
   }
@@ -420,6 +428,9 @@ function Input({
     }
     if (col.postgres_type === "boolean") {
       return val === "true" || val === "false"
+    }
+    if (col.postgres_type === "timestamp with time zone") {
+      return !isNaN(new Date(val).getTime())
     }
     return true
   }

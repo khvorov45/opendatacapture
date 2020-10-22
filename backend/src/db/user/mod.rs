@@ -164,6 +164,7 @@ impl UserDB {
         data: &[RowJson],
     ) -> Result<()> {
         use serde_json::Value;
+        use std::str::FromStr;
         let table = self.get_table_meta(table_name).await?;
         if data.is_empty() {
             return Err(Error::InsertEmptyData);
@@ -183,9 +184,25 @@ impl UserDB {
             let query = table.construct_param_insert_query(&col_names)?;
             let mut row_query = sqlx::query(query.as_str());
             for col_name in &col_names {
+                // Can't possibly not find this column name after having
+                // successfully constructed the query above
+                let col_meta =
+                    table.cols.iter().find(|c| &c.name == col_name).unwrap();
                 match &row[col_name] {
                     Value::Number(n) => row_query = row_query.bind(n.as_f64()),
-                    Value::String(s) => row_query = row_query.bind(s.as_str()),
+                    Value::String(s) => {
+                        // This might be a date
+                        if col_meta.postgres_type == "timestamp with time zone"
+                        {
+                            row_query = row_query.bind(chrono::DateTime::<
+                                chrono::Utc,
+                            >::from_str(
+                                s.as_str()
+                            )?)
+                        } else {
+                            row_query = row_query.bind(s.as_str())
+                        }
+                    }
                     Value::Bool(b) => row_query = row_query.bind(b),
                     // Everything else is just a json
                     other => row_query = row_query.bind(other),

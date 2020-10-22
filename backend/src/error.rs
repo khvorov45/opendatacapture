@@ -82,6 +82,10 @@ pub enum Error {
     /// All cases of parse int error
     #[error(transparent)]
     ParseInt(#[from] std::num::ParseIntError),
+
+    /// All cases of chrono error
+    #[error(transparent)]
+    Chrono(#[from] chrono::ParseError),
 }
 
 impl warp::reject::Reject for Error {}
