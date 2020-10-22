@@ -491,7 +491,7 @@ function ColumnEntry({
   onRemove: () => void
   dataTestId: string
 }) {
-  const allowedTypes = ["integer", "text", "real", "boolean"]
+  const allowedTypes = ["integer", "text", "real", "boolean", "timestamptz"]
 
   // FK checkbox
   function handleFKChange(newFK: boolean) {
