@@ -78,12 +78,20 @@ export const table1: TableMeta = {
       unique: false,
       foreign_key: null,
     },
+    {
+      name: "male",
+      postgres_type: "boolean",
+      primary_key: false,
+      not_null: false,
+      unique: false,
+      foreign_key: null,
+    },
   ],
 }
 
 export const table1data: TableData = [
-  { id: 1, email: "e1@example.com", height: 170.5, weight: 60 },
-  { id: 2, email: "e2@example.com", height: 180, weight: 70.0 },
+  { id: 1, email: "e1@example.com", height: 170.5, weight: 60, male: false },
+  { id: 2, email: "e2@example.com", height: 180, weight: 70.0, male: true },
 ]
 
 // Compound primary key
