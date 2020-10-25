@@ -355,8 +355,6 @@ function InputRow({
       return val === "true"
     }
     if (type === "timestamp with time zone") {
-      console.log(val)
-      console.log(new Date(val))
       return new Date(val)
     }
     return val
