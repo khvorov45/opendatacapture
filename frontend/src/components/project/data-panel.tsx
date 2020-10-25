@@ -19,6 +19,7 @@ import {
   useRouteMatch,
 } from "react-router-dom"
 import { useTable } from "react-table"
+import { decodeUserTable } from "../../lib/api/io-validation"
 import {
   ColMeta,
   getAllTableNames,
@@ -233,6 +234,16 @@ function Table({
   deleteInProgress: boolean
   deleteError: string
 }) {
+  let decodedData: TableData = useMemo(() => {
+    try {
+      return decodeUserTable(meta, data)
+    } catch (e) {
+      // This happens when meta and data are out of sync. Since the database
+      // guarantees that meta and data will eventually agree, do nothing and
+      // wait
+      return []
+    }
+  }, [meta, data])
   // New row form visibility
   const [newRow, setNewRow] = useState(data.length === 0)
   useEffect(() => {
@@ -247,6 +258,8 @@ function Table({
         let accessor = (row: TableRow) => row[c.name]
         if (c.postgres_type === "boolean") {
           accessor = (row) => row[c.name].toString()
+        } else if (c.postgres_type === "timestamp with time zone") {
+          accessor = (row) => row[c.name].toISOString()
         }
         return { Header: c.name, accessor: accessor }
       }),
@@ -260,7 +273,7 @@ function Table({
     prepareRow,
   } = useTable<TableRow>({
     columns: columns,
-    data: data,
+    data: decodedData,
   })
   const classes = useStyles()
   return (
