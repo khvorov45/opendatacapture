@@ -1,10 +1,12 @@
 /* istanbul ignore file */
 
-import { fromEnum } from "./io-validation"
+import { decodeUserTable, fromEnum } from "./io-validation"
 import { Access } from "./auth"
 import { isLeft, right } from "fp-ts/lib/Either"
 import * as t from "io-ts"
 import { decode } from "./io-validation"
+import { table1, table1data } from "../../tests/util"
+import { TableData } from "./project"
 
 test("enum validation", () => {
   const AccessV = fromEnum<Access>("Access", Access)
@@ -42,4 +44,26 @@ test("decode wrong", () => {
   decode(TypeV, wrong).catch((e) =>
     expect(e.message).toStartWith("decode error: ")
   )
+})
+
+test("decodeUserTable", () => {
+  // Y NO CLONE METHOD ON ARRAYS WTF JAVASCRIPT
+  let table1dataDecoded: TableData = JSON.parse(JSON.stringify(table1data))
+  table1dataDecoded.map((row) => {
+    row.dob = new Date(row.dob)
+    return row
+  })
+  expect(table1data).not.toEqual(table1dataDecoded)
+  expect(decodeUserTable(table1, table1data)).toEqual(table1dataDecoded)
+})
+
+test("decodeUserTable with extra column in data", () => {
+  expect.assertions(1)
+  let table1dataWrong = JSON.parse(JSON.stringify(table1data))
+  table1dataWrong[0].extraCol = ""
+  try {
+    decodeUserTable(table1, table1dataWrong)
+  } catch (e) {
+    expect(e.message).toBe("column extraCol not found in metadata")
+  }
 })
