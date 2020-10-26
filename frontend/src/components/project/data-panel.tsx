@@ -105,7 +105,8 @@ export default function DataPanel({
       </FormHelperText>
       <SimpleNav
         links={tableNames ?? []}
-        active={(l) => pathname.includes(`/project/${projectName}/data/${l}`)}
+        dataTestId="table-data-links"
+        active={(l) => pathname === `/project/${projectName}/data/${l}`}
       />
       <Route exact path={url}>
         {tableNames === null ? (
