@@ -375,16 +375,13 @@ test("table panel - column removal", async () => {
   ).toHaveValue(table1.cols[3].name)
 
   // Remove from the bottom
-  fireEvent.click(
-    within(within(newTableForm).getByTestId("new-column-entry-2")).getByTestId(
-      "remove-column"
+  for (let i = table1.cols.length - 3; i >= 1; i--) {
+    fireEvent.click(
+      within(
+        within(newTableForm).getByTestId(`new-column-entry-${i}`)
+      ).getByTestId("remove-column")
     )
-  )
-  fireEvent.click(
-    within(within(newTableForm).getByTestId("new-column-entry-1")).getByTestId(
-      "remove-column"
-    )
-  )
+  }
   // There should be one left
   expect(
     within(newTableForm).queryByTestId("new-column-entry-1")
