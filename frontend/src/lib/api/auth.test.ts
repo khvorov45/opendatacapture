@@ -34,7 +34,6 @@ test("string id user", async () => {
   const user = {
     id: "1",
     email: "test@example.com",
-    password_hash: "123",
     access: "Admin",
   }
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: user })
@@ -57,24 +56,9 @@ test("number email", async () => {
   const user4 = {
     id: 1,
     email: 1,
-    password_hash: "123",
     access: "Admin",
   }
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: user4 })
-  tokenValidator("123").catch((e) =>
-    expect(e.message).toStartWith("decode error")
-  )
-})
-
-test("number password hash", async () => {
-  expect.assertions(1)
-  const user = {
-    id: 1,
-    email: "test@example.com",
-    password_hash: 1,
-    access: "Admin",
-  }
-  mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: user })
   tokenValidator("123").catch((e) =>
     expect(e.message).toStartWith("decode error")
   )
@@ -85,7 +69,6 @@ test("wrong access", async () => {
   const user = {
     id: 1,
     email: "test@example.com",
-    password_hash: "1",
     access: "Admin1",
   }
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: user })
@@ -99,7 +82,6 @@ test("not enough fields", async () => {
   const user = {
     id: 1,
     email: "test@example.com",
-    password_hash: "1",
   }
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: user })
   tokenValidator("123").catch((e) =>

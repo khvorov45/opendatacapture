@@ -751,11 +751,6 @@ mod tests {
                 serde_json::from_slice::<admin::User>(&*user_response.body())
                     .unwrap();
             assert_eq!(user_obtained.email(), "user@example.com");
-            assert!(argon2::verify_encoded(
-                user_obtained.password_hash(),
-                b"user"
-            )
-            .unwrap());
             assert_eq!(user_obtained.access(), auth::Access::User);
         }
 

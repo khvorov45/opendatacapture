@@ -24,7 +24,6 @@ const UserV = t.type({
   id: t.number,
   email: t.string,
   access: fromEnum<Access>("Access", Access),
-  password_hash: t.string,
 })
 export type User = t.TypeOf<typeof UserV>
 
