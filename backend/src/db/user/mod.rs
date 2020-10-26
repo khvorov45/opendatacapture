@@ -285,6 +285,16 @@ mod tests {
             .unwrap()
             .contains(&secondary_table.name));
 
+        let date_table = crate::tests::get_date_table();
+
+        db.create_table(&date_table).await.unwrap();
+        assert!(!db.is_empty().await.unwrap());
+        assert!(db
+            .get_all_table_names()
+            .await
+            .unwrap()
+            .contains(&date_table.name));
+
         log::info!("create the same table again");
 
         assert!(matches!(
@@ -296,7 +306,11 @@ mod tests {
 
         assert_eq!(
             db.get_all_table_names().await.unwrap(),
-            vec![primary_table.name.clone(), secondary_table.name.clone()]
+            vec![
+                primary_table.name.clone(),
+                date_table.name.clone(),
+                secondary_table.name.clone()
+            ]
         );
 
         log::info!("get metadata");
@@ -317,7 +331,11 @@ mod tests {
         let all_meta = db.get_all_meta().await.unwrap();
         assert_eq!(
             all_meta,
-            vec![primary_table.clone(), secondary_table.clone()]
+            vec![
+                primary_table.clone(),
+                date_table.clone(),
+                secondary_table.clone()
+            ]
         );
 
         log::info!("get data");
@@ -335,6 +353,7 @@ mod tests {
         let secondary_data_partial = crate::tests::get_secondary_data_part();
         let secondary_data_null = crate::tests::get_secondary_data_null();
         let secondary_data = crate::tests::get_secondary_data();
+        let date_data = crate::tests::get_date_data();
 
         // Concatenate secondary data into what's expected to be in the table
         let secondary_data_partial_filled: Vec<RowJson> =
@@ -356,16 +375,21 @@ mod tests {
         secondary_data_full.append(&mut secondary_data_null.clone());
         secondary_data_full.append(&mut secondary_data.clone());
 
+        log::info!("insert primary");
+
         db.insert_table_data(primary_table.name.as_str(), &primary_data)
             .await
             .unwrap();
 
+        // Secondary data insert
         db.insert_table_data(
             secondary_table.name.as_str(),
             &secondary_data_partial,
         )
         .await
         .unwrap();
+
+        log::info!("insert secondary null");
 
         db.insert_table_data(
             secondary_table.name.as_str(),
@@ -375,6 +399,11 @@ mod tests {
         .unwrap();
 
         db.insert_table_data(secondary_table.name.as_str(), &secondary_data)
+            .await
+            .unwrap();
+
+        log::info!("insert date");
+        db.insert_table_data(date_table.name.as_str(), &date_data)
             .await
             .unwrap();
 
@@ -401,6 +430,11 @@ mod tests {
                 .await
                 .unwrap(),
             secondary_data_full,
+        );
+
+        assert_eq!(
+            db.get_table_data(date_table.name.as_str()).await.unwrap(),
+            date_data,
         );
 
         log::info!("remove data");
@@ -432,7 +466,7 @@ mod tests {
 
         assert_eq!(
             db.get_all_table_names().await.unwrap(),
-            vec![primary_table.name.clone()]
+            vec![primary_table.name.clone(), date_table.name.clone()]
         );
 
         log::info!("create table again");
