@@ -86,12 +86,40 @@ export const table1: TableMeta = {
       unique: false,
       foreign_key: null,
     },
+    {
+      name: "dob",
+      postgres_type: "timestamp with time zone",
+      primary_key: false,
+      not_null: false,
+      unique: false,
+      foreign_key: null,
+    },
   ],
 }
 
+/* NOTE on dates:
+
+Received dates are only decoded before presentation
+Sent dates are decoded on input (JSON encoding sends them as strings though)
+*/
+
 export const table1data: TableData = [
-  { id: 1, email: "e1@example.com", height: 170.5, weight: 60, male: false },
-  { id: 2, email: "e2@example.com", height: 180, weight: 70.0, male: true },
+  {
+    id: 1,
+    email: "e1@example.com",
+    height: 170.5,
+    weight: 60,
+    male: false,
+    dob: "2020-01-01T00:00:00.000Z",
+  },
+  {
+    id: 2,
+    email: "e2@example.com",
+    height: 180,
+    weight: 70.0,
+    male: true,
+    dob: "2020-01-01T00:00:00.000Z",
+  },
 ]
 
 // Compound primary key
@@ -116,6 +144,11 @@ export const table2: TableMeta = {
     },
   ],
 }
+
+export const table2data = [
+  { id: 1, timepoint: 1 },
+  { id: 1, timepoint: 2 },
+]
 
 // No primary key
 export const table3: TableMeta = {

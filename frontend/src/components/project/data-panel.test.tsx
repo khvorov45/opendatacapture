@@ -8,10 +8,12 @@ import {
   table2,
   table3,
   table1data,
+  table2data,
 } from "../../tests/util"
 import toProperCase from "../../lib/to-proper-case"
 import { TableRow } from "../../lib/api/project"
 import { API_ROOT } from "../../lib/config"
+import { decodeUserTable } from "../../lib/api/io-validation"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
@@ -83,7 +85,7 @@ test("data panel functionality", async () => {
   await waitForDomChange()
   expect(putreq).toHaveBeenCalledWith(
     `${API_ROOT}/project/some-project/insert/${table1.name}`,
-    [table1data[0]],
+    decodeUserTable(table1, [table1data[0]]),
     expect.anything()
   )
   // Check data
@@ -182,7 +184,7 @@ test("fill a new field entry and then remove what's been filled", async () => {
   await waitForDomChange()
   expect(putreq).toHaveBeenCalledWith(
     `${API_ROOT}/project/some-project/insert/${table1.name}`,
-    [newRecord],
+    decodeUserTable(table1, [newRecord]),
     expect.anything()
   )
 })
@@ -195,4 +197,20 @@ test("attempt to put a string into a number field", async () => {
   const inputToMod = selectFieldByLabel(inputRow, "id")
   fireEvent.change(inputToMod, { target: { value: "a" } })
   expect(inputToMod).toBeInvalid()
+})
+
+test("meta/data mismatch", async () => {
+  mockedAxios.get
+    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: ["table1"] })
+    .mockResolvedValueOnce({
+      status: httpStatusCodes.OK,
+      data: table1,
+    })
+    .mockResolvedValueOnce({
+      status: httpStatusCodes.OK,
+      data: table2data,
+    })
+  const dataPanel = renderProjectPage("123", "data")
+  await waitForDomChange()
+  expect(dataPanel.queryAllByTestId("data-row")).toBeEmpty()
 })

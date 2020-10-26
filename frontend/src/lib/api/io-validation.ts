@@ -2,6 +2,7 @@ import { pipe } from "fp-ts/function"
 import { fold } from "fp-ts/Either"
 import * as t from "io-ts"
 import { PathReporter } from "io-ts/PathReporter"
+import { TableMeta, TableData, TableRow } from "./project"
 
 // https://github.com/gcanti/io-ts/issues/216#issuecomment-621588750
 export function fromEnum<EnumType extends string>(
@@ -34,4 +35,22 @@ export async function decode<T, O, I>(
       (value) => value
     )
   )
+}
+
+export function decodeUserTable(meta: TableMeta, data: TableData) {
+  return data.map((row) => {
+    const decodedRow: TableRow = {}
+    for (const [name, value] of Object.entries(row)) {
+      const thisType = meta.cols.find((c) => c.name === name)?.postgres_type
+      if (!thisType) {
+        throw Error(`column ${name} not found in metadata`)
+      }
+      if (thisType === "timestamp with time zone") {
+        decodedRow[name] = new Date(value)
+      } else {
+        decodedRow[name] = value
+      }
+    }
+    return decodedRow
+  })
 }

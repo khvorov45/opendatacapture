@@ -12,6 +12,7 @@ import {
   tokenFetcher,
   tokenValidator,
 } from "../lib/api/auth"
+import { decodeUserTable } from "../lib/api/io-validation"
 import {
   createProject,
   getUserProjects,
@@ -375,9 +376,14 @@ describe("need credentials", () => {
       test("data manipulation", async () => {
         expect(await getTableData(token, "test", table1.name)).toEqual([])
         await insertData(token, "test", table1.name, table1data)
-        expect(await getTableData(token, "test", table1.name)).toEqual(
-          table1data
-        )
+        // The way the backend serializes dates is not the same as the
+        // frontend does it
+        expect(
+          decodeUserTable(
+            table1,
+            await getTableData(token, "test", table1.name)
+          )
+        ).toEqual(decodeUserTable(table1, table1data))
         await removeAllTableData(token, "test", table1.name)
         expect(await getTableData(token, "test", table1.name)).toEqual([])
       })

@@ -186,6 +186,17 @@ mod tests {
         TableMeta::new("secondary", cols)
     }
 
+    // Table with a date column
+    pub fn get_date_table() -> TableMeta {
+        let mut cols = ColSpec::new();
+        cols.push(
+            ColMeta::new()
+                .name("date")
+                .postgres_type("timestamp with time zone"),
+        );
+        TableMeta::new("timestamptz-table", cols)
+    }
+
     /// Primary table data
     pub fn get_primary_data() -> Vec<RowJson> {
         let mut data = Vec::new();
@@ -283,6 +294,18 @@ mod tests {
             serde_json::from_str(r#"["l1", "l2"]"#).unwrap(),
         );
         data.push(row2);
+        data
+    }
+
+    /// Date data (string, simulate what'll be received in JSON)
+    pub fn get_date_data() -> Vec<RowJson> {
+        let mut data = Vec::new();
+        let mut row1 = RowJson::new();
+        row1.insert(
+            "date".to_string(),
+            serde_json::from_str("\"2020-01-01T00:00:00+00:00\"").unwrap(),
+        );
+        data.push(row1);
         data
     }
 }
