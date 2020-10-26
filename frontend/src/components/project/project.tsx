@@ -1,5 +1,5 @@
 import { createStyles, Theme } from "@material-ui/core"
-import { Redirect, useRouteMatch } from "react-router-dom"
+import { Redirect, useLocation, useRouteMatch } from "react-router-dom"
 import makeStyles from "@material-ui/core/styles/makeStyles"
 import React from "react"
 import { Route, useParams } from "react-router-dom"
@@ -23,10 +23,15 @@ const useStyles = makeStyles((theme: Theme) =>
 
 export default function ProjectPage({ token }: { token: string | null }) {
   let { name } = useParams<{ name: string }>()
+  const { pathname } = useLocation()
   const classes = useStyles()
   return (
     <div className={classes.projectPage} data-testid={`project-page-${name}`}>
-      <SimpleNav links={["tables", "data"]} dataTestId="project-page-links" />
+      <SimpleNav
+        links={["tables", "data"]}
+        dataTestId="project-page-links"
+        active={(l) => pathname.startsWith(`/project/${name}/${l}`)}
+      />
       {token ? <Main token={token} /> : <></>}
     </div>
   )
