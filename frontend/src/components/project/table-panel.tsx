@@ -227,6 +227,7 @@ function TableCard({
         />
         <ButtonArray errorMsg={errorMsg} errorTestId="delete-table-error">
           <IconButton
+            className="hidden"
             onClick={(e) => setEditable((old) => !old)}
             data-testid="enable-edit"
           >
