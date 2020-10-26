@@ -145,6 +145,11 @@ export const table2: TableMeta = {
   ],
 }
 
+export const table2data = [
+  { id: 1, timepoint: 1 },
+  { id: 1, timepoint: 2 },
+]
+
 // No primary key
 export const table3: TableMeta = {
   name: "newtable3",

@@ -8,6 +8,7 @@ import {
   table2,
   table3,
   table1data,
+  table2data,
 } from "../../tests/util"
 import toProperCase from "../../lib/to-proper-case"
 import { TableRow } from "../../lib/api/project"
@@ -196,4 +197,20 @@ test("attempt to put a string into a number field", async () => {
   const inputToMod = selectFieldByLabel(inputRow, "id")
   fireEvent.change(inputToMod, { target: { value: "a" } })
   expect(inputToMod).toBeInvalid()
+})
+
+test("meta/data mismatch", async () => {
+  mockedAxios.get
+    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: ["table1"] })
+    .mockResolvedValueOnce({
+      status: httpStatusCodes.OK,
+      data: table1,
+    })
+    .mockResolvedValueOnce({
+      status: httpStatusCodes.OK,
+      data: table2data,
+    })
+  const dataPanel = renderProjectPage("123", "data")
+  await waitForDomChange()
+  expect(dataPanel.queryAllByTestId("data-row")).toBeEmpty()
 })

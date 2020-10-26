@@ -319,7 +319,7 @@ function Table({
           {rows.map((row) => {
             prepareRow(row)
             return (
-              <StyledTableRow {...row.getRowProps()}>
+              <StyledTableRow {...row.getRowProps()} data-testid="data-row">
                 {row.cells.map((cell) => (
                   <StyledTableCell {...cell.getCellProps()}>
                     {cell.render("Cell")}
