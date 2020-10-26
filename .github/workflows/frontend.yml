@@ -73,3 +73,15 @@ jobs:
       - name: Test
         run: npm test -- --watchAll=false
         working-directory: frontend
+
+  prettier:
+    name: Prettier
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Prettify
+        uses: creyD/prettier_action@v3.1
+        with:
+          prettier_options: --check --write **/*.{js,md,ts,tsx}
+          dry: true
