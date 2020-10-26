@@ -114,10 +114,9 @@ export function SimpleNav({
   links: string[]
   dataTestId?: string
   onClick?: (l: string) => void
-  active?: (l: string) => boolean
+  active: (l: string) => boolean
 }) {
   const { url } = useRouteMatch()
-  const { pathname } = useLocation()
   const classes = useStyles()
   return (
     <div className={classes.simpleNav} data-testid={dataTestId}>
@@ -125,7 +124,7 @@ export function SimpleNav({
         <ButtonLink
           key={l}
           className={classes.link}
-          active={active ? active(l) : pathname.includes(l)}
+          active={active(l)}
           to={`${url}/${l}`}
           onClick={() => onClick?.(l)}
         >
