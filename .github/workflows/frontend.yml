@@ -83,5 +83,5 @@ jobs:
       - name: Prettify
         uses: creyD/prettier_action@v3.1
         with:
-          prettier_options: --check **/*.{js,md,ts,tsx}
+          prettier_options: --check --write **/*.{js,md,ts,tsx}
           dry: true
