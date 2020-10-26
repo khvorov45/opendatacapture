@@ -82,7 +82,6 @@ test("not enough fields", async () => {
   const user = {
     id: 1,
     email: "test@example.com",
-    password_hash: "1",
   }
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: user })
   tokenValidator("123").catch((e) =>
