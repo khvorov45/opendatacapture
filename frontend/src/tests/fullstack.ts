@@ -182,6 +182,17 @@ describe("bad token", () => {
   })
 })
 
+test("token refresh", async () => {
+  let token = (
+    await tokenFetcher({
+      email: "admin@example.com",
+      password: "admin",
+    })
+  ).token
+  const newTok = await refreshToken(token)
+  expect(newTok).not.toEqual(token)
+})
+
 describe("need credentials", () => {
   let token: string
 
@@ -192,11 +203,6 @@ describe("need credentials", () => {
         password: "admin",
       })
     ).token
-  })
-
-  test("token refresh", async () => {
-    const newTok = await refreshToken(token)
-    expect(newTok).not.toEqual(token)
   })
 
   test("project manipulation", async () => {
