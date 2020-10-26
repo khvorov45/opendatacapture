@@ -209,7 +209,7 @@ test("table panel functionality - no initial tables", async () => {
   )
   expect(queryByTestId(`table-card-${table2.name}`)).not.toBeInTheDocument()
   expect(getByTestId(`table-card-${table1.name}`)).toBeInTheDocument()
-})
+}, 20000)
 
 test("table panel - some initial tables", async () => {
   // List of tables
