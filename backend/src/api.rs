@@ -708,9 +708,22 @@ mod tests {
 
         // Refresh session token
         {
+            // Genereate new, will be removed on refresh
+            let admin_token = admindb_ref
+                .lock()
+                .await
+                .generate_session_token(auth::EmailPassword {
+                    email: "admin@example.com".to_string(),
+                    password: "admin".to_string(),
+                })
+                .await
+                .unwrap();
             let resp = warp::test::request()
                 .method("POST")
-                .path(format!("/auth/refresh-token/{}", admin_token).as_str())
+                .path(
+                    format!("/auth/refresh-token/{}", admin_token.token())
+                        .as_str(),
+                )
                 .json(&auth::EmailPassword {
                     email: "user@example.com".to_string(),
                     password: "user".to_string(),
@@ -720,7 +733,7 @@ mod tests {
             assert_eq!(resp.status(), StatusCode::OK);
             let token_obtained: auth::Token =
                 serde_json::from_slice(&*resp.body()).unwrap();
-            assert_ne!(token_obtained.token(), admin_token);
+            assert_ne!(token_obtained.token(), admin_token.token());
         }
 
         // Get user by token

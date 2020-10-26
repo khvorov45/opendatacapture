@@ -260,11 +260,12 @@ impl AdminDB {
             )))
         }
     }
-    /// Refresh a token - get valid old and insert and return new
+    /// Refresh a token (i.e. create new given old)
     pub async fn refresh_token(&self, token: &str) -> Result<auth::Token> {
         let old_token = self.get_token_valid(token).await?;
         let new_token = auth::Token::new(old_token.user());
         self.insert_token(&new_token).await?;
+        self.remove_token(token).await?;
         Ok(new_token)
     }
     /// Remove the given token regardless of its validity
@@ -778,6 +779,13 @@ mod tests {
         assert!(user_tok.created() < user_tok_refreshed.created());
         assert_ne!(user_tok.token(), user_tok_refreshed.token());
 
+        // Old token is no longer valid
+        let user = test_db.get_user_by_token(user_tok.token()).await;
+        assert!(matches!(
+            user,
+            Err(Error::Unauthorized(Unauthorized::NoSuchToken(_)))
+        ));
+
         // Make that token appear older
         sqlx::query(
             "UPDATE \"token\" \
@@ -787,15 +795,18 @@ mod tests {
         .execute(test_db.get_pool())
         .await
         .unwrap();
-        let user = test_db.get_user_by_token(user_tok.token()).await;
+        let user = test_db.get_user_by_token(user_tok_refreshed.token()).await;
         assert!(matches!(
             user,
             Err(Error::Unauthorized(Unauthorized::TokenTooOld))
         ));
 
         // Remove that token
-        test_db.remove_token(user_tok.token()).await.unwrap();
-        let user = test_db.get_user_by_token(user_tok.token()).await;
+        test_db
+            .remove_token(user_tok_refreshed.token())
+            .await
+            .unwrap();
+        let user = test_db.get_user_by_token(user_tok_refreshed.token()).await;
         assert!(matches!(
             user,
             Err(Error::Unauthorized(Unauthorized::NoSuchToken(_)))
