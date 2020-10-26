@@ -564,6 +564,7 @@ pub struct User {
     id: i32,
     email: String,
     access: auth::Access,
+    #[serde(skip)]
     password_hash: String,
 }
 
