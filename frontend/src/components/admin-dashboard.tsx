@@ -1,4 +1,4 @@
-import React, { useMemo } from "react"
+import React, { useMemo, useState } from "react"
 import {
   CircularProgress,
   TableContainer,
@@ -25,6 +25,7 @@ import {
   CreateButton,
   RefreshButton,
   DeleteButton,
+  CheckButton,
 } from "./button"
 
 const useStyles = makeStyles((theme: Theme) =>
@@ -104,6 +105,10 @@ function Users({ token }: { token: string }) {
     columns: columns,
     data: users,
   })
+
+  // Input hiding
+  const [hideInput, setHideInput] = useState(true)
+
   return (
     <TableContainerCentered data-testid="users-admin-widget">
       <MaterialTable {...getTableProps()}>
@@ -118,6 +123,7 @@ function Users({ token }: { token: string }) {
             {/*Control buttons*/}
             <StyledTableCell>
               <ButtonArray errorMsg={`${fetchUsers.error?.message ?? ""}`}>
+                <CreateButton onClick={() => setHideInput((old) => !old)} />
                 <RefreshButton
                   onClick={() => fetchUsers.execute(token)}
                   inProgress={fetchUsers.loading}
@@ -128,6 +134,7 @@ function Users({ token }: { token: string }) {
           </StyledTableRow>
         </TableHead>
         <TableBody {...getTableBodyProps()}>
+          <UserInputRow token={token} hidden={hideInput} />
           {rows.map((row) => {
             prepareRow(row)
             return (
@@ -145,6 +152,20 @@ function Users({ token }: { token: string }) {
         </TableBody>
       </MaterialTable>
     </TableContainerCentered>
+  )
+}
+
+function UserInputRow({ token, hidden }: { token: string; hidden: boolean }) {
+  return (
+    <StyledTableRow className={hidden ? "nodisplay" : ""}>
+      {/*ID*/}
+      <StyledTableCell />
+      <StyledTableCell>Email</StyledTableCell>
+      <StyledTableCell>AccessGroup</StyledTableCell>
+      <StyledTableCell>
+        <CheckButton />
+      </StyledTableCell>
+    </StyledTableRow>
   )
 }
 
