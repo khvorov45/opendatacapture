@@ -74,7 +74,9 @@ function Main({ token }: { token: string }) {
 }
 
 function Users({ token }: { token: string }) {
-  const fetchUsers = useAsync(getUsers, [token])
+  const fetchUsers = useAsync(getUsers, [token], {
+    setLoading: (state) => ({ ...state, loading: true }),
+  })
   const users: User[] = useMemo(() => fetchUsers.result ?? [], [fetchUsers])
   const columns = useMemo(() => {
     return [
