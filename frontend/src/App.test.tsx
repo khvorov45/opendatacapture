@@ -243,3 +243,48 @@ test("fail to remove token", async () => {
   expect(consoleSpy).toHaveBeenCalledTimes(1)
   consoleSpy.mockRestore()
 })
+
+test("admin dashboard access", async () => {
+  mockedAxios.get.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
+    data: {
+      id: 1,
+      email: "test@example.com",
+      access: "Admin",
+    },
+  })
+  localStorage.setItem("last-refresh", new Date().toISOString())
+  const app = renderApp("123")
+  await wait(() => {
+    expect(app.getByTestId("homepage")).toBeInTheDocument()
+  })
+  fireEvent.click(app.getByTestId("admin-dashboard-link"))
+  expect(app.getByTestId("admin-dashboard")).toBeInTheDocument()
+  // It somehow remembers the last postion on the next render, so better go back
+  fireEvent.click(app.getByText("Projects"))
+  await wait(() => {
+    expect(app.getByTestId("homepage")).toBeInTheDocument()
+  })
+})
+
+test("admin dashboard user no access", async () => {
+  mockedAxios.get.mockResolvedValueOnce({
+    status: httpStatusCodes.OK,
+    data: {
+      id: 1,
+      email: "test@example.com",
+      access: "User",
+    },
+  })
+  localStorage.setItem("last-refresh", new Date().toISOString())
+  const app = renderApp("123")
+  await wait(() => {
+    expect(app.getByTestId("homepage")).toBeInTheDocument()
+  })
+  fireEvent.click(app.getByTestId("admin-dashboard-link"))
+  expect(app.queryByTestId("admin-dashboard")).not.toBeInTheDocument()
+  fireEvent.click(app.getByText("Projects"))
+  await wait(() => {
+    expect(app.getByTestId("homepage")).toBeInTheDocument()
+  })
+})
