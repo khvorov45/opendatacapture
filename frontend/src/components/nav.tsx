@@ -2,9 +2,8 @@ import React from "react"
 import { IconButton } from "@material-ui/core"
 import BrightnessMediumIcon from "@material-ui/icons/BrightnessMedium"
 import PowerSettingsNewIcon from "@material-ui/icons/PowerSettingsNew"
-import Dashboard from "@material-ui/icons/Dashboard"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
-import { Link, useLocation, useRouteMatch } from "react-router-dom"
+import { useLocation, useRouteMatch } from "react-router-dom"
 import { ButtonLink } from "./button"
 import toProperCase from "../lib/to-proper-case"
 import { Access, User } from "../lib/api/auth"
@@ -67,19 +66,18 @@ export default function Nav({
         >
           Projects
         </ButtonLink>
+        <ButtonLink
+          className={`${classes.link} ${loginHide} ${onlyAdmin}`}
+          active={location.pathname.startsWith("/admin")}
+          to="/admin"
+        >
+          Admin
+        </ButtonLink>
       </div>
       <div>
         <ProjectInfo />
       </div>
       <div>
-        <IconButton
-          component={Link}
-          to="/admin"
-          className={`${loginHide} ${onlyAdmin}`}
-          data-testid="admin-dashboard-link"
-        >
-          <Dashboard />
-        </IconButton>
         <IconButton
           onClick={onLogout}
           className={loginHide}
