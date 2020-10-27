@@ -1,13 +1,9 @@
 import React, { useMemo, useState } from "react"
 import {
   CircularProgress,
-  TableContainer,
   Table as MaterialTable,
   TableHead,
   TableBody,
-  createStyles,
-  makeStyles,
-  Theme,
 } from "@material-ui/core"
 import { Redirect, Route, useLocation, useRouteMatch } from "react-router-dom"
 import { SimpleNav } from "./nav"
@@ -20,28 +16,7 @@ import {
   StyledTableRow,
   TableContainerCentered,
 } from "./table"
-import {
-  ButtonArray,
-  CreateButton,
-  RefreshButton,
-  DeleteButton,
-  CheckButton,
-} from "./button"
-
-const useStyles = makeStyles((theme: Theme) =>
-  createStyles({
-    tableContainer: {
-      width: "auto",
-      "& table": {
-        margin: "auto",
-        width: "auto",
-        "& td, & th": {
-          textAlign: "center",
-        },
-      },
-    },
-  })
-)
+import { ButtonArray, CreateButton, RefreshButton, CheckButton } from "./button"
 
 export default function AdminDashboard({ token }: { token: string | null }) {
   const { pathname } = useLocation()
