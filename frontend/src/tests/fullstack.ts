@@ -4,6 +4,7 @@
 
 /* istanbul ignore file */
 
+import { getUsers } from "../lib/api/admin"
 import {
   Access,
   LoginFailure,
@@ -26,7 +27,14 @@ import {
   getTableData,
   removeAllTableData,
 } from "../lib/api/project"
-import { table1, table2, table1data, tableTitre, tableTitreData } from "./util"
+import {
+  table1,
+  table2,
+  table1data,
+  tableTitre,
+  tableTitreData,
+  defaultAdmin,
+} from "./util"
 
 test("wrong token", async () => {
   expect.assertions(1)
@@ -191,6 +199,24 @@ test("token refresh", async () => {
   ).token
   const newTok = await refreshToken(token)
   expect(newTok).not.toEqual(token)
+})
+
+describe("need admin credentials", () => {
+  let token: string
+
+  beforeAll(async () => {
+    token = (
+      await tokenFetcher({
+        email: "admin@example.com",
+        password: "admin",
+      })
+    ).token
+  })
+
+  test("get users", async () => {
+    let users = await getUsers(token)
+    expect(users).toEqual([defaultAdmin])
+  })
 })
 
 describe("need credentials", () => {
