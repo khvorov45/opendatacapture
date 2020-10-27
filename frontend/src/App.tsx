@@ -115,7 +115,7 @@ export default function App() {
           <AuthRoute path="/project/:name" auth={auth}>
             <Project token={token} />
           </AuthRoute>
-          <AuthRoute exact path="/admin" auth={auth}>
+          <AuthRoute path="/admin" auth={auth}>
             <AdminOnly user={user}>
               <AdminDashboard token={token} />
             </AdminOnly>
