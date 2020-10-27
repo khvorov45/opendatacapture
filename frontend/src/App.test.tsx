@@ -52,7 +52,6 @@ test("route to homepage from login", async () => {
   let user: User = {
     id: 1,
     email: "test@example.com",
-    password_hash: "123",
     access: Access.Admin,
   }
   mockedAxios.get
