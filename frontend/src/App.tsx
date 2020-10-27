@@ -4,10 +4,12 @@ import Nav from "./components/nav"
 import Login from "./components/login"
 import Project from "./components/project/project"
 import {
+  Access,
   refreshToken,
   removeToken,
   Token,
   tokenValidator,
+  User,
 } from "./lib/api/auth"
 import CssBaseline from "@material-ui/core/CssBaseline"
 import {
@@ -69,7 +71,7 @@ export default function App() {
       removeToken(old_token).catch((e) => console.error(e.message))
     }
   }
-  const { auth } = useToken(token, tokenValidator)
+  const { user, auth } = useToken(token, tokenValidator)
   useEffect(() => {
     function conditionalRefresh() {
       // Gotta wait until we actually get a good token from somewhere
@@ -108,6 +110,9 @@ export default function App() {
           <AuthRoute path="/project/:name" auth={auth}>
             <Project token={token} />
           </AuthRoute>
+          <AuthRoute exact path="/admin" auth={auth}>
+            <AdminOnly user={user}>Admin dashboard</AdminOnly>
+          </AuthRoute>
         </Switch>
       </Router>
     </ThemeProvider>
@@ -136,4 +141,14 @@ function AuthRoute({
       )}
     </Route>
   )
+}
+
+function AdminOnly({
+  user,
+  children,
+}: {
+  user: User | null
+  children: ReactNode
+}) {
+  return <>{user?.access === Access.Admin ? children : <></>}</>
 }
