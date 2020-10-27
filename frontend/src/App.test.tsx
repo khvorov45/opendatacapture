@@ -258,6 +258,7 @@ test("admin dashboard access", async () => {
   await wait(() => {
     expect(app.getByTestId("homepage")).toBeInTheDocument()
   })
+  expect(app.getByTestId("admin-dashboard-link")).not.toHaveClass("nodisplay")
   fireEvent.click(app.getByTestId("admin-dashboard-link"))
   expect(app.getByTestId("admin-dashboard")).toBeInTheDocument()
   // It somehow remembers the last postion on the next render, so better go back
@@ -281,6 +282,7 @@ test("admin dashboard user no access", async () => {
   await wait(() => {
     expect(app.getByTestId("homepage")).toBeInTheDocument()
   })
+  expect(app.getByTestId("admin-dashboard-link")).toHaveClass("nodisplay")
   fireEvent.click(app.getByTestId("admin-dashboard-link"))
   expect(app.queryByTestId("admin-dashboard")).not.toBeInTheDocument()
   fireEvent.click(app.getByText("Projects"))

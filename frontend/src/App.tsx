@@ -96,7 +96,11 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
-        <Nav handleThemeChange={handleThemeChange} onLogout={handleLogout} />
+        <Nav
+          handleThemeChange={handleThemeChange}
+          onLogout={handleLogout}
+          user={user}
+        />
         <Switch>
           <Route exact path="/login">
             {auth === AuthStatus.Ok ? (
