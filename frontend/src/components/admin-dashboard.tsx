@@ -25,11 +25,19 @@ function Main({ token }: { token: string }) {
         <Redirect to={`${url}/users`} />
       </Route>
       <Route path={`${url}/users`}>
-        <>Users</>
+        <Users token={token} />
       </Route>
       <Route path={`${url}/all-projects`}>
-        <>All projects</>
+        <Projects token={token} />
       </Route>
     </div>
   )
+}
+
+function Users({ token }: { token: string }) {
+  return <div data-testid="users-admin-widget">Users</div>
+}
+
+function Projects({ token }: { token: string }) {
+  return <div data-testid="projects-admin-widget">Projects</div>
 }
