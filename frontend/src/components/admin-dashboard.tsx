@@ -5,6 +5,9 @@ import {
   Table as MaterialTable,
   TableHead,
   TableBody,
+  createStyles,
+  makeStyles,
+  Theme,
 } from "@material-ui/core"
 import { Redirect, Route, useLocation, useRouteMatch } from "react-router-dom"
 import { SimpleNav } from "./nav"
@@ -12,13 +15,32 @@ import { useAsync } from "react-async-hook"
 import { getUsers } from "../lib/api/admin"
 import { User } from "../lib/api/auth"
 import { useTable } from "react-table"
-import { StyledTableCell, StyledTableRow } from "./table"
+import {
+  StyledTableCell,
+  StyledTableRow,
+  TableContainerCentered,
+} from "./table"
 import {
   ButtonArray,
   CreateButton,
   RefreshButton,
   DeleteButton,
 } from "./button"
+
+const useStyles = makeStyles((theme: Theme) =>
+  createStyles({
+    tableContainer: {
+      width: "auto",
+      "& table": {
+        margin: "auto",
+        width: "auto",
+        "& td, & th": {
+          textAlign: "center",
+        },
+      },
+    },
+  })
+)
 
 export default function AdminDashboard({ token }: { token: string | null }) {
   const { pathname } = useLocation()
@@ -81,7 +103,7 @@ function Users({ token }: { token: string }) {
     data: users,
   })
   return (
-    <TableContainer data-testid="users-admin-widget">
+    <TableContainerCentered data-testid="users-admin-widget">
       <MaterialTable {...getTableProps()}>
         <TableHead>
           <StyledTableRow data-testid="header-row">
@@ -120,7 +142,7 @@ function Users({ token }: { token: string }) {
           })}
         </TableBody>
       </MaterialTable>
-    </TableContainer>
+    </TableContainerCentered>
   )
 }
 
