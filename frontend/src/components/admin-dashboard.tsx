@@ -1,9 +1,24 @@
-import React from "react"
-import { CircularProgress } from "@material-ui/core"
+import React, { useMemo } from "react"
+import {
+  CircularProgress,
+  TableContainer,
+  Table as MaterialTable,
+  TableHead,
+  TableBody,
+} from "@material-ui/core"
 import { Redirect, Route, useLocation, useRouteMatch } from "react-router-dom"
 import { SimpleNav } from "./nav"
 import { useAsync } from "react-async-hook"
 import { getUsers } from "../lib/api/admin"
+import { User } from "../lib/api/auth"
+import { useTable } from "react-table"
+import { StyledTableCell, StyledTableRow } from "./table"
+import {
+  ButtonArray,
+  CreateButton,
+  RefreshButton,
+  DeleteButton,
+} from "./button"
 
 export default function AdminDashboard({ token }: { token: string | null }) {
   const { pathname } = useLocation()
@@ -38,9 +53,75 @@ function Main({ token }: { token: string }) {
 
 function Users({ token }: { token: string }) {
   const fetchUsers = useAsync(getUsers, [token])
-  const users = fetchUsers.result ?? []
-  console.log(users)
-  return <div data-testid="users-admin-widget">Users</div>
+  const users: User[] = useMemo(() => fetchUsers.result ?? [], [fetchUsers])
+  const columns = useMemo(() => {
+    return [
+      {
+        Header: "ID",
+        accessor: (u: User) => u.id,
+      },
+      {
+        Header: "Email",
+        accessor: (u: User) => u.email,
+      },
+      {
+        Header: "Access group",
+        accessor: (u: User) => u.access.toString(),
+      },
+    ]
+  }, [])
+  const {
+    headers,
+    rows,
+    getTableProps,
+    getTableBodyProps,
+    prepareRow,
+  } = useTable<User>({
+    columns: columns,
+    data: users,
+  })
+  return (
+    <TableContainer data-testid="users-admin-widget">
+      <MaterialTable {...getTableProps()}>
+        <TableHead>
+          <StyledTableRow data-testid="header-row">
+            {/*Actual headers*/}
+            {headers.map((header) => (
+              <StyledTableCell {...header.getHeaderProps()}>
+                {header.render("Header")}
+              </StyledTableCell>
+            ))}
+            {/*Control buttons*/}
+            <StyledTableCell>
+              <ButtonArray errorMsg={`${fetchUsers.error?.message ?? ""}`}>
+                <RefreshButton
+                  onClick={() => fetchUsers.execute(token)}
+                  inProgress={fetchUsers.loading}
+                  dataTestId="refresh-users-button"
+                />
+              </ButtonArray>
+            </StyledTableCell>
+          </StyledTableRow>
+        </TableHead>
+        <TableBody {...getTableBodyProps()}>
+          {rows.map((row) => {
+            prepareRow(row)
+            return (
+              <StyledTableRow {...row.getRowProps()} data-testid="user-row">
+                {row.cells.map((cell) => (
+                  <StyledTableCell {...cell.getCellProps()}>
+                    {cell.render("Cell")}
+                  </StyledTableCell>
+                ))}
+                {/*Line up with control*/}
+                <StyledTableCell />
+              </StyledTableRow>
+            )
+          })}
+        </TableBody>
+      </MaterialTable>
+    </TableContainer>
+  )
 }
 
 function Projects({ token }: { token: string }) {
