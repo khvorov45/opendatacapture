@@ -22,6 +22,7 @@ import Home from "./components/home"
 import { AuthStatus, useToken } from "./lib/hooks"
 import { themeInit } from "./lib/theme"
 import { TOKEN_HOURS_TO_REFRESH } from "./lib/config"
+import AdminDashboard from "./components/admin-dashboard"
 
 function createThemeFromPalette(palette: "dark" | "light"): Theme {
   return createMuiTheme({
@@ -111,7 +112,9 @@ export default function App() {
             <Project token={token} />
           </AuthRoute>
           <AuthRoute exact path="/admin" auth={auth}>
-            <AdminOnly user={user}>Admin dashboard</AdminOnly>
+            <AdminOnly user={user}>
+              <AdminDashboard token={token} />
+            </AdminOnly>
           </AuthRoute>
         </Switch>
       </Router>
