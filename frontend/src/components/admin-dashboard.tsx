@@ -2,6 +2,8 @@ import React from "react"
 import { CircularProgress } from "@material-ui/core"
 import { Redirect, Route, useLocation, useRouteMatch } from "react-router-dom"
 import { SimpleNav } from "./nav"
+import { useAsync } from "react-async-hook"
+import { getUsers } from "../lib/api/admin"
 
 export default function AdminDashboard({ token }: { token: string | null }) {
   const { pathname } = useLocation()
@@ -35,6 +37,9 @@ function Main({ token }: { token: string }) {
 }
 
 function Users({ token }: { token: string }) {
+  const fetchUsers = useAsync(getUsers, [token])
+  const users = fetchUsers.result ?? []
+  console.log(users)
   return <div data-testid="users-admin-widget">Users</div>
 }
 
