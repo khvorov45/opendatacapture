@@ -124,16 +124,9 @@ mod tests {
 
     /// Insert a test user
     pub async fn insert_test_user(db: &db::admin::AdminDB) {
-        db.insert_user(
-            &db::admin::User::new(
-                "user@example.com",
-                "user",
-                auth::Access::User,
-            )
-            .unwrap(),
-        )
-        .await
-        .unwrap();
+        db.insert_user("user@example.com", "user", auth::Access::User)
+            .await
+            .unwrap();
     }
 
     /// Remove specific databases

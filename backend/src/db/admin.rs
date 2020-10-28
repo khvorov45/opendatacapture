@@ -33,9 +33,10 @@ impl AdminDB {
         // Fill access types and the one admin if required.
         if opt.clean || connected_to_empty {
             admindb
-                .insert_admin(
+                .insert_user(
                     opt.admin_email.as_str(),
                     opt.admin_password.as_str(),
+                    auth::Access::Admin,
                 )
                 .await?;
         }
@@ -119,24 +120,14 @@ impl AdminDB {
 
     // User table -------------------------------------------------------------
 
-    /// Insert an admin. Assume the admin table is empty.
-    async fn insert_admin(
-        &self,
-        admin_email: &str,
-        admin_password: &str,
-    ) -> Result<()> {
-        log::info!(
-            "inserting admin \"{}\" with password \"{}\"",
-            admin_email,
-            admin_password
-        );
-        let admin =
-            User::new(admin_email, admin_password, auth::Access::Admin)?;
-        self.insert_user(&admin).await?;
-        Ok(())
-    }
     /// Insert a user
-    pub async fn insert_user(&self, user: &User) -> Result<()> {
+    pub async fn insert_user(
+        &self,
+        email: &str,
+        password: &str,
+        access: auth::Access,
+    ) -> Result<()> {
+        let user = User::new(email, password, access)?;
         log::info!("inserting user {:?}", user);
         sqlx::query(
             "INSERT INTO \"user\" (\"email\", \"access\", \"password_hash\")
