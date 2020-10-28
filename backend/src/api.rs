@@ -20,6 +20,7 @@ pub fn routes(
         .or(get_user_by_token(db.clone()))
         .or(get_users(db.clone()))
         .or(create_project(db.clone()))
+        .or(get_user_project(db.clone()))
         .or(get_user_projects(db.clone()))
         .or(delete_project(db.clone()))
         .or(create_table(db.clone()))
@@ -343,9 +344,6 @@ fn get_user_projects(
 }
 
 /// Get a specific project
-#[allow(dead_code)]
-// This isn't actually dead, Rust just can't see that this is used in
-// a function that I don't directly call but instead pass to warp filters
 fn get_user_project(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
