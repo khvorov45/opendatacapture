@@ -19,6 +19,7 @@ pub fn routes(
         .or(remove_token(db.clone()))
         .or(get_user_by_token(db.clone()))
         .or(get_users(db.clone()))
+        .or(create_user(db.clone()))
         .or(create_project(db.clone()))
         .or(get_user_project(db.clone()))
         .or(get_user_projects(db.clone()))
@@ -273,6 +274,36 @@ fn get_users(
         .and_then(move |_user, db: DBRef| async move {
             match db.lock().await.get_users().await {
                 Ok(users) => Ok(warp::reply::json(&users)),
+                Err(e) => Err(warp::reject::custom(e)),
+            }
+        })
+}
+
+/// Create a new user
+fn create_user(
+    db: DBRef,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    #[derive(serde::Deserialize)]
+    struct NewUser {
+        email: String,
+        password: String,
+    }
+    warp::path!("create" / "user")
+        .and(warp::put())
+        .and(warp::body::json())
+        .and(with_db(db))
+        .and_then(move |u: NewUser, db: DBRef| async move {
+            match db
+                .lock()
+                .await
+                .insert_user(
+                    u.email.as_str(),
+                    u.password.as_str(),
+                    auth::Access::User,
+                )
+                .await
+            {
+                Ok(()) => Ok(reply_no_content()),
                 Err(e) => Err(warp::reject::custom(e)),
             }
         })
