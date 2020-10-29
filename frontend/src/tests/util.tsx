@@ -4,7 +4,7 @@ import { render } from "@testing-library/react"
 import { Redirect, Route, Switch, MemoryRouter } from "react-router-dom"
 import ProjectPage from "../components/project/project"
 import { TableData, TableMeta } from "../lib/api/project"
-import { Access, User } from "../lib/api/auth"
+import { Access, EmailPassword, User } from "../lib/api/auth"
 
 export function renderProjectPage(
   token?: string | null,
@@ -34,6 +34,11 @@ export const defaultAdmin: User = {
   id: 1,
   email: "admin@example.com",
   access: Access.Admin,
+}
+
+export const newUser: EmailPassword = {
+  email: "user@example.com",
+  password: "user",
 }
 
 /* NOTE on postgres and primary keys:
