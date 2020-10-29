@@ -7,6 +7,7 @@ import {
   createStyles,
   makeStyles,
   Theme,
+  TextField,
 } from "@material-ui/core"
 import { Redirect, Route, useLocation, useRouteMatch } from "react-router-dom"
 import { SimpleNav } from "./nav"
@@ -31,6 +32,11 @@ const useStyles = makeStyles((theme: Theme) =>
       display: "flex",
       flexDirection: "column",
       justifyContent: "center",
+    },
+    userInput: {
+      "&>*": {
+        marginRight: 5,
+      },
     },
   })
 )
@@ -151,16 +157,26 @@ function Users({ token }: { token: string }) {
 }
 
 function UserInput({ token, hidden }: { token: string; hidden: boolean }) {
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const classes = useStyles()
   return (
-    <StyledTableRow className={hidden ? "nodisplay" : ""}>
-      {/*ID*/}
-      <StyledTableCell />
-      <StyledTableCell>Email</StyledTableCell>
-      <StyledTableCell>AccessGroup</StyledTableCell>
-      <StyledTableCell>
-        <CheckButton />
-      </StyledTableCell>
-    </StyledTableRow>
+    <div className={`${classes.userInput} ${hidden ? "nodisplay" : ""}`}>
+      <TextField
+        inputProps={{ "data-testid": "user-email-field" }}
+        label="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <TextField
+        inputProps={{ "data-testid": "user-password-field" }}
+        label="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        type="password"
+      />
+      <CheckButton />
+    </div>
   )
 }
 
