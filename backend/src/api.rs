@@ -20,6 +20,7 @@ pub fn routes(
         .or(get_user_by_token(db.clone()))
         .or(get_users(db.clone()))
         .or(create_user(db.clone()))
+        .or(remove_user(db.clone()))
         .or(create_project(db.clone()))
         .or(get_user_project(db.clone()))
         .or(get_user_projects(db.clone()))
@@ -298,6 +299,22 @@ fn create_user(
                 )
                 .await
             {
+                Ok(()) => Ok(reply_no_content()),
+                Err(e) => Err(warp::reject::custom(e)),
+            }
+        })
+}
+
+/// Remove user by email. Require admin authorization
+fn remove_user(
+    db: DBRef,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("remove" / "user" / String)
+        .and(warp::delete())
+        .and(with_db(db.clone()))
+        .and(sufficient_access(db, auth::Access::Admin))
+        .and_then(move |email: String, db: DBRef, _| async move {
+            match db.lock().await.remove_user(email.as_str()).await {
                 Ok(()) => Ok(reply_no_content()),
                 Err(e) => Err(warp::reject::custom(e)),
             }
@@ -795,7 +812,7 @@ mod tests {
             assert_eq!(users_obtained.len(), 2);
         }
 
-        // Create user
+        // Create/remove user
         {
             let resp = warp::test::request()
                 .method("PUT")
@@ -805,6 +822,13 @@ mod tests {
                     password: "newpassword".to_string(),
                 })
                 .reply(&create_user(admindb_ref.clone()))
+                .await;
+            assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+            let resp = warp::test::request()
+                .method("DELETE")
+                .path("/remove/user/newuser@example.com")
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .reply(&remove_user(admindb_ref.clone()))
                 .await;
             assert_eq!(resp.status(), StatusCode::NO_CONTENT);
         }
