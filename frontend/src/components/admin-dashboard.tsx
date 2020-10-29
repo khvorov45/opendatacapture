@@ -85,48 +85,49 @@ function Users({ token }: { token: string }) {
   const [hideInput, setHideInput] = useState(true)
 
   return (
-    <TableContainerCentered data-testid="users-admin-widget">
-      <MaterialTable {...getTableProps()}>
-        <TableHead>
-          <StyledTableRow data-testid="header-row">
-            {/*Actual headers*/}
-            {headers.map((header) => (
-              <StyledTableCell {...header.getHeaderProps()}>
-                {header.render("Header")}
-              </StyledTableCell>
-            ))}
-            {/*Control buttons*/}
-            <StyledTableCell>
-              <ButtonArray errorMsg={`${fetchUsers.error?.message ?? ""}`}>
-                <CreateButton onClick={() => setHideInput((old) => !old)} />
-                <RefreshButton
-                  onClick={() => fetchUsers.execute(token)}
-                  inProgress={fetchUsers.loading}
-                  dataTestId="refresh-users-button"
-                />
-              </ButtonArray>
-            </StyledTableCell>
-          </StyledTableRow>
-        </TableHead>
-        <TableBody {...getTableBodyProps()}>
-          <UserInputRow token={token} hidden={hideInput} />
-          {rows.map((row) => {
-            prepareRow(row)
-            return (
-              <StyledTableRow {...row.getRowProps()} data-testid="user-row">
-                {row.cells.map((cell) => (
-                  <StyledTableCell {...cell.getCellProps()}>
-                    {cell.render("Cell")}
-                  </StyledTableCell>
-                ))}
-                {/*Line up with control*/}
-                <StyledTableCell />
-              </StyledTableRow>
-            )
-          })}
-        </TableBody>
-      </MaterialTable>
-    </TableContainerCentered>
+    <div data-testid="users-admin-widget">
+      <ButtonArray errorMsg={`${fetchUsers.error?.message ?? ""}`}>
+        <CreateButton onClick={() => setHideInput((old) => !old)} />
+        <RefreshButton
+          onClick={() => fetchUsers.execute(token)}
+          inProgress={fetchUsers.loading}
+          dataTestId="refresh-users-button"
+        />
+      </ButtonArray>
+      <TableContainerCentered>
+        <MaterialTable {...getTableProps()}>
+          <TableHead>
+            <StyledTableRow data-testid="header-row">
+              {/*Actual headers*/}
+              {headers.map((header) => (
+                <StyledTableCell {...header.getHeaderProps()}>
+                  {header.render("Header")}
+                </StyledTableCell>
+              ))}
+              {/*Control buttons*/}
+              <StyledTableCell></StyledTableCell>
+            </StyledTableRow>
+          </TableHead>
+          <TableBody {...getTableBodyProps()}>
+            <UserInputRow token={token} hidden={hideInput} />
+            {rows.map((row) => {
+              prepareRow(row)
+              return (
+                <StyledTableRow {...row.getRowProps()} data-testid="user-row">
+                  {row.cells.map((cell) => (
+                    <StyledTableCell {...cell.getCellProps()}>
+                      {cell.render("Cell")}
+                    </StyledTableCell>
+                  ))}
+                  {/*Line up with control*/}
+                  <StyledTableCell />
+                </StyledTableRow>
+              )
+            })}
+          </TableBody>
+        </MaterialTable>
+      </TableContainerCentered>
+    </div>
   )
 }
 
