@@ -283,16 +283,11 @@ fn get_users(
 fn create_user(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    #[derive(serde::Deserialize)]
-    struct NewUser {
-        email: String,
-        password: String,
-    }
     warp::path!("create" / "user")
         .and(warp::put())
         .and(warp::body::json())
         .and(with_db(db))
-        .and_then(move |u: NewUser, db: DBRef| async move {
+        .and_then(move |u: auth::EmailPassword, db: DBRef| async move {
             match db
                 .lock()
                 .await
@@ -798,6 +793,20 @@ mod tests {
             )
             .unwrap();
             assert_eq!(users_obtained.len(), 2);
+        }
+
+        // Create user
+        {
+            let resp = warp::test::request()
+                .method("PUT")
+                .path("/create/user")
+                .json(&auth::EmailPassword {
+                    email: "newuser@example.com".to_string(),
+                    password: "newpassword".to_string(),
+                })
+                .reply(&create_user(admindb_ref.clone()))
+                .await;
+            assert_eq!(resp.status(), StatusCode::NO_CONTENT);
         }
 
         // Test projects
