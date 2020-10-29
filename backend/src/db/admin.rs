@@ -199,11 +199,11 @@ impl AdminDB {
         .await?;
         Ok(())
     }
-    /// Removes user by id
-    pub async fn remove_user(&self, id: i32) -> Result<()> {
-        log::debug!("removing user id {}", id);
-        sqlx::query("DELETE FROM \"user\" WHERE \"id\" = $1")
-            .bind(id)
+    /// Removes user by email
+    pub async fn remove_user(&self, email: &str) -> Result<()> {
+        log::debug!("removing user email {}", email);
+        sqlx::query("DELETE FROM \"user\" WHERE \"email\" = $1")
+            .bind(email)
             .execute(self.get_pool())
             .await?;
         Ok(())
@@ -885,7 +885,7 @@ mod tests {
         ));
 
         log::info!("remove that user");
-        test_db.remove_user(obtained_user.id()).await.unwrap();
+        test_db.remove_user(obtained_user.email()).await.unwrap();
 
         log::info!("verify that user no longer exists");
         let user3 = test_db.get_user_by_id(obtained_user.id()).await;
