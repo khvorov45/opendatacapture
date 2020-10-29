@@ -2,7 +2,7 @@ import axios from "axios"
 import httpStatusCodes from "http-status-codes"
 import * as t from "io-ts"
 import { API_ROOT } from "../config"
-import { User, UserV } from "./auth"
+import { EmailPassword, User, UserV } from "./auth"
 import { decode } from "./io-validation"
 
 export async function getUsers(tok: string): Promise<User[]> {
@@ -15,4 +15,13 @@ export async function getUsers(tok: string): Promise<User[]> {
     throw Error(res.data)
   }
   return await decode(t.array(UserV), res.data)
+}
+
+export async function createUser(newUser: EmailPassword): Promise<void> {
+  const res = await axios.put(`${API_ROOT}/create/user`, newUser, {
+    validateStatus: (s) => [httpStatusCodes.NO_CONTENT].includes(s),
+  })
+  if (res.status !== httpStatusCodes.NO_CONTENT) {
+    throw Error(res.data)
+  }
 }
