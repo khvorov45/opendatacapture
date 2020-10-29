@@ -11,8 +11,8 @@ import {
 } from "@material-ui/core"
 import { Redirect, Route, useLocation, useRouteMatch } from "react-router-dom"
 import { SimpleNav } from "./nav"
-import { useAsync } from "react-async-hook"
-import { getUsers } from "../lib/api/user"
+import { useAsync, useAsyncCallback } from "react-async-hook"
+import { createUser, getUsers } from "../lib/api/user"
 import { User } from "../lib/api/auth"
 import { useTable } from "react-table"
 import {
@@ -34,6 +34,7 @@ const useStyles = makeStyles((theme: Theme) =>
       justifyContent: "center",
     },
     userInput: {
+      display: "flex",
       "&>*": {
         marginRight: 5,
       },
@@ -159,6 +160,9 @@ function Users({ token }: { token: string }) {
 function UserInput({ token, hidden }: { token: string; hidden: boolean }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+
+  const handleSubmit = useAsyncCallback(createUser)
+
   const classes = useStyles()
   return (
     <div className={`${classes.userInput} ${hidden ? "nodisplay" : ""}`}>
@@ -175,7 +179,14 @@ function UserInput({ token, hidden }: { token: string; hidden: boolean }) {
         onChange={(e) => setPassword(e.target.value)}
         type="password"
       />
-      <CheckButton />
+      <ButtonArray errorMsg={handleSubmit.error?.message}>
+        <CheckButton
+          onClick={() =>
+            handleSubmit.execute({ email: email, password: password })
+          }
+          inProgress={handleSubmit.loading}
+        />
+      </ButtonArray>
     </div>
   )
 }
