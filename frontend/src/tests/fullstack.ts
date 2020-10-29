@@ -190,6 +190,14 @@ describe("bad token", () => {
       expect(e.message).toBe('NoSuchToken("123")')
     }
   })
+  test("remove user", async () => {
+    expect.assertions(1)
+    try {
+      await removeUser("123", "any@example.com")
+    } catch (e) {
+      expect(e.message).toBe('NoSuchToken("123")')
+    }
+  })
 })
 
 test("token refresh", async () => {
