@@ -4,6 +4,9 @@ import {
   Table as MaterialTable,
   TableHead,
   TableBody,
+  createStyles,
+  makeStyles,
+  Theme,
 } from "@material-ui/core"
 import { Redirect, Route, useLocation, useRouteMatch } from "react-router-dom"
 import { SimpleNav } from "./nav"
@@ -17,6 +20,20 @@ import {
   TableContainerCentered,
 } from "./table"
 import { ButtonArray, CreateButton, RefreshButton, CheckButton } from "./button"
+
+const useStyles = makeStyles((theme: Theme) =>
+  createStyles({
+    main: {
+      display: "flex",
+      justifyContent: "center",
+    },
+    usersAdminWidget: {
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+    },
+  })
+)
 
 export default function AdminDashboard({ token }: { token: string | null }) {
   const { pathname } = useLocation()
@@ -34,8 +51,9 @@ export default function AdminDashboard({ token }: { token: string | null }) {
 
 function Main({ token }: { token: string }) {
   const { url } = useRouteMatch()
+  const classes = useStyles()
   return (
-    <div>
+    <div className={classes.main}>
       <Route exact path={url}>
         <Redirect to={`${url}/users`} />
       </Route>
@@ -84,8 +102,9 @@ function Users({ token }: { token: string }) {
   // Input hiding
   const [hideInput, setHideInput] = useState(true)
 
+  const classes = useStyles()
   return (
-    <div data-testid="users-admin-widget">
+    <div className={classes.usersAdminWidget} data-testid="users-admin-widget">
       <ButtonArray errorMsg={`${fetchUsers.error?.message ?? ""}`}>
         <CreateButton onClick={() => setHideInput((old) => !old)} />
         <RefreshButton
