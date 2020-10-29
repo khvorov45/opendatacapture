@@ -8,7 +8,7 @@ import {
 import { Redirect, Route, useLocation, useRouteMatch } from "react-router-dom"
 import { SimpleNav } from "./nav"
 import { useAsync } from "react-async-hook"
-import { getUsers } from "../lib/api/admin"
+import { getUsers } from "../lib/api/user"
 import { User } from "../lib/api/auth"
 import { useTable } from "react-table"
 import {

@@ -4,7 +4,7 @@
 
 /* istanbul ignore file */
 
-import { getUsers } from "../lib/api/admin"
+import { getUsers } from "../lib/api/user"
 import {
   Access,
   LoginFailure,
