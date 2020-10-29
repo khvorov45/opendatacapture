@@ -113,7 +113,7 @@ function Users({ token }: { token: string }) {
           dataTestId="refresh-users-button"
         />
       </ButtonArray>
-      <UserInputRow token={token} hidden={hideInput} />
+      <UserInput token={token} hidden={hideInput} />
       <TableContainerCentered>
         <MaterialTable {...getTableProps()}>
           <TableHead>
@@ -150,7 +150,7 @@ function Users({ token }: { token: string }) {
   )
 }
 
-function UserInputRow({ token, hidden }: { token: string; hidden: boolean }) {
+function UserInput({ token, hidden }: { token: string; hidden: boolean }) {
   return (
     <StyledTableRow className={hidden ? "nodisplay" : ""}>
       {/*ID*/}
