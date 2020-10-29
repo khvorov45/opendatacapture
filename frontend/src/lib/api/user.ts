@@ -28,7 +28,8 @@ export async function createUser(newUser: EmailPassword): Promise<void> {
 
 export async function removeUser(token: string, email: string): Promise<void> {
   const res = await axios.delete(`${API_ROOT}/remove/user/${email}`, {
-    validateStatus: (s) => [httpStatusCodes.NO_CONTENT].includes(s),
+    validateStatus: (s) =>
+      [httpStatusCodes.NO_CONTENT, httpStatusCodes.UNAUTHORIZED].includes(s),
     headers: { Authorization: `Bearer ${token}` },
   })
   if (res.status !== httpStatusCodes.NO_CONTENT) {
