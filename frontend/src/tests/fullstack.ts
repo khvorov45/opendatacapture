@@ -4,9 +4,10 @@
 
 /* istanbul ignore file */
 
-import { getUsers } from "../lib/api/user"
+import { createUser, getUsers, removeUser } from "../lib/api/user"
 import {
   Access,
+  EmailPassword,
   LoginFailure,
   refreshToken,
   removeToken,
@@ -34,6 +35,7 @@ import {
   tableTitre,
   tableTitreData,
   defaultAdmin,
+  newUser,
 } from "./util"
 
 test("wrong token", async () => {
@@ -216,6 +218,27 @@ describe("need admin credentials", () => {
   test("get users", async () => {
     let users = await getUsers(token)
     expect(users).toEqual([defaultAdmin])
+  })
+
+  test("create/remove user", async () => {
+    expect.assertions(2)
+    async function failTokenFetch(cred: EmailPassword, msg: string) {
+      try {
+        await tokenFetcher(newUser)
+        console.log("received token when not supposed to " + msg)
+      } catch (e) {
+        expect(e.message).toBe(LoginFailure.EmailNotFound)
+      }
+    }
+    // User shouldn't exist
+    await failTokenFetch(newUser, "before creation")
+    // Create them
+    await createUser(newUser)
+    // Token fetching should work
+    await tokenFetcher(newUser)
+    // Remove user
+    await removeUser(token, newUser.email)
+    await failTokenFetch(newUser, "after creation")
   })
 })
 
