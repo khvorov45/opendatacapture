@@ -229,7 +229,7 @@ describe("need admin credentials", () => {
   })
 
   test("create/remove user", async () => {
-    expect.assertions(2)
+    expect.assertions(3)
     async function failTokenFetch(cred: EmailPassword, msg: string) {
       try {
         await tokenFetcher(newUser)
@@ -244,6 +244,12 @@ describe("need admin credentials", () => {
     await createUser(newUser)
     // Token fetching should work
     await tokenFetcher(newUser)
+    // Creating them again should cause an error
+    try {
+      await createUser(newUser)
+    } catch (e) {
+      expect(e.message).toStartWith("Request failed")
+    }
     // Remove user
     await removeUser(token, newUser.email)
     await failTokenFetch(newUser, "after creation")
