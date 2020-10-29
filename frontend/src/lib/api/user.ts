@@ -25,3 +25,12 @@ export async function createUser(newUser: EmailPassword): Promise<void> {
     throw Error(res.data)
   }
 }
+
+export async function removeUser(token: string, email: string): Promise<void> {
+  const res = await axios.delete(`${API_ROOT}/remove/user/${email}`, {
+    validateStatus: (s) => [httpStatusCodes.NO_CONTENT].includes(s),
+  })
+  if (res.status !== httpStatusCodes.NO_CONTENT) {
+    throw Error(res.data)
+  }
+}
