@@ -113,6 +113,7 @@ function Users({ token }: { token: string }) {
           dataTestId="refresh-users-button"
         />
       </ButtonArray>
+      <UserInputRow token={token} hidden={hideInput} />
       <TableContainerCentered>
         <MaterialTable {...getTableProps()}>
           <TableHead>
@@ -128,7 +129,6 @@ function Users({ token }: { token: string }) {
             </StyledTableRow>
           </TableHead>
           <TableBody {...getTableBodyProps()}>
-            <UserInputRow token={token} hidden={hideInput} />
             {rows.map((row) => {
               prepareRow(row)
               return (
