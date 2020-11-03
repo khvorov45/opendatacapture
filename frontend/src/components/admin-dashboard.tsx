@@ -13,7 +13,7 @@ import { Redirect, Route, useLocation, useRouteMatch } from "react-router-dom"
 import { SimpleNav } from "./nav"
 import { useAsync, useAsyncCallback } from "react-async-hook"
 import { createUser, getUsers, removeUser } from "../lib/api/user"
-import { User } from "../lib/api/auth"
+import { EmailPassword, User } from "../lib/api/auth"
 import { useTable } from "react-table"
 import {
   StyledTableCell,
@@ -132,7 +132,11 @@ function Users({ token }: { token: string }) {
           dataTestId="refresh-users-button"
         />
       </ButtonArray>
-      <UserInput token={token} hidden={hideInput} />
+      <UserInput
+        token={token}
+        hidden={hideInput}
+        onSubmit={() => fetchUsers.execute(token)}
+      />
       <TableContainerCentered>
         <MaterialTable {...getTableProps()}>
           <TableHead>
@@ -173,11 +177,22 @@ function Users({ token }: { token: string }) {
   )
 }
 
-function UserInput({ token, hidden }: { token: string; hidden: boolean }) {
+function UserInput({
+  token,
+  hidden,
+  onSubmit,
+}: {
+  token: string
+  hidden: boolean
+  onSubmit: () => void
+}) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
 
-  const handleSubmit = useAsyncCallback(createUser)
+  const handleSubmit = useAsyncCallback(async (cred: EmailPassword) => {
+    await createUser(cred)
+    onSubmit()
+  })
 
   const classes = useStyles()
   return (
