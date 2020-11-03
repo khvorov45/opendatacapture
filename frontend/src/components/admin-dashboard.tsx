@@ -12,7 +12,7 @@ import {
 import { Redirect, Route, useLocation, useRouteMatch } from "react-router-dom"
 import { SimpleNav } from "./nav"
 import { useAsync, useAsyncCallback } from "react-async-hook"
-import { createUser, getUsers } from "../lib/api/user"
+import { createUser, getUsers, removeUser } from "../lib/api/user"
 import { User } from "../lib/api/auth"
 import { useTable } from "react-table"
 import {
@@ -20,7 +20,13 @@ import {
   StyledTableRow,
   TableContainerCentered,
 } from "./table"
-import { ButtonArray, CreateButton, RefreshButton, CheckButton } from "./button"
+import {
+  ButtonArray,
+  CreateButton,
+  RefreshButton,
+  CheckButton,
+  DeleteButton,
+} from "./button"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -106,6 +112,12 @@ function Users({ token }: { token: string }) {
     data: users,
   })
 
+  // User deletion
+  const handleDelete = useAsyncCallback(async (email) => {
+    await removeUser(token, email)
+    fetchUsers.execute(token)
+  })
+
   // Input hiding
   const [hideInput, setHideInput] = useState(true)
 
@@ -146,7 +158,11 @@ function Users({ token }: { token: string }) {
                     </StyledTableCell>
                   ))}
                   {/*Line up with control*/}
-                  <StyledTableCell />
+                  <StyledTableCell>
+                    <DeleteButton
+                      onClick={() => handleDelete.execute(row.original.email)}
+                    />
+                  </StyledTableCell>
                 </StyledTableRow>
               )
             })}
