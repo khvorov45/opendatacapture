@@ -10,7 +10,7 @@ import {
 import httpStatusCodes from "http-status-codes"
 import React from "react"
 import { MemoryRouter, Route, Redirect, Switch } from "react-router-dom"
-import AdminDashboard from "./admin-dashboard"
+import AdminDashboard from "./admin"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>

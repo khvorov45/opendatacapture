@@ -10,23 +10,23 @@ import {
   TextField,
 } from "@material-ui/core"
 import { Redirect, Route, useLocation, useRouteMatch } from "react-router-dom"
-import { SimpleNav } from "./nav"
+import { SimpleNav } from "../nav"
 import { useAsync, useAsyncCallback } from "react-async-hook"
-import { createUser, getUsers, removeUser } from "../lib/api/user"
-import { EmailPassword, User } from "../lib/api/auth"
+import { createUser, getUsers, removeUser } from "../../lib/api/user"
+import { EmailPassword, User } from "../../lib/api/auth"
 import { useTable } from "react-table"
 import {
   StyledTableCell,
   StyledTableRow,
   TableContainerCentered,
-} from "./table"
+} from "../table"
 import {
   ButtonArray,
   CreateButton,
   RefreshButton,
   CheckButton,
   DeleteButton,
-} from "./button"
+} from "../button"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
