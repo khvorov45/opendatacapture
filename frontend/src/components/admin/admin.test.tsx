@@ -1,15 +1,13 @@
 /* istanbul ignore file */
 import axios from "axios"
 import { fireEvent, wait } from "@testing-library/react"
-import httpStatusCodes from "http-status-codes"
 import { renderAdminPage } from "../../tests/util"
+import { getUsers } from "../../tests/api"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
-mockedAxios.get.mockImplementation(async (url) => {
-  return { status: httpStatusCodes.OK, data: [] }
-})
+mockedAxios.get.mockImplementation(getUsers)
 
 test("navigation", async () => {
   const admin = renderAdminPage()
