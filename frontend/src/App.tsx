@@ -22,7 +22,7 @@ import Home from "./components/home"
 import { AuthStatus, useToken } from "./lib/hooks"
 import { themeInit } from "./lib/theme"
 import { TOKEN_HOURS_TO_REFRESH } from "./lib/config"
-import AdminDashboard from "./components/admin-dashboard"
+import AdminDashboard from "./components/admin/admin"
 
 function createThemeFromPalette(palette: "dark" | "light"): Theme {
   return createMuiTheme({
