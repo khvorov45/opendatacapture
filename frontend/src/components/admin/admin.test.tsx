@@ -2,12 +2,12 @@
 import axios from "axios"
 import { fireEvent, wait } from "@testing-library/react"
 import { renderAdminPage } from "../../tests/util"
-import { getUsers } from "../../tests/api"
+import { constructGet } from "../../tests/api"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
-mockedAxios.get.mockImplementation(getUsers)
+mockedAxios.get.mockImplementation(constructGet())
 
 test("navigation", async () => {
   const admin = renderAdminPage()

@@ -4,12 +4,18 @@
 import httpStatusCodes from "http-status-codes"
 import { defaultAdmin } from "./util"
 
-export async function getOk(url: string) {
-  if (url.endsWith("/get/users")) {
-    return await getUsers()
-  }
+const defaultGet = {
+  getUsers: async () => ({ status: httpStatusCodes.OK, data: [defaultAdmin] }),
 }
 
-export async function getUsers() {
-  return { status: httpStatusCodes.OK, data: [defaultAdmin] }
+/** Whatever is in `fns` is supposed to overwrite `defaultGet` */
+export function constructGet(fns?: Record<string, any>) {
+  const currentGet = Object.assign(defaultGet, fns)
+  const mockedGet = async (url: string) => {
+    if (url.endsWith("/get/users")) {
+      return await currentGet.getUsers()
+    }
+    throw Error("unimplemented path in mocked get")
+  }
+  return mockedGet
 }
