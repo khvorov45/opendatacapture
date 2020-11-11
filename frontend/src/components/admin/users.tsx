@@ -129,6 +129,7 @@ export default function Users({ token }: { token: string }) {
                   {/*Line up with control*/}
                   <StyledTableCell>
                     <DeleteButton
+                      dataTestId="remove-user"
                       onClick={() => handleDelete.execute(row.original.email)}
                     />
                   </StyledTableCell>
