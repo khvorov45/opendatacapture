@@ -1,3 +1,5 @@
+/* istanbul ignore file */
+
 import { Access, User } from "../lib/api/auth"
 
 export const user1: User = {
