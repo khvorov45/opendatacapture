@@ -157,7 +157,10 @@ function UserInput({
 
   const classes = useStyles()
   return (
-    <div className={`${classes.userInput} ${hidden ? "nodisplay" : ""}`}>
+    <div
+      className={`${classes.userInput} ${hidden ? "nodisplay" : ""}`}
+      data-testid="new-user-form"
+    >
       <TextField
         inputProps={{ "data-testid": "user-email-field" }}
         label="Email"
