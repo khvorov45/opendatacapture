@@ -5,7 +5,6 @@ import { Redirect, Route, Switch, MemoryRouter } from "react-router-dom"
 import ProjectPage from "../components/project/project"
 import { TableData, TableMeta } from "../lib/api/project"
 import { Access, EmailPassword, User } from "../lib/api/auth"
-import AdminDashboard from "../components/admin/admin"
 
 export function renderProjectPage(
   token?: string | null,
@@ -25,28 +24,6 @@ export function renderProjectPage(
         </Route>
         <Route path="/project/:name">
           <ProjectPage token={tok} />
-        </Route>
-      </Switch>
-    </MemoryRouter>
-  )
-}
-
-export function renderAdminPage(
-  token?: string | null,
-  path?: "users" | "all-projects"
-) {
-  let tok: string | null = "123"
-  if (token !== undefined) {
-    tok = token
-  }
-  return render(
-    <MemoryRouter initialEntries={[path ? `/admin/${path}` : "/"]}>
-      <Switch>
-        <Route exact path="/">
-          <Redirect to="/admin" />
-        </Route>
-        <Route path="/admin">
-          <AdminDashboard token={tok} />
         </Route>
       </Switch>
     </MemoryRouter>
