@@ -19,3 +19,18 @@ export function constructGet(fns?: Record<string, any>) {
   }
   return mockedGet
 }
+
+const defaultDelete = {
+  removeUser: async () => ({ status: httpStatusCodes.NO_CONTENT }),
+}
+
+export function constructDelete(fns?: Record<string, any>) {
+  const currentDelete = Object.assign(defaultDelete, fns)
+  const mockedDelete = async (url: string) => {
+    if (url.includes("/remove/user/")) {
+      return await currentDelete.removeUser()
+    }
+    throw Error("unimplemented path in mocked delete")
+  }
+  return mockedDelete
+}
