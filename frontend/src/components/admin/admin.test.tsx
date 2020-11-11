@@ -43,3 +43,8 @@ test("navigation", async () => {
     expect(admin.getByTestId("projects-admin-widget")).toBeInTheDocument()
   })
 })
+
+test("no token - no content", async () => {
+  const admin = renderAdminPage(null)
+  expect(admin.queryByTestId("users-admin-widget")).not.toBeInTheDocument()
+})
