@@ -79,7 +79,8 @@ export default function Users({ token }: { token: string }) {
     fetchUsers.execute(token)
   })
 
-  // Input hiding
+  // Input hiding - can't really access this page when there are no users,
+  // so we can always expect the table to have some data in it
   const [hideInput, setHideInput] = useState(true)
 
   const classes = useStyles()
