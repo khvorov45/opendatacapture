@@ -87,7 +87,10 @@ export default function Users({ token }: { token: string }) {
   return (
     <div className={classes.usersAdminWidget} data-testid="users-admin-widget">
       <ButtonArray errorMsg={`${fetchUsers.error?.message ?? ""}`}>
-        <CreateButton onClick={() => setHideInput((old) => !old)} />
+        <CreateButton
+          onClick={() => setHideInput((old) => !old)}
+          dataTestId="open-new-user-form-button"
+        />
         <RefreshButton
           onClick={() => fetchUsers.execute(token)}
           inProgress={fetchUsers.loading}
