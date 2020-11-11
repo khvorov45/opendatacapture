@@ -5,18 +5,21 @@ import {
   render,
   wait,
   waitForDomChange,
+  within,
 } from "@testing-library/react"
 import httpStatusCodes from "http-status-codes"
 import { defaultAdmin } from "../../tests/util"
-import { constructGet } from "../../tests/api"
+import { constructDelete, constructGet } from "../../tests/api"
 import { user1 } from "../../tests/data"
 import React from "react"
 import Users from "./users"
+import { API_ROOT } from "../../lib/config"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
 mockedAxios.get.mockImplementation(constructGet())
+const mockedDelete = mockedAxios.delete.mockImplementation(constructDelete())
 
 function renderUsers() {
   return render(<Users token="123" />)
@@ -60,4 +63,32 @@ test("refresh users", async () => {
   // Both user and admin should be in the table
   expect(users.getByText(defaultAdmin.email)).toBeInTheDocument()
   expect(users.getByText(user1.email)).toBeInTheDocument()
+})
+
+test("delete user", async () => {
+  // Make sure there is a user to delete
+  mockedAxios.get.mockImplementationOnce(
+    constructGet({
+      getUsers: async () => ({
+        status: httpStatusCodes.OK,
+        data: [defaultAdmin, user1],
+      }),
+    })
+  )
+  const users = renderUsers()
+  await wait(() => {
+    expect(users.getByTestId("users-admin-widget")).toBeInTheDocument()
+  })
+  expect(mockedDelete).not.toHaveBeenCalled()
+
+  // Find the appropriate delete button
+  const allDeleteBtn = users.getAllByTestId("remove-user")
+  const lastDeleteBtn = allDeleteBtn[allDeleteBtn.length - 1]
+  fireEvent.click(lastDeleteBtn)
+  await waitForDomChange()
+
+  expect(mockedDelete).toHaveBeenLastCalledWith(
+    `${API_ROOT}/remove/user/${user1.email}`,
+    expect.anything()
+  )
 })
