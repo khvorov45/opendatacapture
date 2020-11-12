@@ -1,5 +1,7 @@
 /** All of these tests assume that the backend is running as if it was
  * started with the --clean option
+ * The tests should clean up after themselves, so there shouldn't be a need
+ * to restart the backend between runs (at least successful runs)
  */
 
 /* istanbul ignore file */
@@ -241,7 +243,7 @@ describe("need admin credentials", () => {
     async function failTokenFetch(cred: EmailPassword, msg: string) {
       try {
         await tokenFetcher(newUser)
-        console.log("received token when not supposed to " + msg)
+        console.error("received token when not supposed to " + msg)
       } catch (e) {
         expect(e.message).toBe(LoginFailure.EmailNotFound)
       }
@@ -278,7 +280,13 @@ describe("need user credentials", () => {
   })
 
   afterAll(async () => {
-    await removeUser(token, newUser.email)
+    const adminTok = (
+      await tokenFetcher({
+        email: defaultAdmin.email,
+        password: "admin",
+      })
+    ).token
+    await removeUser(adminTok, newUser.email)
   })
 
   test("project manipulation", async () => {
