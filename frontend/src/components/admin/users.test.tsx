@@ -8,8 +8,8 @@ import {
   within,
 } from "@testing-library/react"
 import httpStatusCodes from "http-status-codes"
-import { defaultAdmin } from "../../tests/util"
-import { constructDelete, constructGet } from "../../tests/api"
+import { defaultAdmin, newUser } from "../../tests/util"
+import { constructDelete, constructGet, constructPut } from "../../tests/api"
 import { user1 } from "../../tests/data"
 import React from "react"
 import Users from "./users"
@@ -20,6 +20,7 @@ const mockedAxios = axios as jest.Mocked<typeof axios>
 
 mockedAxios.get.mockImplementation(constructGet())
 const mockedDelete = mockedAxios.delete.mockImplementation(constructDelete())
+const mockedPut = mockedAxios.put.mockImplementation(constructPut())
 
 function renderUsers() {
   return render(<Users token="123" />)
@@ -89,6 +90,27 @@ test("delete user", async () => {
 
   expect(mockedDelete).toHaveBeenLastCalledWith(
     `${API_ROOT}/remove/user/${user1.email}`,
+    expect.anything()
+  )
+})
+
+test("create user", async () => {
+  const users = renderUsers()
+  await wait(() => {
+    expect(users.getByTestId("users-admin-widget")).toBeInTheDocument()
+  })
+  fireEvent.click(users.getByTestId("open-new-user-form-button"))
+  fireEvent.change(users.getByTestId("user-email-field"), {
+    target: { value: newUser.email },
+  })
+  fireEvent.change(users.getByTestId("user-password-field"), {
+    target: { value: newUser.password },
+  })
+  fireEvent.click(users.getByTestId("user-submit"))
+  await waitForDomChange()
+  expect(mockedPut).toHaveBeenLastCalledWith(
+    `${API_ROOT}/create/user`,
+    newUser,
     expect.anything()
   )
 })
