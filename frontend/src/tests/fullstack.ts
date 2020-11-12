@@ -198,6 +198,14 @@ describe("bad token", () => {
       expect(e.message).toBe('NoSuchToken("123")')
     }
   })
+  test("get users", async () => {
+    expect.assertions(1)
+    try {
+      await getUsers("123")
+    } catch (e) {
+      expect(e.message).toBe('NoSuchToken("123")')
+    }
+  })
 })
 
 test("token refresh", async () => {
