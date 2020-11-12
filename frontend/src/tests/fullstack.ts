@@ -264,27 +264,33 @@ describe("need admin credentials", () => {
   })
 })
 
-describe("need credentials", () => {
+describe("need user credentials", () => {
   let token: string
 
   beforeAll(async () => {
+    await createUser(newUser)
     token = (
       await tokenFetcher({
-        email: "admin@example.com",
-        password: "admin",
+        email: newUser.email,
+        password: newUser.password,
       })
     ).token
   })
 
+  afterAll(async () => {
+    await removeUser(token, newUser.email)
+  })
+
   test("project manipulation", async () => {
-    await createProject(token, "test")
+    const projectName = "test"
+    await createProject(token, projectName)
     let projects = await getUserProjects(token)
-    let projectIds = projects.map((p) => `${p.user}${p.name}`)
-    expect(projectIds).toContain("1test")
-    await deleteProject(token, "test")
+    let projectIds = projects.map((p) => p.name)
+    expect(projectIds).toContain(projectName)
+    await deleteProject(token, projectName)
     projects = await getUserProjects(token)
-    projectIds = projects.map((p) => `${p.user}${p.name}`)
-    expect(projectIds).not.toContain("1test")
+    projectIds = projects.map((p) => p.name)
+    expect(projectIds).not.toContain(projectName)
   })
 
   test("create the same project twice", async () => {
@@ -293,7 +299,7 @@ describe("need credentials", () => {
     try {
       await createProject(token, "test")
     } catch (e) {
-      expect(e.message).toBe('ProjectAlreadyExists(1, "test")')
+      expect(e.message).toStartWith("ProjectAlreadyExists")
     }
     await deleteProject(token, "test")
   })
@@ -303,7 +309,7 @@ describe("need credentials", () => {
     try {
       await deleteProject(token, "nonexistent")
     } catch (e) {
-      expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+      expect(e.message).toStartWith("NoSuchProject")
     }
   })
 
@@ -313,7 +319,7 @@ describe("need credentials", () => {
       try {
         await createTable(token, "nonexistent", { name: "sometable", cols: [] })
       } catch (e) {
-        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+        expect(e.message).toStartWith("NoSuchProject")
       }
     })
     test("delete table", async () => {
@@ -321,7 +327,7 @@ describe("need credentials", () => {
       try {
         await removeTable(token, "nonexistent", "some-table")
       } catch (e) {
-        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+        expect(e.message).toStartWith("NoSuchProject")
       }
     })
     test("get table names", async () => {
@@ -329,7 +335,7 @@ describe("need credentials", () => {
       try {
         await getAllTableNames(token, "nonexistent")
       } catch (e) {
-        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+        expect(e.message).toStartWith("NoSuchProject")
       }
     })
     test("get all meta", async () => {
@@ -337,7 +343,7 @@ describe("need credentials", () => {
       try {
         await getAllMeta(token, "nonexistent")
       } catch (e) {
-        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+        expect(e.message).toStartWith("NoSuchProject")
       }
     })
     test("get table meta", async () => {
@@ -345,7 +351,7 @@ describe("need credentials", () => {
       try {
         await getTableMeta(token, "nonexistent", "table")
       } catch (e) {
-        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+        expect(e.message).toStartWith("NoSuchProject")
       }
     })
     test("insert table data", async () => {
@@ -353,7 +359,7 @@ describe("need credentials", () => {
       try {
         await insertData(token, "nonexistent", "table", [])
       } catch (e) {
-        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+        expect(e.message).toStartWith("NoSuchProject")
       }
     })
     test("remove all table data", async () => {
@@ -361,7 +367,7 @@ describe("need credentials", () => {
       try {
         await removeAllTableData(token, "nonexistent", "table")
       } catch (e) {
-        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+        expect(e.message).toStartWith("NoSuchProject")
       }
     })
     test("get table data", async () => {
@@ -369,7 +375,7 @@ describe("need credentials", () => {
       try {
         await getTableData(token, "nonexistent", "table")
       } catch (e) {
-        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+        expect(e.message).toStartWith("NoSuchProject")
       }
     })
   })
