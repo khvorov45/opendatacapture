@@ -289,6 +289,28 @@ describe("need user credentials", () => {
     await removeUser(adminTok, newUser.email)
   })
 
+  describe("insufficient access", () => {
+    function expectError(msg: string) {
+      expect(msg).toStartWith("InsufficientAccess")
+    }
+    test("get users", async () => {
+      expect.assertions(1)
+      try {
+        await getUsers(token)
+      } catch (e) {
+        expectError(e.message)
+      }
+    })
+    test("remove user", async () => {
+      expect.assertions(1)
+      try {
+        await removeUser(token, "any@example.com")
+      } catch (e) {
+        expectError(e.message)
+      }
+    })
+  })
+
   test("project manipulation", async () => {
     const projectName = "test"
     await createProject(token, projectName)
