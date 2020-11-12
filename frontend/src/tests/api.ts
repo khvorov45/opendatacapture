@@ -34,3 +34,18 @@ export function constructDelete(fns?: Record<string, any>) {
   }
   return mockedDelete
 }
+
+const defaultCreate = {
+  createUser: async () => ({ status: httpStatusCodes.NO_CONTENT }),
+}
+
+export function constructPut(fns?: Record<string, any>) {
+  const currentPut = Object.assign(defaultCreate, fns)
+  const mockedPut = async (url: string) => {
+    if (url.endsWith("/create/user")) {
+      return await currentPut.createUser()
+    }
+    throw Error("unimplemented path in mocked put")
+  }
+  return mockedPut
+}
