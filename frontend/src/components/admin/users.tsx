@@ -185,6 +185,7 @@ function UserInput({
             handleSubmit.execute({ email: email, password: password })
           }
           inProgress={handleSubmit.loading}
+          dataTestId="user-submit"
         />
       </ButtonArray>
     </div>
