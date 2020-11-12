@@ -4,10 +4,12 @@ import Nav from "./components/nav"
 import Login from "./components/login"
 import Project from "./components/project/project"
 import {
+  Access,
   refreshToken,
   removeToken,
   Token,
   tokenValidator,
+  User,
 } from "./lib/api/auth"
 import CssBaseline from "@material-ui/core/CssBaseline"
 import {
@@ -20,6 +22,7 @@ import Home from "./components/home"
 import { AuthStatus, useToken } from "./lib/hooks"
 import { themeInit } from "./lib/theme"
 import { TOKEN_HOURS_TO_REFRESH } from "./lib/config"
+import AdminDashboard from "./components/admin/admin"
 
 function createThemeFromPalette(palette: "dark" | "light"): Theme {
   return createMuiTheme({
@@ -69,7 +72,7 @@ export default function App() {
       removeToken(old_token).catch((e) => console.error(e.message))
     }
   }
-  const { auth } = useToken(token, tokenValidator)
+  const { user, auth } = useToken(token, tokenValidator)
   useEffect(() => {
     function conditionalRefresh() {
       // Gotta wait until we actually get a good token from somewhere
@@ -93,7 +96,11 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
-        <Nav handleThemeChange={handleThemeChange} onLogout={handleLogout} />
+        <Nav
+          handleThemeChange={handleThemeChange}
+          onLogout={handleLogout}
+          user={user}
+        />
         <Switch>
           <Route exact path="/login">
             {auth === AuthStatus.Ok ? (
@@ -107,6 +114,11 @@ export default function App() {
           </AuthRoute>
           <AuthRoute path="/project/:name" auth={auth}>
             <Project token={token} />
+          </AuthRoute>
+          <AuthRoute path="/admin" auth={auth}>
+            <AdminOnly user={user}>
+              <AdminDashboard token={token} />
+            </AdminOnly>
           </AuthRoute>
         </Switch>
       </Router>
@@ -136,4 +148,14 @@ function AuthRoute({
       )}
     </Route>
   )
+}
+
+function AdminOnly({
+  user,
+  children,
+}: {
+  user: User | null
+  children: ReactNode
+}) {
+  return <>{user?.access === Access.Admin ? children : <></>}</>
 }

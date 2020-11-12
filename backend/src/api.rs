@@ -19,7 +19,10 @@ pub fn routes(
         .or(remove_token(db.clone()))
         .or(get_user_by_token(db.clone()))
         .or(get_users(db.clone()))
+        .or(create_user(db.clone()))
+        .or(remove_user(db.clone()))
         .or(create_project(db.clone()))
+        .or(get_user_project(db.clone()))
         .or(get_user_projects(db.clone()))
         .or(delete_project(db.clone()))
         .or(create_table(db.clone()))
@@ -277,6 +280,47 @@ fn get_users(
         })
 }
 
+/// Create a new user
+fn create_user(
+    db: DBRef,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("create" / "user")
+        .and(warp::put())
+        .and(warp::body::json())
+        .and(with_db(db))
+        .and_then(move |u: auth::EmailPassword, db: DBRef| async move {
+            match db
+                .lock()
+                .await
+                .insert_user(
+                    u.email.as_str(),
+                    u.password.as_str(),
+                    auth::Access::User,
+                )
+                .await
+            {
+                Ok(()) => Ok(reply_no_content()),
+                Err(e) => Err(warp::reject::custom(e)),
+            }
+        })
+}
+
+/// Remove user by email. Require admin authorization
+fn remove_user(
+    db: DBRef,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("remove" / "user" / String)
+        .and(warp::delete())
+        .and(with_db(db.clone()))
+        .and(sufficient_access(db, auth::Access::Admin))
+        .and_then(move |email: String, db: DBRef, _| async move {
+            match db.lock().await.remove_user(email.as_str()).await {
+                Ok(()) => Ok(reply_no_content()),
+                Err(e) => Err(warp::reject::custom(e)),
+            }
+        })
+}
+
 /// Create a project
 fn create_project(
     db: DBRef,
@@ -343,9 +387,6 @@ fn get_user_projects(
 }
 
 /// Get a specific project
-#[allow(dead_code)]
-// This isn't actually dead, Rust just can't see that this is used in
-// a function that I don't directly call but instead pass to warp filters
 fn get_user_project(
     db: DBRef,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -769,6 +810,27 @@ mod tests {
             )
             .unwrap();
             assert_eq!(users_obtained.len(), 2);
+        }
+
+        // Create/remove user
+        {
+            let resp = warp::test::request()
+                .method("PUT")
+                .path("/create/user")
+                .json(&auth::EmailPassword {
+                    email: "newuser@example.com".to_string(),
+                    password: "newpassword".to_string(),
+                })
+                .reply(&create_user(admindb_ref.clone()))
+                .await;
+            assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+            let resp = warp::test::request()
+                .method("DELETE")
+                .path("/remove/user/newuser@example.com")
+                .header("Authorization", format!("Bearer {}", admin_token))
+                .reply(&remove_user(admindb_ref.clone()))
+                .await;
+            assert_eq!(resp.status(), StatusCode::NO_CONTENT);
         }
 
         // Test projects

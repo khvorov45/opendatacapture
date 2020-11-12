@@ -1,11 +1,15 @@
 /** All of these tests assume that the backend is running as if it was
  * started with the --clean option
+ * The tests should clean up after themselves, so there shouldn't be a need
+ * to restart the backend between runs (at least successful runs)
  */
 
 /* istanbul ignore file */
 
+import { createUser, getUsers, removeUser } from "../lib/api/user"
 import {
   Access,
+  EmailPassword,
   LoginFailure,
   refreshToken,
   removeToken,
@@ -26,7 +30,15 @@ import {
   getTableData,
   removeAllTableData,
 } from "../lib/api/project"
-import { table1, table2, table1data, tableTitre, tableTitreData } from "./util"
+import {
+  table1,
+  table2,
+  table1data,
+  tableTitre,
+  tableTitreData,
+  defaultAdmin,
+  newUser,
+} from "./util"
 
 test("wrong token", async () => {
   expect.assertions(1)
@@ -180,6 +192,22 @@ describe("bad token", () => {
       expect(e.message).toBe('NoSuchToken("123")')
     }
   })
+  test("remove user", async () => {
+    expect.assertions(1)
+    try {
+      await removeUser("123", "any@example.com")
+    } catch (e) {
+      expect(e.message).toBe('NoSuchToken("123")')
+    }
+  })
+  test("get users", async () => {
+    expect.assertions(1)
+    try {
+      await getUsers("123")
+    } catch (e) {
+      expect(e.message).toBe('NoSuchToken("123")')
+    }
+  })
 })
 
 test("token refresh", async () => {
@@ -193,7 +221,7 @@ test("token refresh", async () => {
   expect(newTok).not.toEqual(token)
 })
 
-describe("need credentials", () => {
+describe("need admin credentials", () => {
   let token: string
 
   beforeAll(async () => {
@@ -205,15 +233,94 @@ describe("need credentials", () => {
     ).token
   })
 
+  test("get users", async () => {
+    let users = await getUsers(token)
+    expect(users).toEqual([defaultAdmin])
+  })
+
+  test("create/remove user", async () => {
+    expect.assertions(3)
+    async function failTokenFetch(cred: EmailPassword, msg: string) {
+      try {
+        await tokenFetcher(newUser)
+        console.error("received token when not supposed to " + msg)
+      } catch (e) {
+        expect(e.message).toBe(LoginFailure.EmailNotFound)
+      }
+    }
+    // User shouldn't exist
+    await failTokenFetch(newUser, "before creation")
+    // Create them
+    await createUser(newUser)
+    // Token fetching should work
+    await tokenFetcher(newUser)
+    // Creating them again should cause an error
+    try {
+      await createUser(newUser)
+    } catch (e) {
+      expect(e.message).toStartWith("Request failed")
+    }
+    // Remove user
+    await removeUser(token, newUser.email)
+    await failTokenFetch(newUser, "after creation")
+  })
+})
+
+describe("need user credentials", () => {
+  let token: string
+
+  beforeAll(async () => {
+    await createUser(newUser)
+    token = (
+      await tokenFetcher({
+        email: newUser.email,
+        password: newUser.password,
+      })
+    ).token
+  })
+
+  afterAll(async () => {
+    const adminTok = (
+      await tokenFetcher({
+        email: defaultAdmin.email,
+        password: "admin",
+      })
+    ).token
+    await removeUser(adminTok, newUser.email)
+  })
+
+  describe("insufficient access", () => {
+    function expectError(msg: string) {
+      expect(msg).toStartWith("InsufficientAccess")
+    }
+    test("get users", async () => {
+      expect.assertions(1)
+      try {
+        await getUsers(token)
+      } catch (e) {
+        expectError(e.message)
+      }
+    })
+    test("remove user", async () => {
+      expect.assertions(1)
+      try {
+        await removeUser(token, "any@example.com")
+      } catch (e) {
+        expectError(e.message)
+      }
+    })
+  })
+
   test("project manipulation", async () => {
-    await createProject(token, "test")
+    const projectName = "test"
+    await createProject(token, projectName)
     let projects = await getUserProjects(token)
-    let projectIds = projects.map((p) => `${p.user}${p.name}`)
-    expect(projectIds).toContain("1test")
-    await deleteProject(token, "test")
+    let projectIds = projects.map((p) => p.name)
+    expect(projectIds).toContain(projectName)
+    await deleteProject(token, projectName)
     projects = await getUserProjects(token)
-    projectIds = projects.map((p) => `${p.user}${p.name}`)
-    expect(projectIds).not.toContain("1test")
+    projectIds = projects.map((p) => p.name)
+    expect(projectIds).not.toContain(projectName)
   })
 
   test("create the same project twice", async () => {
@@ -222,7 +329,7 @@ describe("need credentials", () => {
     try {
       await createProject(token, "test")
     } catch (e) {
-      expect(e.message).toBe('ProjectAlreadyExists(1, "test")')
+      expect(e.message).toStartWith("ProjectAlreadyExists")
     }
     await deleteProject(token, "test")
   })
@@ -232,7 +339,7 @@ describe("need credentials", () => {
     try {
       await deleteProject(token, "nonexistent")
     } catch (e) {
-      expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+      expect(e.message).toStartWith("NoSuchProject")
     }
   })
 
@@ -242,7 +349,7 @@ describe("need credentials", () => {
       try {
         await createTable(token, "nonexistent", { name: "sometable", cols: [] })
       } catch (e) {
-        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+        expect(e.message).toStartWith("NoSuchProject")
       }
     })
     test("delete table", async () => {
@@ -250,7 +357,7 @@ describe("need credentials", () => {
       try {
         await removeTable(token, "nonexistent", "some-table")
       } catch (e) {
-        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+        expect(e.message).toStartWith("NoSuchProject")
       }
     })
     test("get table names", async () => {
@@ -258,7 +365,7 @@ describe("need credentials", () => {
       try {
         await getAllTableNames(token, "nonexistent")
       } catch (e) {
-        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+        expect(e.message).toStartWith("NoSuchProject")
       }
     })
     test("get all meta", async () => {
@@ -266,7 +373,7 @@ describe("need credentials", () => {
       try {
         await getAllMeta(token, "nonexistent")
       } catch (e) {
-        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+        expect(e.message).toStartWith("NoSuchProject")
       }
     })
     test("get table meta", async () => {
@@ -274,7 +381,7 @@ describe("need credentials", () => {
       try {
         await getTableMeta(token, "nonexistent", "table")
       } catch (e) {
-        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+        expect(e.message).toStartWith("NoSuchProject")
       }
     })
     test("insert table data", async () => {
@@ -282,7 +389,7 @@ describe("need credentials", () => {
       try {
         await insertData(token, "nonexistent", "table", [])
       } catch (e) {
-        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+        expect(e.message).toStartWith("NoSuchProject")
       }
     })
     test("remove all table data", async () => {
@@ -290,7 +397,7 @@ describe("need credentials", () => {
       try {
         await removeAllTableData(token, "nonexistent", "table")
       } catch (e) {
-        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+        expect(e.message).toStartWith("NoSuchProject")
       }
     })
     test("get table data", async () => {
@@ -298,7 +405,7 @@ describe("need credentials", () => {
       try {
         await getTableData(token, "nonexistent", "table")
       } catch (e) {
-        expect(e.message).toBe('NoSuchProject(1, "nonexistent")')
+        expect(e.message).toStartWith("NoSuchProject")
       }
     })
   })

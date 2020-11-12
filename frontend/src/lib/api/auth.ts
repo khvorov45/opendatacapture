@@ -20,7 +20,7 @@ export enum Access {
   Admin = "Admin",
 }
 
-const UserV = t.type({
+export const UserV = t.type({
   id: t.number,
   email: t.string,
   access: fromEnum<Access>("Access", Access),

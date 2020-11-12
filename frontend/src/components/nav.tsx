@@ -6,6 +6,7 @@ import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
 import { useLocation, useRouteMatch } from "react-router-dom"
 import { ButtonLink } from "./button"
 import toProperCase from "../lib/to-proper-case"
+import { Access, User } from "../lib/api/auth"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -44,13 +45,16 @@ const useStyles = makeStyles((theme: Theme) =>
 export default function Nav({
   handleThemeChange,
   onLogout,
+  user,
 }: {
   handleThemeChange: () => void
   onLogout: () => void
+  user: User | null
 }) {
   const location = useLocation()
   const classes = useStyles()
   const loginHide = location.pathname.startsWith("/login") ? "nodisplay" : ""
+  const onlyAdmin = user?.access === Access.Admin ? "" : "nodisplay"
   return (
     <div className={classes.nav}>
       <div>
@@ -61,6 +65,13 @@ export default function Nav({
           to="/"
         >
           Projects
+        </ButtonLink>
+        <ButtonLink
+          className={`${classes.link} ${loginHide} ${onlyAdmin}`}
+          active={location.pathname.startsWith("/admin")}
+          to="/admin"
+        >
+          Admin
         </ButtonLink>
       </div>
       <div>

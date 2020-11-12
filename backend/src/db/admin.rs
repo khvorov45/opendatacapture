@@ -33,9 +33,10 @@ impl AdminDB {
         // Fill access types and the one admin if required.
         if opt.clean || connected_to_empty {
             admindb
-                .insert_admin(
+                .insert_user(
                     opt.admin_email.as_str(),
                     opt.admin_password.as_str(),
+                    auth::Access::Admin,
                 )
                 .await?;
         }
@@ -119,24 +120,14 @@ impl AdminDB {
 
     // User table -------------------------------------------------------------
 
-    /// Insert an admin. Assume the admin table is empty.
-    async fn insert_admin(
-        &self,
-        admin_email: &str,
-        admin_password: &str,
-    ) -> Result<()> {
-        log::info!(
-            "inserting admin \"{}\" with password \"{}\"",
-            admin_email,
-            admin_password
-        );
-        let admin =
-            User::new(admin_email, admin_password, auth::Access::Admin)?;
-        self.insert_user(&admin).await?;
-        Ok(())
-    }
     /// Insert a user
-    pub async fn insert_user(&self, user: &User) -> Result<()> {
+    pub async fn insert_user(
+        &self,
+        email: &str,
+        password: &str,
+        access: auth::Access,
+    ) -> Result<()> {
+        let user = User::new(email, password, access)?;
         log::info!("inserting user {:?}", user);
         sqlx::query(
             "INSERT INTO \"user\" (\"email\", \"access\", \"password_hash\")
@@ -191,6 +182,31 @@ impl AdminDB {
         let tok = self.get_token_valid(tok).await?;
         // DB guarantees that there will be a user
         self.get_user_by_id(tok.user()).await
+    }
+    /// Sets user password given valid token
+    pub async fn set_user_password(
+        &self,
+        tok: &str,
+        new_password: &str,
+    ) -> Result<()> {
+        let tok = self.get_token_valid(tok).await?;
+        sqlx::query(
+            "UPDATE \"user\" SET \"password_hash\" = $1 WHERE \"id\" = $2",
+        )
+        .bind(auth::hash(new_password)?)
+        .bind(tok.user())
+        .execute(self.get_pool())
+        .await?;
+        Ok(())
+    }
+    /// Removes user by email
+    pub async fn remove_user(&self, email: &str) -> Result<()> {
+        log::debug!("removing user email {}", email);
+        sqlx::query("DELETE FROM \"user\" WHERE \"email\" = $1")
+            .bind(email)
+            .execute(self.get_pool())
+            .await?;
+        Ok(())
     }
 
     // Token table ------------------------------------------------------------
@@ -815,19 +831,77 @@ mod tests {
 
         // User manipulation --------------------------------------------------
 
-        // User 3 should not exist
-        let user3 = test_db.get_user_by_id(3).await;
-        assert!(matches!(user3, Err(Error::NoSuchUserId(id)) if id == 3));
-        let user3 = test_db.get_user_by_email("user3@email.com").await;
+        log::info!("insert user");
+        let new_user_password = "user";
+        let new_user = User::new(
+            "newuser@example.com",
+            new_user_password,
+            auth::Access::User,
+        )
+        .unwrap();
+        test_db
+            .insert_user(new_user.email(), new_user_password, new_user.access())
+            .await
+            .unwrap();
+        let obtained_user =
+            test_db.get_user_by_email(new_user.email()).await.unwrap();
+        assert_eq!(new_user.email(), obtained_user.email());
+        assert!(argon2::verify_encoded(
+            obtained_user.password_hash(),
+            new_user_password.as_bytes()
+        )
+        .unwrap());
+        assert_eq!(new_user.access(), obtained_user.access());
+
+        log::info!("change that user's password");
+        let new_user_token = test_db
+            .generate_session_token(auth::EmailPassword {
+                email: new_user.email().to_string(),
+                password: new_user_password.to_string(),
+            })
+            .await
+            .unwrap();
+        let new_user_new_password = "new-password";
+        test_db
+            .set_user_password(new_user_token.token(), new_user_new_password)
+            .await
+            .unwrap();
+        let new_user_token = test_db
+            .generate_session_token(auth::EmailPassword {
+                email: new_user.email().to_string(),
+                password: new_user_new_password.to_string(),
+            })
+            .await
+            .unwrap();
+        let new_user_token_err = test_db
+            .generate_session_token(auth::EmailPassword {
+                email: new_user.email().to_string(),
+                password: new_user_password.to_string(),
+            })
+            .await;
+        assert!(matches!(
+            new_user_token_err,
+            Err(Error::Unauthorized(Unauthorized::WrongPassword(_)))
+        ));
+
+        log::info!("remove that user");
+        test_db.remove_user(obtained_user.email()).await.unwrap();
+
+        log::info!("verify that user no longer exists");
+        let user3 = test_db.get_user_by_id(obtained_user.id()).await;
+        assert!(
+            matches!(user3, Err(Error::NoSuchUserId(id)) if id == obtained_user.id())
+        );
+        let user3 = test_db.get_user_by_email(new_user.email()).await;
         assert!(matches!(
             user3,
-            Err(Error::NoSuchUserEmail(email)) if email == "user3@email.com"
+            Err(Error::NoSuchUserEmail(email)) if email == new_user.email()
         ));
-        let user3 = test_db.get_user_by_token("abc").await;
+        let user3 = test_db.get_user_by_token(new_user_token.token()).await;
         assert!(matches!(
             user3,
             Err(Error::Unauthorized(Unauthorized::NoSuchToken(tok)))
-                if tok == "abc"
+                if tok == new_user_token.token()
         ));
 
         // Project creation/removal -------------------------------------------
