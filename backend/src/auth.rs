@@ -5,11 +5,6 @@ const AUTH_TOKEN_LENGTH: usize = 30;
 const N_SUBSECS: u16 = 6; // Postgres precision
 pub const AUTH_TOKEN_HOURS_TO_LIVE: i64 = 24;
 
-/// Generate an auth token
-fn gen_auth_token() -> String {
-    gen_rand_string(AUTH_TOKEN_LENGTH)
-}
-
 /// Hash a string
 pub fn hash(password: &str) -> Result<String> {
     let hash = argon2::hash_encoded(
@@ -81,7 +76,7 @@ impl Token {
         use chrono::SubsecRound;
         Self {
             user,
-            token: gen_auth_token(),
+            token: gen_rand_string(AUTH_TOKEN_LENGTH),
             created: chrono::Utc::now().round_subsecs(N_SUBSECS),
         }
     }
