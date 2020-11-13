@@ -102,12 +102,6 @@ impl Token {
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
-pub struct IdToken {
-    pub id: i32,
-    pub token: String,
-}
-
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, PartialEq)]
 pub struct EmailPassword {
     pub email: String,
     pub password: String,
