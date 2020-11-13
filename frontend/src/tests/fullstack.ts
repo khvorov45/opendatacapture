@@ -286,49 +286,47 @@ describe("need user credentials", () => {
   })
 
   describe("manipulate non-existent project", () => {
+    const prjName = "nonexistent"
+
     async function expectNoSuchProject(
       fn: (...args: any[]) => any,
       args: any[],
       context?: string
     ) {
-      await expectFailure(fn, args, "NoSuchProject", context)
+      await expectFailure(fn, args, `NoSuchProject`, context)
     }
 
     test("delete nonexistent project", async () => {
-      await expectNoSuchProject(deleteProject, [token, "nonexistent"])
+      await expectNoSuchProject(deleteProject, [token, prjName])
     })
 
     test("create table", async () => {
       const testTable: TableMeta = { name: "sometable", cols: [] }
-      await expectNoSuchProject(createTable, [token, "nonexistent", testTable])
+      await expectNoSuchProject(createTable, [token, prjName, testTable])
     })
 
     test("delete table", async () => {
-      await expectNoSuchProject(removeTable, [token, "nonexistent", "any"])
+      await expectNoSuchProject(removeTable, [token, prjName, "any"])
     })
 
     test("get table names", async () => {
-      await expectNoSuchProject(getAllTableNames, [token, "nonexistent"])
+      await expectNoSuchProject(getAllTableNames, [token, prjName])
     })
 
     test("get all meta", async () => {
-      await expectNoSuchProject(getAllMeta, [token, "nonexistent"])
+      await expectNoSuchProject(getAllMeta, [token, prjName])
     })
 
     test("get table meta", async () => {
-      await expectNoSuchProject(getTableMeta, [token, "nonexistent", "any"])
+      await expectNoSuchProject(getTableMeta, [token, prjName, "any"])
     })
 
     test("insert table data", async () => {
-      await expectNoSuchProject(insertData, [token, "nonexistent", "any", []])
+      await expectNoSuchProject(insertData, [token, prjName, "any", []])
     })
 
     test("remove all table data", async () => {
-      await expectNoSuchProject(removeAllTableData, [
-        token,
-        "nonexistent",
-        "any",
-      ])
+      await expectNoSuchProject(removeAllTableData, [token, prjName, "any"])
     })
 
     test("get table data", async () => {
