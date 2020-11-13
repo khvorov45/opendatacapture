@@ -1,4 +1,4 @@
-use crate::{auth, db, db::DB, error::Unauthorized, Error};
+use crate::{auth, db, error::Unauthorized, Error};
 use db::admin::{AdminDB, Project, User};
 use db::user::table::RowJson;
 use std::convert::Infallible;
@@ -1397,6 +1397,6 @@ mod tests {
 
         // Remove the test database -------------------------------------------
 
-        crate::tests::remove_test_db(&*admindb_ref.lock().await).await;
+        crate::tests::remove_test_db(&*admindb_ref.lock().await.get_db()).await;
     }
 }

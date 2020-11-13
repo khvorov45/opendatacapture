@@ -1,6 +1,6 @@
 use sqlx::Row;
 
-use crate::db::{ConnectionConfig, PoolMeta, DB};
+use crate::db::{ConnectionConfig, Pool, DB};
 use crate::{Error, Result};
 
 pub mod table;
@@ -10,21 +10,23 @@ use table::{ColMeta, ColSpec, ForeignKey, RowJson, TableMeta, TableSpec};
 /// User project database
 #[derive(Debug)]
 pub struct UserDB {
-    pool: PoolMeta,
-}
-
-#[async_trait::async_trait]
-impl DB for UserDB {
-    fn get_pool_meta(&self) -> &PoolMeta {
-        &self.pool
-    }
+    db: DB,
 }
 
 impl UserDB {
     pub async fn new(config: ConnectionConfig, name: &str) -> Result<Self> {
         Ok(Self {
-            pool: PoolMeta::new(config, name).await?,
+            db: DB::new(config, name).await?,
         })
+    }
+    pub fn get_name(&self) -> &str {
+        self.db.get_name()
+    }
+    pub fn get_pool(&self) -> &Pool {
+        self.db.get_pool()
+    }
+    pub async fn get_all_table_names(&self) -> Result<Vec<String>> {
+        self.db.get_all_table_names().await
     }
     /// Checks that the table exists, returns Err if not
     async fn check_table_exists(&self, name: &str) -> Result<()> {
@@ -261,14 +263,14 @@ mod tests {
             .await
             .unwrap();
 
-        assert!(db.is_empty().await.unwrap());
+        assert!(db.get_all_table_names().await.unwrap().is_empty());
 
         log::info!("create table");
 
         let primary_table = crate::tests::get_test_primary_table();
 
         db.create_table(&primary_table).await.unwrap();
-        assert!(!db.is_empty().await.unwrap());
+        assert!(!db.get_all_table_names().await.unwrap().is_empty());
         assert!(db
             .get_all_table_names()
             .await
@@ -278,7 +280,7 @@ mod tests {
         let secondary_table = crate::tests::get_test_secondary_table();
 
         db.create_table(&secondary_table).await.unwrap();
-        assert!(!db.is_empty().await.unwrap());
+        assert!(!db.get_all_table_names().await.unwrap().is_empty());
         assert!(db
             .get_all_table_names()
             .await
@@ -288,7 +290,7 @@ mod tests {
         let date_table = crate::tests::get_date_table();
 
         db.create_table(&date_table).await.unwrap();
-        assert!(!db.is_empty().await.unwrap());
+        assert!(!db.get_all_table_names().await.unwrap().is_empty());
         assert!(db
             .get_all_table_names()
             .await
@@ -482,6 +484,6 @@ mod tests {
         ));
 
         // Remove test DB -----------------------------------------------------
-        crate::tests::remove_test_db(&db).await;
+        crate::tests::remove_test_db(&db.db).await;
     }
 }
