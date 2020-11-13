@@ -335,31 +335,33 @@ describe("need user credentials", () => {
   })
 
   describe("need a project", () => {
-    beforeAll(async () => await createProject(token, "test"))
-    afterAll(async () => await deleteProject(token, "test"))
+    const prjName = "test"
+
+    beforeAll(async () => await createProject(token, prjName))
+    afterAll(async () => await deleteProject(token, prjName))
 
     test("table manipulation", async () => {
-      expect(await getAllTableNames(token, "test")).toEqual([])
-      await createTable(token, "test", table1)
-      await createTable(token, "test", table2)
-      expect(await getAllTableNames(token, "test")).toEqual([
+      expect(await getAllTableNames(token, prjName)).toEqual([])
+      await createTable(token, prjName, table1)
+      await createTable(token, prjName, table2)
+      expect(await getAllTableNames(token, prjName)).toEqual([
         table1.name,
         table2.name,
       ])
-      let allMeta = await getAllMeta(token, "test")
+      let allMeta = await getAllMeta(token, prjName)
       expect(allMeta).toEqual([table1, table2])
-      let primaryMeta = await getTableMeta(token, "test", table1.name)
+      let primaryMeta = await getTableMeta(token, prjName, table1.name)
       expect(primaryMeta).toEqual(table1)
-      await removeTable(token, "test", table2.name)
-      expect(await getAllTableNames(token, "test")).toEqual([table1.name])
-      await removeTable(token, "test", table1.name)
-      expect(await getAllTableNames(token, "test")).toEqual([])
+      await removeTable(token, prjName, table2.name)
+      expect(await getAllTableNames(token, prjName)).toEqual([table1.name])
+      await removeTable(token, prjName, table1.name)
+      expect(await getAllTableNames(token, prjName)).toEqual([])
     })
 
     test("data push/pull from a table that has the same name as its column", async () => {
-      await createTable(token, "test", tableTitre)
-      await insertData(token, "test", tableTitre.name, tableTitreData)
-      const dataObtained = await getTableData(token, "test", tableTitre.name)
+      await createTable(token, prjName, tableTitre)
+      await insertData(token, prjName, tableTitre.name, tableTitreData)
+      const dataObtained = await getTableData(token, prjName, tableTitre.name)
       expect(dataObtained).toEqual(tableTitreData)
     })
 
@@ -373,53 +375,53 @@ describe("need user credentials", () => {
       }
 
       test("delete", async () => {
-        await expectNoSuchTable(removeTable, [token, "test", "nonexistent"])
+        await expectNoSuchTable(removeTable, [token, prjName, "nonexistent"])
       })
 
       test("get meta", async () => {
-        await expectNoSuchTable(getTableMeta, [token, "test", "nonexistent"])
+        await expectNoSuchTable(getTableMeta, [token, prjName, "nonexistent"])
       })
 
       test("insert", async () => {
-        await expectNoSuchTable(insertData, [token, "test", "nonexistent", []])
+        await expectNoSuchTable(insertData, [token, prjName, "nonexistent", []])
       })
 
       test("get data", async () => {
-        await expectNoSuchTable(getTableData, [token, "test", "nonexistent"])
+        await expectNoSuchTable(getTableData, [token, prjName, "nonexistent"])
       })
 
       test("remove all data", async () => {
         await expectNoSuchTable(removeAllTableData, [
           token,
-          "test",
+          prjName,
           "nonexistent",
         ])
       })
     })
 
     describe("need a table", () => {
-      beforeAll(async () => await createTable(token, "test", table1))
-      afterAll(async () => await removeTable(token, "test", table1.name))
+      beforeAll(async () => await createTable(token, prjName, table1))
+      afterAll(async () => await removeTable(token, prjName, table1.name))
 
       test("data manipulation", async () => {
-        expect(await getTableData(token, "test", table1.name)).toEqual([])
-        await insertData(token, "test", table1.name, table1data)
+        expect(await getTableData(token, prjName, table1.name)).toEqual([])
+        await insertData(token, prjName, table1.name, table1data)
         // The way the backend serializes dates is not the same as the
         // frontend does it
         expect(
           decodeUserTable(
             table1,
-            await getTableData(token, "test", table1.name)
+            await getTableData(token, prjName, table1.name)
           )
         ).toEqual(decodeUserTable(table1, table1data))
-        await removeAllTableData(token, "test", table1.name)
-        expect(await getTableData(token, "test", table1.name)).toEqual([])
+        await removeAllTableData(token, prjName, table1.name)
+        expect(await getTableData(token, prjName, table1.name)).toEqual([])
       })
 
       test("insert data with the wrong columns", async () => {
         await expectFailure(
           insertData,
-          [token, "test", table1.name, [{ wrong: 1 }]],
+          [token, prjName, table1.name, [{ wrong: 1 }]],
           'NoSuchColumns(["wrong"])'
         )
       })
@@ -427,7 +429,7 @@ describe("need user credentials", () => {
       test("try to create again", async () => {
         await expectFailure(
           createTable,
-          [token, "test", table1],
+          [token, prjName, table1],
           `TableAlreadyExists("${table1.name}")`
         )
       })
