@@ -29,6 +29,7 @@ import {
   insertData,
   getTableData,
   removeAllTableData,
+  TableMeta,
 } from "../lib/api/project"
 import {
   table1,
@@ -40,40 +41,41 @@ import {
   newUser,
 } from "./util"
 
-test("wrong token", async () => {
+async function expectFailure(
+  fn: (...args: any[]) => any,
+  args: any[],
+  expectedMessageStart: string,
+  context?: string
+) {
   expect.assertions(1)
   try {
-    let res = await tokenValidator("123")
-    console.log(`wrong token response: ${res}`)
+    let res = await fn(...args)
+    console.error(
+      `function returned ${res} when supposed to fail ${context ?? ""}`
+    )
   } catch (e) {
-    expect(e.message).toBe('NoSuchToken("123")')
+    expect(e.message).toStartWith(expectedMessageStart)
   }
+}
+
+test("wrong token", async () => {
+  await expectFailure(tokenValidator, ["123"], 'NoSuchToken("123")')
 })
 
 test("wrong password", async () => {
-  expect.assertions(1)
-  try {
-    let res = await tokenFetcher({
-      email: "admin@example.com",
-      password: "123",
-    })
-    console.log(`wrong password response: ${res}`)
-  } catch (e) {
-    expect(e.message).toBe(LoginFailure.WrongPassword)
+  const wrongCred: EmailPassword = {
+    email: "admin@example.com",
+    password: "123",
   }
+  await expectFailure(tokenFetcher, [wrongCred], LoginFailure.WrongPassword)
 })
 
 test("wrong email", async () => {
-  expect.assertions(1)
-  try {
-    let res = await tokenFetcher({
-      email: "user@example.com",
-      password: "admin",
-    })
-    console.log(`wrong email response: ${res}`)
-  } catch (e) {
-    expect(e.message).toBe(LoginFailure.EmailNotFound)
+  const wrongCred: EmailPassword = {
+    email: "user@example.com",
+    password: "admin",
   }
+  await expectFailure(tokenFetcher, [wrongCred], LoginFailure.EmailNotFound)
 })
 
 test("correct credentials", async () => {
@@ -104,109 +106,67 @@ test("remove token", async () => {
 })
 
 describe("bad token", () => {
+  const badToken = "123"
+
+  async function expectNoSuchToken(
+    fn: (...args: any[]) => any,
+    args: any[],
+    context?: string
+  ) {
+    await expectFailure(fn, args, `NoSuchToken("${badToken}")`, context)
+  }
+
   test("create project", async () => {
-    expect.assertions(1)
-    try {
-      await createProject("123", "test")
-    } catch (e) {
-      expect(e.message).toBe('NoSuchToken("123")')
-    }
+    await expectNoSuchToken(createProject, [badToken, "test"])
   })
+
   test("remove project", async () => {
-    expect.assertions(1)
-    try {
-      await deleteProject("123", "test")
-    } catch (e) {
-      expect(e.message).toBe('NoSuchToken("123")')
-    }
+    await expectNoSuchToken(deleteProject, [badToken, "test"])
   })
+
   test("get projects", async () => {
-    expect.assertions(1)
-    try {
-      await getUserProjects("123")
-    } catch (e) {
-      expect(e.message).toBe('NoSuchToken("123")')
-    }
+    await expectNoSuchToken(getUserProjects, [badToken])
   })
+
   test("create table", async () => {
-    expect.assertions(1)
-    try {
-      await createTable("123", "test", { name: "test", cols: [] })
-    } catch (e) {
-      expect(e.message).toBe('NoSuchToken("123")')
-    }
+    const testTable: TableMeta = { name: "test", cols: [] }
+    await expectNoSuchToken(createTable, [badToken, "test", testTable])
   })
+
   test("remove table", async () => {
-    expect.assertions(1)
-    try {
-      await removeTable("123", "test", "test")
-    } catch (e) {
-      expect(e.message).toBe('NoSuchToken("123")')
-    }
+    await expectNoSuchToken(removeTable, [badToken, "test", "test"])
   })
+
   test("get meta", async () => {
-    expect.assertions(1)
-    try {
-      await getAllMeta("123", "test")
-    } catch (e) {
-      expect(e.message).toBe('NoSuchToken("123")')
-    }
+    await expectNoSuchToken(getAllMeta, [badToken, "test"])
   })
+
   test("get table meta", async () => {
-    expect.assertions(1)
-    try {
-      await getTableMeta("123", "test", "test")
-    } catch (e) {
-      expect(e.message).toBe('NoSuchToken("123")')
-    }
+    await expectNoSuchToken(getTableMeta, [badToken, "test", "test"])
   })
+
   test("insert table data", async () => {
-    expect.assertions(1)
-    try {
-      await insertData("123", "test", "test", [])
-    } catch (e) {
-      expect(e.message).toBe('NoSuchToken("123")')
-    }
+    await expectNoSuchToken(insertData, [badToken, "test", "test", []])
   })
+
   test("remove all table data", async () => {
-    expect.assertions(1)
-    try {
-      await removeAllTableData("123", "test", "test")
-    } catch (e) {
-      expect(e.message).toBe('NoSuchToken("123")')
-    }
+    await expectNoSuchToken(removeAllTableData, [badToken, "test", "test"])
   })
+
   test("get table data", async () => {
-    expect.assertions(1)
-    try {
-      await getTableData("123", "test", "test")
-    } catch (e) {
-      expect(e.message).toBe('NoSuchToken("123")')
-    }
+    await expectNoSuchToken(getTableData, [badToken, "test", "test"])
   })
+
   test("token refresh", async () => {
-    expect.assertions(1)
-    try {
-      await refreshToken("123")
-    } catch (e) {
-      expect(e.message).toBe('NoSuchToken("123")')
-    }
+    await expectNoSuchToken(refreshToken, [badToken])
   })
+
   test("remove user", async () => {
-    expect.assertions(1)
-    try {
-      await removeUser("123", "any@example.com")
-    } catch (e) {
-      expect(e.message).toBe('NoSuchToken("123")')
-    }
+    await expectNoSuchToken(removeUser, [badToken, "any@example.com"])
   })
+
   test("get users", async () => {
-    expect.assertions(1)
-    try {
-      await getUsers("123")
-    } catch (e) {
-      expect(e.message).toBe('NoSuchToken("123")')
-    }
+    await expectNoSuchToken(getUsers, [badToken])
   })
 })
 
@@ -242,7 +202,7 @@ describe("need admin credentials", () => {
     expect.assertions(3)
     async function failTokenFetch(cred: EmailPassword, msg: string) {
       try {
-        await tokenFetcher(newUser)
+        await tokenFetcher(cred)
         console.error("received token when not supposed to " + msg)
       } catch (e) {
         expect(e.message).toBe(LoginFailure.EmailNotFound)
@@ -290,24 +250,20 @@ describe("need user credentials", () => {
   })
 
   describe("insufficient access", () => {
-    function expectError(msg: string) {
-      expect(msg).toStartWith("InsufficientAccess")
+    async function expectInsufficientAccess(
+      fn: (...args: any[]) => any,
+      args: any[],
+      context?: string
+    ) {
+      await expectFailure(fn, args, "InsufficientAccess", context)
     }
+
     test("get users", async () => {
-      expect.assertions(1)
-      try {
-        await getUsers(token)
-      } catch (e) {
-        expectError(e.message)
-      }
+      await expectInsufficientAccess(getUsers, [token])
     })
+
     test("remove user", async () => {
-      expect.assertions(1)
-      try {
-        await removeUser(token, "any@example.com")
-      } catch (e) {
-        expectError(e.message)
-      }
+      await expectInsufficientAccess(removeUser, [token, "any@example.com"])
     })
   })
 
@@ -323,200 +279,161 @@ describe("need user credentials", () => {
     expect(projectIds).not.toContain(projectName)
   })
 
-  test("create the same project twice", async () => {
-    expect.assertions(1)
-    await createProject(token, "test")
-    try {
-      await createProject(token, "test")
-    } catch (e) {
-      expect(e.message).toStartWith("ProjectAlreadyExists")
-    }
-    await deleteProject(token, "test")
-  })
-
-  test("delete nonexistent project", async () => {
-    expect.assertions(1)
-    try {
-      await deleteProject(token, "nonexistent")
-    } catch (e) {
-      expect(e.message).toStartWith("NoSuchProject")
-    }
-  })
-
   describe("manipulate non-existent project", () => {
+    const prjName = "nonexistent"
+
+    async function expectNoSuchProject(
+      fn: (...args: any[]) => any,
+      args: any[],
+      context?: string
+    ) {
+      await expectFailure(fn, args, `NoSuchProject`, context)
+    }
+
+    test("delete nonexistent project", async () => {
+      await expectNoSuchProject(deleteProject, [token, prjName])
+    })
+
     test("create table", async () => {
-      expect.assertions(1)
-      try {
-        await createTable(token, "nonexistent", { name: "sometable", cols: [] })
-      } catch (e) {
-        expect(e.message).toStartWith("NoSuchProject")
-      }
+      const testTable: TableMeta = { name: "sometable", cols: [] }
+      await expectNoSuchProject(createTable, [token, prjName, testTable])
     })
+
     test("delete table", async () => {
-      expect.assertions(1)
-      try {
-        await removeTable(token, "nonexistent", "some-table")
-      } catch (e) {
-        expect(e.message).toStartWith("NoSuchProject")
-      }
+      await expectNoSuchProject(removeTable, [token, prjName, "any"])
     })
+
     test("get table names", async () => {
-      expect.assertions(1)
-      try {
-        await getAllTableNames(token, "nonexistent")
-      } catch (e) {
-        expect(e.message).toStartWith("NoSuchProject")
-      }
+      await expectNoSuchProject(getAllTableNames, [token, prjName])
     })
+
     test("get all meta", async () => {
-      expect.assertions(1)
-      try {
-        await getAllMeta(token, "nonexistent")
-      } catch (e) {
-        expect(e.message).toStartWith("NoSuchProject")
-      }
+      await expectNoSuchProject(getAllMeta, [token, prjName])
     })
+
     test("get table meta", async () => {
-      expect.assertions(1)
-      try {
-        await getTableMeta(token, "nonexistent", "table")
-      } catch (e) {
-        expect(e.message).toStartWith("NoSuchProject")
-      }
+      await expectNoSuchProject(getTableMeta, [token, prjName, "any"])
     })
+
     test("insert table data", async () => {
-      expect.assertions(1)
-      try {
-        await insertData(token, "nonexistent", "table", [])
-      } catch (e) {
-        expect(e.message).toStartWith("NoSuchProject")
-      }
+      await expectNoSuchProject(insertData, [token, prjName, "any", []])
     })
+
     test("remove all table data", async () => {
-      expect.assertions(1)
-      try {
-        await removeAllTableData(token, "nonexistent", "table")
-      } catch (e) {
-        expect(e.message).toStartWith("NoSuchProject")
-      }
+      await expectNoSuchProject(removeAllTableData, [token, prjName, "any"])
     })
+
     test("get table data", async () => {
-      expect.assertions(1)
-      try {
-        await getTableData(token, "nonexistent", "table")
-      } catch (e) {
-        expect(e.message).toStartWith("NoSuchProject")
-      }
+      await expectNoSuchProject(getTableData, [token, "nonexistent", "table"])
     })
   })
 
   describe("need a project", () => {
-    beforeAll(async () => await createProject(token, "test"))
-    afterAll(async () => await deleteProject(token, "test"))
+    const prjName = "test"
+
+    beforeAll(async () => await createProject(token, prjName))
+    afterAll(async () => await deleteProject(token, prjName))
 
     test("table manipulation", async () => {
-      expect(await getAllTableNames(token, "test")).toEqual([])
-      await createTable(token, "test", table1)
-      await createTable(token, "test", table2)
-      expect(await getAllTableNames(token, "test")).toEqual([
+      expect(await getAllTableNames(token, prjName)).toEqual([])
+      await createTable(token, prjName, table1)
+      await createTable(token, prjName, table2)
+      expect(await getAllTableNames(token, prjName)).toEqual([
         table1.name,
         table2.name,
       ])
-      let allMeta = await getAllMeta(token, "test")
+      let allMeta = await getAllMeta(token, prjName)
       expect(allMeta).toEqual([table1, table2])
-      let primaryMeta = await getTableMeta(token, "test", table1.name)
+      let primaryMeta = await getTableMeta(token, prjName, table1.name)
       expect(primaryMeta).toEqual(table1)
-      await removeTable(token, "test", table2.name)
-      expect(await getAllTableNames(token, "test")).toEqual([table1.name])
-      await removeTable(token, "test", table1.name)
-      expect(await getAllTableNames(token, "test")).toEqual([])
+      await removeTable(token, prjName, table2.name)
+      expect(await getAllTableNames(token, prjName)).toEqual([table1.name])
+      await removeTable(token, prjName, table1.name)
+      expect(await getAllTableNames(token, prjName)).toEqual([])
+    })
+
+    test("try to create again", async () => {
+      await expectFailure(
+        createProject,
+        [token, prjName],
+        "ProjectAlreadyExists"
+      )
     })
 
     test("data push/pull from a table that has the same name as its column", async () => {
-      await createTable(token, "test", tableTitre)
-      await insertData(token, "test", tableTitre.name, tableTitreData)
-      const dataObtained = await getTableData(token, "test", tableTitre.name)
+      await createTable(token, prjName, tableTitre)
+      await insertData(token, prjName, tableTitre.name, tableTitreData)
+      const dataObtained = await getTableData(token, prjName, tableTitre.name)
       expect(dataObtained).toEqual(tableTitreData)
     })
 
     describe("nonexistent table", () => {
+      async function expectNoSuchTable(
+        fn: (...args: any[]) => any,
+        args: any[],
+        context?: string
+      ) {
+        await expectFailure(fn, args, "NoSuchTable", context)
+      }
+
       test("delete", async () => {
-        expect.assertions(1)
-        try {
-          await removeTable(token, "test", "nonexistent")
-        } catch (e) {
-          expect(e.message).toBe('NoSuchTable("nonexistent")')
-        }
+        await expectNoSuchTable(removeTable, [token, prjName, "nonexistent"])
       })
+
       test("get meta", async () => {
-        expect.assertions(1)
-        try {
-          await getTableMeta(token, "test", "nonexistent")
-        } catch (e) {
-          expect(e.message).toBe('NoSuchTable("nonexistent")')
-        }
+        await expectNoSuchTable(getTableMeta, [token, prjName, "nonexistent"])
       })
+
       test("insert", async () => {
-        expect.assertions(1)
-        try {
-          await insertData(token, "test", "nonexistent", [])
-        } catch (e) {
-          expect(e.message).toBe('NoSuchTable("nonexistent")')
-        }
+        await expectNoSuchTable(insertData, [token, prjName, "nonexistent", []])
       })
+
       test("get data", async () => {
-        expect.assertions(1)
-        try {
-          await getTableData(token, "test", "nonexistent")
-        } catch (e) {
-          expect(e.message).toBe('NoSuchTable("nonexistent")')
-        }
+        await expectNoSuchTable(getTableData, [token, prjName, "nonexistent"])
       })
+
       test("remove all data", async () => {
-        expect.assertions(1)
-        try {
-          await removeAllTableData(token, "test", "nonexistent")
-        } catch (e) {
-          expect(e.message).toBe('NoSuchTable("nonexistent")')
-        }
+        await expectNoSuchTable(removeAllTableData, [
+          token,
+          prjName,
+          "nonexistent",
+        ])
       })
     })
 
     describe("need a table", () => {
-      beforeAll(async () => await createTable(token, "test", table1))
-      afterAll(async () => await removeTable(token, "test", table1.name))
+      beforeAll(async () => await createTable(token, prjName, table1))
+      afterAll(async () => await removeTable(token, prjName, table1.name))
 
       test("data manipulation", async () => {
-        expect(await getTableData(token, "test", table1.name)).toEqual([])
-        await insertData(token, "test", table1.name, table1data)
+        expect(await getTableData(token, prjName, table1.name)).toEqual([])
+        await insertData(token, prjName, table1.name, table1data)
         // The way the backend serializes dates is not the same as the
         // frontend does it
         expect(
           decodeUserTable(
             table1,
-            await getTableData(token, "test", table1.name)
+            await getTableData(token, prjName, table1.name)
           )
         ).toEqual(decodeUserTable(table1, table1data))
-        await removeAllTableData(token, "test", table1.name)
-        expect(await getTableData(token, "test", table1.name)).toEqual([])
+        await removeAllTableData(token, prjName, table1.name)
+        expect(await getTableData(token, prjName, table1.name)).toEqual([])
       })
 
       test("insert data with the wrong columns", async () => {
-        expect.assertions(1)
-        try {
-          await insertData(token, "test", table1.name, [{ wrong: 1 }])
-        } catch (e) {
-          expect(e.message).toBe('NoSuchColumns(["wrong"])')
-        }
+        await expectFailure(
+          insertData,
+          [token, prjName, table1.name, [{ wrong: 1 }]],
+          'NoSuchColumns(["wrong"])'
+        )
       })
 
       test("try to create again", async () => {
-        expect.assertions(1)
-        try {
-          await createTable(token, "test", table1)
-        } catch (e) {
-          expect(e.message).toBe(`TableAlreadyExists("${table1.name}")`)
-        }
+        await expectFailure(
+          createTable,
+          [token, prjName, table1],
+          `TableAlreadyExists("${table1.name}")`
+        )
       })
     })
   })
