@@ -80,12 +80,6 @@ impl DB {
         );
         Ok(table_names)
     }
-
-    /// Allows the execution of arbitrary SQL
-    async fn execute(&self, sql: &str) -> Result<()> {
-        sqlx::query(sql).execute(self.get_pool()).await?;
-        Ok(())
-    }
 }
 
 trait FromOpt {
@@ -143,19 +137,21 @@ mod tests {
         log::info!("table creation");
 
         assert!(test_db.get_all_table_names().await.unwrap().is_empty());
-        test_db
-            .execute(
-                "CREATE TABLE \"test_table\" (\"test_field\" TEXT PRIMARY KEY)",
-            )
-            .await
-            .unwrap();
-        test_db
-            .execute(
-                "CREATE TABLE \"test_table_2\" \
+        sqlx::query(
+            "CREATE TABLE \"test_table\" (\"test_field\" TEXT PRIMARY KEY)",
+        )
+        .execute(test_db.get_pool())
+        .await
+        .unwrap();
+
+        sqlx::query(
+            "CREATE TABLE \"test_table_2\" \
                 (\"test_field\" TEXT PRIMARY KEY)",
-            )
-            .await
-            .unwrap();
+        )
+        .execute(test_db.get_pool())
+        .await
+        .unwrap();
+
         assert_eq!(
             test_db.get_all_table_names().await.unwrap(),
             vec!["test_table", "test_table_2"]

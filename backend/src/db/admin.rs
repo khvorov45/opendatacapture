@@ -48,10 +48,6 @@ impl AdminDB {
         self.db.get_pool()
     }
 
-    pub async fn execute(&self, sql: &str) -> Result<()> {
-        self.db.execute(sql).await
-    }
-
     pub async fn health(&self) -> bool {
         self.db.health().await
     }
@@ -85,12 +81,11 @@ impl AdminDB {
             .collect::<Vec<String>>()
             // Join into a comma-separated string
             .join(",");
-        self.db
-            .execute(
-                format!("DROP TABLE IF EXISTS {} CASCADE;", all_tables)
-                    .as_str(),
-            )
-            .await?;
+        sqlx::query(
+            format!("DROP TABLE IF EXISTS {} CASCADE;", all_tables).as_str(),
+        )
+        .execute(self.get_pool())
+        .await?;
         Ok(())
     }
 
@@ -111,10 +106,13 @@ impl AdminDB {
 
     /// Creates tables
     async fn create_all_tables(&self) -> Result<()> {
-        self.execute("DROP TYPE IF EXISTS odc_user_access").await?;
-        self.execute("CREATE TYPE odc_user_access AS ENUM ('User', 'Admin')")
+        sqlx::query("DROP TYPE IF EXISTS odc_user_access")
+            .execute(self.get_pool())
             .await?;
-        self.execute(
+        sqlx::query("CREATE TYPE odc_user_access AS ENUM ('User', 'Admin')")
+            .execute(self.get_pool())
+            .await?;
+        sqlx::query(
             "CREATE TABLE \"user\" (\
                 \"id\" SERIAL PRIMARY KEY,\
                 \"email\" TEXT NOT NULL UNIQUE,\
@@ -122,8 +120,9 @@ impl AdminDB {
                 \"password_hash\" TEXT NOT NULL\
             )",
         )
+        .execute(self.get_pool())
         .await?;
-        self.execute(
+        sqlx::query(
             "CREATE TABLE \"token\" (\
                 \"user\" INTEGER NOT NULL,\
                 \"token\" TEXT PRIMARY KEY,\
@@ -133,8 +132,9 @@ impl AdminDB {
                 ON UPDATE CASCADE ON DELETE CASCADE\
             )",
         )
+        .execute(self.get_pool())
         .await?;
-        self.execute(
+        sqlx::query(
             "CREATE TABLE \"project\" (\
                 \"user\" INTEGER,\
                 \"name\" TEXT,\
@@ -145,6 +145,7 @@ impl AdminDB {
                 ON UPDATE CASCADE ON DELETE CASCADE\
             )",
         )
+        .execute(self.get_pool())
         .await?;
         Ok(())
     }

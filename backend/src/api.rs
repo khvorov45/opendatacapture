@@ -1280,20 +1280,18 @@ mod tests {
                 .await
                 .unwrap();
             let old_token = old_token.token();
-            admindb_ref
-                .lock()
-                .await
-                .execute(
-                    format!(
-                        "UPDATE \"token\" \
-                        SET \"created\" = '2000-08-14 08:15:29.425665+10' \
-                        WHERE \"token\" = '{}'",
-                        auth::hash_fast(old_token)
-                    )
-                    .as_str(),
+            sqlx::query(
+                format!(
+                    "UPDATE \"token\" \
+                    SET \"created\" = '2000-08-14 08:15:29.425665+10' \
+                    WHERE \"token\" = '{}'",
+                    auth::hash_fast(old_token)
                 )
-                .await
-                .unwrap();
+                .as_str(),
+            )
+            .execute(admindb_ref.lock().await.get_pool())
+            .await
+            .unwrap();
             let resp = warp::test::request()
                 .method("GET")
                 .path("/get/users")

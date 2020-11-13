@@ -133,9 +133,12 @@ mod tests {
     /// Remove specific databases
     pub async fn remove_dbs(db: &db::admin::AdminDB, names: &[&str]) {
         for name in names {
-            db.execute(format!("DROP DATABASE IF EXISTS \"{}\"", name).as_str())
-                .await
-                .unwrap()
+            sqlx::query(
+                format!("DROP DATABASE IF EXISTS \"{}\"", name).as_str(),
+            )
+            .execute(db.get_pool())
+            .await
+            .unwrap();
         }
     }
 
