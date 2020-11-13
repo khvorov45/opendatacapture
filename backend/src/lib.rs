@@ -73,11 +73,12 @@ mod tests {
     }
 
     /// Remove test database
-    /// Assumes the odcadmin database exists
-    pub async fn remove_test_db<T: db::DB>(db: &T) {
-        log::info!("removing database {}", db.get_name());
+    /// Assumes the odcadmin database exists - will connect to it with the
+    /// same settings as those of `db`
+    pub async fn remove_test_db(db: &DB) {
+        log::info!("removing test database {}", db.get_name());
         db.get_pool().close().await;
-        let config = gen_test_config("odcadmin");
+        let config = db.get_config().clone().database("odcadmin");
         let mut con = config.connect().await.unwrap();
         sqlx::query(
             format!("DROP DATABASE IF EXISTS \"{0}\"", db.get_name()).as_str(),
@@ -132,9 +133,12 @@ mod tests {
     /// Remove specific databases
     pub async fn remove_dbs(db: &db::admin::AdminDB, names: &[&str]) {
         for name in names {
-            db.execute(format!("DROP DATABASE IF EXISTS \"{}\"", name).as_str())
-                .await
-                .unwrap()
+            sqlx::query(
+                format!("DROP DATABASE IF EXISTS \"{}\"", name).as_str(),
+            )
+            .execute(db.get_pool())
+            .await
+            .unwrap();
         }
     }
 

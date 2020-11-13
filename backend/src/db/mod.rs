@@ -12,28 +12,47 @@ type Database = sqlx::postgres::Postgres;
 type Pool = sqlx::postgres::PgPool;
 pub type ConnectionConfig = sqlx::postgres::PgConnectOptions;
 
-trait FromOpt {
-    fn from_opt(opt: &crate::Opt) -> Self;
+#[derive(Debug)]
+pub struct DB {
+    pool: Pool,
+    config: ConnectionConfig,
+    name: String,
 }
 
-#[async_trait::async_trait]
-pub trait DB {
-    /// Wrapped pool with accessible metadata
-    fn get_pool_meta(&self) -> &PoolMeta;
+impl DB {
+    /// Database name in config will be ignored
+    async fn new(config: ConnectionConfig, name: &str) -> Result<Self> {
+        let config = config.database(name);
+        Ok(Self {
+            pool: create_pool(config.clone()).await?,
+            config,
+            name: name.to_string(),
+        })
+    }
+
+    /// Construction from opt
+    async fn from_opt(opt: &crate::Opt) -> Result<Self> {
+        let config = ConnectionConfig::from_opt(opt);
+        Ok(Self {
+            pool: create_pool(config.clone()).await?,
+            config,
+            name: opt.admindbname.to_string(),
+        })
+    }
 
     /// Reference to connection pool
-    fn get_pool(&self) -> &Pool {
-        self.get_pool_meta().get_pool()
+    pub fn get_pool(&self) -> &Pool {
+        &self.pool
     }
 
     /// Database name
-    fn get_name(&self) -> &str {
-        self.get_pool_meta().get_name()
+    pub fn get_name(&self) -> &str {
+        self.name.as_str()
     }
 
     /// Config used to connect to the database
-    fn get_config(&self) -> ConnectionConfig {
-        self.get_pool_meta().get_config()
+    pub fn get_config(&self) -> &ConnectionConfig {
+        &self.config
     }
 
     /// Health check
@@ -41,42 +60,12 @@ pub trait DB {
         self.get_pool().acquire().await.is_ok()
     }
 
-    /// Drop all tables found in the database
-    async fn drop_all_tables(&self) -> Result<()> {
-        let all_tables: Vec<String> = self
-            // Vector of strings
-            .get_all_table_names()
-            .await?;
-        self.drop_tables(all_tables).await?;
-        Ok(())
-    }
-
-    /// Drops the given tables
-    async fn drop_tables(&self, names: Vec<String>) -> Result<()> {
-        if names.is_empty() {
-            return Ok(());
-        }
-        let all_tables: String = names
-            // Surround by quotation marks
-            .iter()
-            .map(|name| format!("\"{}\"", name))
-            .collect::<Vec<String>>()
-            // Join into a comma-separated string
-            .join(",");
-        sqlx::query(
-            format!("DROP TABLE IF EXISTS {} CASCADE;", all_tables).as_str(),
-        )
-        .execute(self.get_pool())
-        .await?;
-        Ok(())
-    }
-
     /// Returns all found table names
     async fn get_all_table_names(&self) -> Result<Vec<String>> {
         // Vector of rows
         let res = sqlx::query(
             "SELECT tablename FROM pg_catalog.pg_tables \
-        WHERE schemaname = 'public';",
+            WHERE schemaname = 'public';",
         )
         .fetch_all(self.get_pool())
         .await?;
@@ -91,59 +80,10 @@ pub trait DB {
         );
         Ok(table_names)
     }
-
-    /// See if the database is empty (no tables)
-    async fn is_empty(&self) -> Result<bool> {
-        let all_tables = self.get_all_table_names().await?;
-        Ok(all_tables.is_empty())
-    }
-
-    /// Allows the execution of arbitrary SQL
-    async fn execute(&self, sql: &str) -> Result<()> {
-        sqlx::query(sql).execute(self.get_pool()).await?;
-        Ok(())
-    }
 }
 
-/// Pool, but you can actually pull metadata from it
-#[derive(Debug)]
-pub struct PoolMeta {
-    pool: Pool,
-    config: ConnectionConfig,
-    name: String,
-}
-
-impl PoolMeta {
-    /// Database name in config will be ignored
-    async fn new(config: ConnectionConfig, name: &str) -> Result<Self> {
-        let config = config.database(name);
-        Ok(Self {
-            pool: create_pool(config.clone()).await?,
-            config,
-            name: name.to_string(),
-        })
-    }
-    /// Construction from opt
-    async fn from_opt(opt: &crate::Opt) -> Result<Self> {
-        let config = ConnectionConfig::from_opt(opt);
-        Ok(Self {
-            pool: create_pool(config.clone()).await?,
-            config,
-            name: opt.admindbname.to_string(),
-        })
-    }
-    /// Reference to the actual connection pool
-    fn get_pool(&self) -> &Pool {
-        &self.pool
-    }
-    /// Database name
-    fn get_name(&self) -> &str {
-        self.name.as_str()
-    }
-    /// Config used to create the connection pool
-    fn get_config(&self) -> ConnectionConfig {
-        self.config.clone()
-    }
+trait FromOpt {
+    fn from_opt(opt: &crate::Opt) -> Self;
 }
 
 impl FromOpt for ConnectionConfig {
@@ -184,84 +124,38 @@ mod tests {
 
     const TEST_DB_NAME: &str = "odcadmin_test_db";
 
-    struct TestDB {
-        pool: PoolMeta,
-    }
-
-    impl DB for TestDB {
-        fn get_pool_meta(&self) -> &PoolMeta {
-            &self.pool
-        }
-    }
-
-    impl TestDB {
-        async fn reset(&self) -> Result<()> {
-            log::info!("resetting \"{}\" database", self.get_name());
-            self.drop_all_tables().await?;
-            self.create_all_tables().await?;
-            Ok(())
-        }
-        async fn create_all_tables(&self) -> Result<()> {
-            sqlx::query(
-                "CREATE TABLE \"test_table\" (\"test_field\" TEXT PRIMARY KEY)",
-            )
-            .execute(self.get_pool())
-            .await
-            .unwrap();
-            sqlx::query(
-                "CREATE TABLE \"test_table_2\" \
-                (\"test_field\" TEXT PRIMARY KEY)",
-            )
-            .execute(self.get_pool())
-            .await
-            .unwrap();
-            Ok(())
-        }
-    }
-
     #[tokio::test]
     pub async fn test_db() {
         let _ = pretty_env_logger::try_init();
         crate::tests::setup_test_db(TEST_DB_NAME).await;
-        let test_db = TestDB {
-            pool: PoolMeta::new(
-                crate::tests::gen_test_config("anything"),
-                TEST_DB_NAME,
-            )
-            .await
-            .unwrap(),
-        };
+        let test_db =
+            DB::new(crate::tests::gen_test_config("anything"), TEST_DB_NAME)
+                .await
+                .unwrap();
         assert!(test_db.health().await);
 
-        // table creation
-        assert!(test_db.is_empty().await.unwrap());
-        test_db.create_all_tables().await.unwrap();
+        log::info!("table creation");
+
+        assert!(test_db.get_all_table_names().await.unwrap().is_empty());
+        sqlx::query(
+            "CREATE TABLE \"test_table\" (\"test_field\" TEXT PRIMARY KEY)",
+        )
+        .execute(test_db.get_pool())
+        .await
+        .unwrap();
+
+        sqlx::query(
+            "CREATE TABLE \"test_table_2\" \
+                (\"test_field\" TEXT PRIMARY KEY)",
+        )
+        .execute(test_db.get_pool())
+        .await
+        .unwrap();
+
         assert_eq!(
             test_db.get_all_table_names().await.unwrap(),
             vec!["test_table", "test_table_2"]
         );
-        assert!(!test_db.is_empty().await.unwrap());
-
-        // Test reset
-        sqlx::query("INSERT INTO test_table VALUES ('test')")
-            .execute(test_db.get_pool())
-            .await
-            .unwrap();
-        let test_table_content = sqlx::query("SELECT * FROM test_table")
-            .fetch_all(test_db.get_pool())
-            .await
-            .unwrap();
-        assert_eq!(test_table_content.len(), 1);
-        test_db.reset().await.unwrap();
-        let test_table_content = sqlx::query("SELECT * FROM test_table")
-            .fetch_all(test_db.get_pool())
-            .await
-            .unwrap();
-        assert!(test_table_content.is_empty());
-
-        // Drop tables
-        test_db.drop_all_tables().await.unwrap();
-        assert!(test_db.is_empty().await.unwrap());
 
         // Remove test database -----------------------------------------------
         crate::tests::remove_test_db(&test_db).await;

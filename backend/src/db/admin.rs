@@ -1,30 +1,23 @@
-use crate::db::{user, Database, PoolMeta, DB};
+use crate::db::{user, Database, Pool, DB};
 use crate::{auth, error::Unauthorized, Error, Result};
 use user::table::{RowJson, TableMeta, TableSpec};
 use user::UserDB;
 
 /// Administrative database
 pub struct AdminDB {
-    pool: PoolMeta,
+    db: DB,
     user_dbs: Vec<UserDB>,
-}
-
-#[async_trait::async_trait]
-impl DB for AdminDB {
-    fn get_pool_meta(&self) -> &PoolMeta {
-        &self.pool
-    }
 }
 
 impl AdminDB {
     pub async fn new(opt: &crate::Opt) -> Result<Self> {
-        // Connect to the admin database as the default api user
         let mut admindb = Self {
-            pool: PoolMeta::from_opt(&opt).await?,
+            db: DB::from_opt(opt).await?,
             user_dbs: Vec::new(),
         };
         // Reset if required
-        let connected_to_empty = admindb.is_empty().await?;
+        let connected_to_empty =
+            admindb.db.get_all_table_names().await?.is_empty();
         if connected_to_empty {
             admindb.create_all_tables().await?;
         } else if opt.clean {
@@ -43,10 +36,27 @@ impl AdminDB {
         Ok(admindb)
     }
 
+    pub fn get_db(&self) -> &DB {
+        &self.db
+    }
+
+    pub fn get_name(&self) -> &str {
+        self.db.get_name()
+    }
+
+    pub fn get_pool(&self) -> &Pool {
+        self.db.get_pool()
+    }
+
+    pub async fn health(&self) -> bool {
+        self.db.health().await
+    }
+
     /// Resets the database
     async fn reset(&mut self) -> Result<()> {
         log::info!("resetting \"{}\" admin database", self.get_name());
         if self
+            .db
             .get_all_table_names()
             .await?
             .contains(&"project".to_string())
@@ -55,6 +65,27 @@ impl AdminDB {
         }
         self.drop_all_tables().await?;
         self.create_all_tables().await?;
+        Ok(())
+    }
+
+    /// Drop all tables found in the database
+    async fn drop_all_tables(&self) -> Result<()> {
+        let all_tables: String = self
+            .db
+            // Vector of strings
+            .get_all_table_names()
+            .await?
+            // Surround by quotation marks
+            .iter()
+            .map(|name| format!("\"{}\"", name))
+            .collect::<Vec<String>>()
+            // Join into a comma-separated string
+            .join(",");
+        sqlx::query(
+            format!("DROP TABLE IF EXISTS {} CASCADE;", all_tables).as_str(),
+        )
+        .execute(self.get_pool())
+        .await?;
         Ok(())
     }
 
@@ -67,9 +98,10 @@ impl AdminDB {
         {
             return Ok(&self.user_dbs[i]);
         };
-        let db = UserDB::new(self.get_config(), name.as_str()).await?;
+        let db =
+            UserDB::new(self.db.get_config().clone(), name.as_str()).await?;
         self.user_dbs.push(db);
-        Ok(&self.user_dbs[self.user_dbs.len() - 1])
+        Ok(&self.user_dbs.last().unwrap())
     }
 
     /// Creates tables
@@ -1005,7 +1037,7 @@ mod tests {
             .await
             .unwrap();
         let user_db = test_db.get_user_db(&user2_test_project).await.unwrap();
-        assert!(user_db.is_empty().await.unwrap());
+        assert!(user_db.get_all_table_names().await.unwrap().is_empty());
 
         log::info!("remove all projects");
         test_db.remove_all_projects().await.unwrap();
@@ -1013,6 +1045,6 @@ mod tests {
         assert!(!project_exists(&test_db, &test_project1).await);
 
         // Remove test db -----------------------------------------------------
-        crate::tests::remove_test_db(&test_db).await;
+        crate::tests::remove_test_db(&test_db.db).await;
     }
 }
