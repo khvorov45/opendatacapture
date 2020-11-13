@@ -279,12 +279,6 @@ describe("need user credentials", () => {
     expect(projectIds).not.toContain(projectName)
   })
 
-  test("create the same project twice", async () => {
-    await createProject(token, "test")
-    await expectFailure(createProject, [token, "test"], "ProjectAlreadyExists")
-    await deleteProject(token, "test")
-  })
-
   describe("manipulate non-existent project", () => {
     const prjName = "nonexistent"
 
@@ -356,6 +350,14 @@ describe("need user credentials", () => {
       expect(await getAllTableNames(token, prjName)).toEqual([table1.name])
       await removeTable(token, prjName, table1.name)
       expect(await getAllTableNames(token, prjName)).toEqual([])
+    })
+
+    test("try to create again", async () => {
+      await expectFailure(
+        createProject,
+        [token, prjName],
+        "ProjectAlreadyExists"
+      )
     })
 
     test("data push/pull from a table that has the same name as its column", async () => {
