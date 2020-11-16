@@ -47,10 +47,9 @@ async function expectFailure(
   expectedMessageStart: string,
   context?: string
 ) {
-  expect.assertions(1)
   try {
     let res = await fn(...args)
-    console.error(
+    throw Error(
       `function returned ${res} when supposed to fail ${context ?? ""}`
     )
   } catch (e) {
@@ -90,7 +89,6 @@ test("correct credentials", async () => {
 })
 
 test("remove token", async () => {
-  expect.assertions(2)
   let token = await tokenFetcher({
     email: "admin@example.com",
     password: "admin",
@@ -98,11 +96,7 @@ test("remove token", async () => {
   let admin = await tokenValidator(token.token)
   expect(admin.email).toBe("admin@example.com")
   await removeToken(token.token)
-  try {
-    await tokenValidator(token.token)
-  } catch (e) {
-    expect(e.message).toStartWith("NoSuchToken")
-  }
+  expectFailure(tokenValidator, [token.token], "NoSuchToken")
 })
 
 describe("bad token", () => {
@@ -199,14 +193,8 @@ describe("need admin credentials", () => {
   })
 
   test("create/remove user", async () => {
-    expect.assertions(3)
     async function failTokenFetch(cred: EmailPassword, msg: string) {
-      try {
-        await tokenFetcher(cred)
-        console.error("received token when not supposed to " + msg)
-      } catch (e) {
-        expect(e.message).toBe(LoginFailure.EmailNotFound)
-      }
+      expectFailure(tokenFetcher, [cred], LoginFailure.EmailNotFound, msg)
     }
     // User shouldn't exist
     await failTokenFetch(newUser, "before creation")
@@ -215,11 +203,7 @@ describe("need admin credentials", () => {
     // Token fetching should work
     await tokenFetcher(newUser)
     // Creating them again should cause an error
-    try {
-      await createUser(newUser)
-    } catch (e) {
-      expect(e.message).toStartWith("Request failed")
-    }
+    expectFailure(createUser, [newUser], "Request failed")
     // Remove user
     await removeUser(token, newUser.email)
     await failTokenFetch(newUser, "after creation")
