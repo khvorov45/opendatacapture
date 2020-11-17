@@ -83,7 +83,7 @@ test("correct credentials", async () => {
   let admin = await tokenValidator(token.token)
   expect(admin.access).toBe(Access.Admin)
   expect(admin.email).toBe(defaultAdmin.email)
-  expect(admin.id).toBe(1)
+  expect(admin.id).toBe(defaultAdmin.id)
 })
 
 test("remove token", async () => {
