@@ -3,13 +3,13 @@
 import { Access, EmailPassword, User } from "../lib/api/auth"
 
 export const defaultAdmin: User = {
-  id: 1,
+  id: 1, // Should be the same on fetch because it's the first user created
   email: "admin@example.com",
   access: Access.Admin,
 }
 
 export const user1: User = {
-  id: 2,
+  id: 2, // May be different on fetch since we'll be creating/dropping users
   email: "user1@xample.com",
   access: Access.User,
 }
