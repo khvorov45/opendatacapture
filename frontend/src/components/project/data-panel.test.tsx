@@ -1,8 +1,12 @@
 /* istanbul ignore file */
 import httpStatusCodes from "http-status-codes"
-import { fireEvent, waitForDomChange, within } from "@testing-library/react"
+import {
+  fireEvent,
+  render,
+  waitForDomChange,
+  within,
+} from "@testing-library/react"
 import axios from "axios"
-import { renderProjectPage } from "../../tests/util"
 import {
   table1,
   table2,
@@ -14,9 +18,27 @@ import toProperCase from "../../lib/to-proper-case"
 import { TableRow } from "../../lib/api/project"
 import { API_ROOT } from "../../lib/config"
 import { decodeUserTable } from "../../lib/api/io-validation"
+import React from "react"
+import { MemoryRouter, Route, Redirect, Switch } from "react-router-dom"
+import DataPanel from "./data-panel"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
+
+export function renderDataPanel() {
+  return render(
+    <MemoryRouter>
+      <Switch>
+        <Route exact path="/">
+          <Redirect to="/project/some-project/data" />
+        </Route>
+        <Route path="/project/:name/data">
+          <DataPanel token="123" projectName="some-project" />
+        </Route>
+      </Switch>
+    </MemoryRouter>
+  )
+}
 
 mockedAxios.get.mockImplementation(async (url) => {
   if (url.endsWith("/get/tablenames")) {
@@ -61,7 +83,7 @@ function fillNewRow(newRow: HTMLElement, data: TableRow) {
 }
 
 test("data panel functionality", async () => {
-  const dataPanel = renderProjectPage("123", "data")
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
   // The first table should be auto-selected
   const firstLink = dataPanel.getByText(toProperCase(table1.name))
@@ -112,7 +134,7 @@ test("data panel functionality", async () => {
 
 test("fail to get a list of tables", async () => {
   mockedAxios.get.mockRejectedValueOnce(Error("get tables error"))
-  const dataPanel = renderProjectPage("123", "data")
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
   expect(dataPanel.getByText("get tables error")).toBeInTheDocument()
 })
@@ -124,13 +146,13 @@ test("fail to fetch data and meta", async () => {
     // Meta/data, order is unknown
     .mockRejectedValueOnce(Error("fetch error"))
     .mockRejectedValueOnce(Error("fetch error"))
-  const dataPanel = renderProjectPage("123", "data")
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
   expect(dataPanel.getByText("fetch errorfetch error")).toBeInTheDocument()
 })
 
 test("fail to fetch data/meta after a successful fetch", async () => {
-  const dataPanel = renderProjectPage("123", "data")
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
   mockedAxios.get
     .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: ["table"] })
@@ -142,7 +164,7 @@ test("fail to fetch data/meta after a successful fetch", async () => {
 })
 
 test("fail to submit", async () => {
-  const dataPanel = renderProjectPage("123", "data")
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
   mockedAxios.put.mockRejectedValueOnce(Error("submit error"))
   fireEvent.click(dataPanel.getByTestId("submit-row-button"))
@@ -151,7 +173,7 @@ test("fail to submit", async () => {
 })
 
 test("fail to delete", async () => {
-  const dataPanel = renderProjectPage("123", "data")
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
   mockedAxios.delete.mockRejectedValueOnce(Error("delete error"))
   fireEvent.click(dataPanel.getByTestId("delete-all-table-data-button"))
@@ -164,13 +186,13 @@ test("no tables", async () => {
     status: httpStatusCodes.OK,
     data: [],
   })
-  const dataPanel = renderProjectPage("123", "data")
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
   expect(dataPanel.getByText("No tables found")).toBeInTheDocument()
 })
 
 test("fill a new field entry and then remove what's been filled", async () => {
-  const dataPanel = renderProjectPage("123", "data")
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
   const inputRow = dataPanel.getByTestId("input-row")
   fillNewRow(inputRow, table1data[0])
@@ -190,7 +212,7 @@ test("fill a new field entry and then remove what's been filled", async () => {
 })
 
 test("attempt to put a string into a number field", async () => {
-  const dataPanel = renderProjectPage("123", "data")
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
   const inputRow = dataPanel.getByTestId("input-row")
   fillNewRow(inputRow, table1data[0])
@@ -210,7 +232,7 @@ test("meta/data mismatch", async () => {
       status: httpStatusCodes.OK,
       data: table2data,
     })
-  const dataPanel = renderProjectPage("123", "data")
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
   expect(dataPanel.queryAllByTestId("data-row")).toBeEmpty()
 })

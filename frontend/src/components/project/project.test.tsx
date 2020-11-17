@@ -2,16 +2,43 @@
 import axios from "axios"
 import {
   fireEvent,
+  render,
   wait,
   waitForDomChange,
   within,
 } from "@testing-library/react"
 import httpStatusCodes from "http-status-codes"
-import { renderProjectPage } from "../../tests/util"
 import toProperCase from "../../lib/to-proper-case"
+import React from "react"
+import { MemoryRouter, Route, Redirect, Switch } from "react-router-dom"
+import ProjectPage from "./project"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
+
+export function renderProjectPage(
+  token?: string | null,
+  path?: "tables" | "data"
+) {
+  let tok: string | null = "123"
+  if (token !== undefined) {
+    tok = token
+  }
+  return render(
+    <MemoryRouter
+      initialEntries={[path ? `/project/some-project/${path}` : "/"]}
+    >
+      <Switch>
+        <Route exact path="/">
+          <Redirect to="/project/some-project" />
+        </Route>
+        <Route path="/project/:name">
+          <ProjectPage token={tok} />
+        </Route>
+      </Switch>
+    </MemoryRouter>
+  )
+}
 
 test("project page with null token", async () => {
   // Normally the null (or wrong or too old)

@@ -1,14 +1,24 @@
 /* istanbul ignore file */
 import httpStatusCodes from "http-status-codes"
-import { fireEvent, waitForDomChange, within } from "@testing-library/react"
+import {
+  fireEvent,
+  render,
+  waitForDomChange,
+  within,
+} from "@testing-library/react"
 import axios from "axios"
 import { TableMeta, ColMeta } from "../../lib/api/project"
 import { API_ROOT } from "../../lib/config"
-import { renderProjectPage } from "../../tests/util"
 import { table1, table2, table3 } from "../../tests/data"
+import React from "react"
+import TablePanel from "./table-panel"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
+
+export function renderTablePanel() {
+  return render(<TablePanel token="123" projectName="some-project" />)
+}
 
 function performSelectAction(selectElement: HTMLElement, value: string) {
   fireEvent.mouseDown(within(selectElement).getByRole("button"))
@@ -107,11 +117,8 @@ test("table panel functionality - no initial tables", async () => {
   // List of tables
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: [] })
 
-  let { getByTestId, getByText, queryByTestId } = renderProjectPage()
+  let { getByTestId, getByText, queryByTestId } = renderTablePanel()
   await waitForDomChange()
-
-  // Sidebar links
-  expect(getByText("Tables")).toBeInTheDocument()
 
   // Open and close the new table form
   const newTableForm = getByTestId("new-table-form")
@@ -219,7 +226,7 @@ test("table panel - some initial tables", async () => {
     data: [table1, table2],
   })
 
-  let { getByTestId } = renderProjectPage()
+  let { getByTestId } = renderTablePanel()
   await waitForDomChange()
 
   // Table form should be closed
@@ -236,7 +243,7 @@ test("table panel - FK behavior", async () => {
     data: [table1, table2, table3],
   })
 
-  let { getByTestId, getAllByRole } = renderProjectPage()
+  let { getByTestId, getAllByRole } = renderTablePanel()
   await waitForDomChange()
 
   fireEvent.click(getByTestId("create-table-button"))
@@ -302,7 +309,7 @@ test("table panel - project refresh error", async () => {
       status: httpStatusCodes.OK,
       data: [],
     })
-  let { getByTestId, getByText } = renderProjectPage()
+  let { getByTestId, getByText } = renderTablePanel()
   await waitForDomChange()
   expect(getByText("some refresh error")).toBeInTheDocument()
   fireEvent.click(getByTestId("refresh-tables-button"))
@@ -327,7 +334,7 @@ test("table panel - table delete error", async () => {
     .mockResolvedValueOnce({
       status: httpStatusCodes.NO_CONTENT,
     })
-  let { getByTestId, getByText, queryByTestId } = renderProjectPage()
+  let { getByTestId, getByText, queryByTestId } = renderTablePanel()
   await waitForDomChange()
   let table1card = getByTestId(`table-card-${table1.name}`)
   fireEvent.click(within(table1card).getByTestId("delete-table-button"))
@@ -342,7 +349,7 @@ test("table panel - column removal", async () => {
   // List of tables
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: [] })
 
-  let { getByTestId } = renderProjectPage()
+  let { getByTestId } = renderTablePanel()
   await waitForDomChange()
 
   const newTableForm = getByTestId("new-table-form")
@@ -411,7 +418,7 @@ test("table viability checks", async () => {
   // List of tables
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: [] })
 
-  let { getByTestId } = renderProjectPage()
+  let { getByTestId } = renderTablePanel()
   await waitForDomChange()
 
   // Should be disabled since the form is empty
@@ -459,7 +466,7 @@ test("submit table error", async () => {
   mockedAxios.put
     .mockRejectedValueOnce(Error("some table submit error"))
     .mockResolvedValueOnce({ status: httpStatusCodes.NO_CONTENT })
-  let { getByTestId } = renderProjectPage()
+  let { getByTestId } = renderTablePanel()
   await waitForDomChange()
   expect(getByTestId("table-submit-error")).toHaveTextContent("")
   fillTableForm(getByTestId("new-table-form"), table1)
@@ -478,7 +485,7 @@ test("set table card to editable", async () => {
     status: httpStatusCodes.OK,
     data: [table1],
   })
-  let { getByTestId } = renderProjectPage()
+  let { getByTestId } = renderTablePanel()
   await waitForDomChange()
   // Table card should be disabled
   const card = getByTestId(`table-card-${table1.name}`)
