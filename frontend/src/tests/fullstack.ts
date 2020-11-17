@@ -73,7 +73,7 @@ test("wrong email", async () => {
 test("correct credentials", async () => {
   let token = await tokenFetcher(defaultAdminCred)
   let admin = await tokenValidator(token.token)
-  expect(admin.access).toBe(Access.Admin)
+  expect(admin.access).toBe(defaultAdmin.access)
   expect(admin.email).toBe(defaultAdmin.email)
   expect(admin.id).toBe(defaultAdmin.id)
 })
