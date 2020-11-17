@@ -39,6 +39,7 @@ import {
   tableTitreData,
   defaultAdmin,
   newUser,
+  defaultAdminCred,
 } from "./util"
 
 async function expectFailure(
@@ -63,7 +64,7 @@ test("wrong token", async () => {
 
 test("wrong password", async () => {
   const wrongCred: EmailPassword = {
-    email: "admin@example.com",
+    email: defaultAdminCred.email,
     password: "123",
   }
   await expectFailure(tokenFetcher, [wrongCred], LoginFailure.WrongPassword)
@@ -72,29 +73,21 @@ test("wrong password", async () => {
 test("wrong email", async () => {
   const wrongCred: EmailPassword = {
     email: "user@example.com",
-    password: "admin",
+    password: defaultAdminCred.password,
   }
   await expectFailure(tokenFetcher, [wrongCred], LoginFailure.EmailNotFound)
 })
 
 test("correct credentials", async () => {
-  let token = await tokenFetcher({
-    email: "admin@example.com",
-    password: "admin",
-  })
+  let token = await tokenFetcher(defaultAdminCred)
   let admin = await tokenValidator(token.token)
   expect(admin.access).toBe(Access.Admin)
-  expect(admin.email).toBe("admin@example.com")
+  expect(admin.email).toBe(defaultAdmin.email)
   expect(admin.id).toBe(1)
 })
 
 test("remove token", async () => {
-  let token = await tokenFetcher({
-    email: "admin@example.com",
-    password: "admin",
-  })
-  let admin = await tokenValidator(token.token)
-  expect(admin.email).toBe("admin@example.com")
+  let token = await tokenFetcher(defaultAdminCred)
   await removeToken(token.token)
   expectFailure(tokenValidator, [token.token], "NoSuchToken")
 })
@@ -165,12 +158,7 @@ describe("bad token", () => {
 })
 
 test("token refresh", async () => {
-  let token = (
-    await tokenFetcher({
-      email: "admin@example.com",
-      password: "admin",
-    })
-  ).token
+  let token = (await tokenFetcher(defaultAdminCred)).token
   const newTok = await refreshToken(token)
   expect(newTok).not.toEqual(token)
 })
@@ -179,12 +167,7 @@ describe("need admin credentials", () => {
   let token: string
 
   beforeAll(async () => {
-    token = (
-      await tokenFetcher({
-        email: "admin@example.com",
-        password: "admin",
-      })
-    ).token
+    token = (await tokenFetcher(defaultAdminCred)).token
   })
 
   test("get users", async () => {

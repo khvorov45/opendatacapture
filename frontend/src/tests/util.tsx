@@ -36,6 +36,11 @@ export const defaultAdmin: User = {
   access: Access.Admin,
 }
 
+export const defaultAdminCred: EmailPassword = {
+  email: defaultAdmin.email,
+  password: "admin",
+}
+
 export const newUser: EmailPassword = {
   email: "user@example.com",
   password: "user",
