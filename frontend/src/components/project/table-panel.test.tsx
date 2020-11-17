@@ -4,7 +4,8 @@ import { fireEvent, waitForDomChange, within } from "@testing-library/react"
 import axios from "axios"
 import { TableMeta, ColMeta } from "../../lib/api/project"
 import { API_ROOT } from "../../lib/config"
-import { renderProjectPage, table1, table2, table3 } from "../../tests/util"
+import { renderProjectPage } from "../../tests/util"
+import { table1, table2, table3 } from "../../tests/data"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>

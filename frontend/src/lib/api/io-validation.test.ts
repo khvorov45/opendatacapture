@@ -5,7 +5,7 @@ import { Access } from "./auth"
 import { isLeft, right } from "fp-ts/lib/Either"
 import * as t from "io-ts"
 import { decode } from "./io-validation"
-import { table1, table1data } from "../../tests/util"
+import { table1, table1data } from "../../tests/data"
 import { TableData } from "./project"
 
 test("enum validation", () => {

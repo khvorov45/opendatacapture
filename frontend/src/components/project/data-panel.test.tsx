@@ -2,14 +2,14 @@
 import httpStatusCodes from "http-status-codes"
 import { fireEvent, waitForDomChange, within } from "@testing-library/react"
 import axios from "axios"
+import { renderProjectPage } from "../../tests/util"
 import {
-  renderProjectPage,
   table1,
   table2,
   table3,
   table1data,
   table2data,
-} from "../../tests/util"
+} from "../../tests/data"
 import toProperCase from "../../lib/to-proper-case"
 import { TableRow } from "../../lib/api/project"
 import { API_ROOT } from "../../lib/config"
