@@ -184,7 +184,11 @@ describe("need admin credentials", () => {
     // Create them
     await createUser(newUser)
     // Token fetching should work
-    await tokenFetcher(newUser)
+    const userToken = await tokenFetcher(newUser)
+    // Check the user is who we expect them to be
+    const user = await tokenValidator(userToken.token)
+    expect(user.access).toBe(Access.User)
+    expect(user.email).toBe(newUser.email)
     // Creating them again should cause an error
     expectFailure(createUser, [newUser], "Request failed")
     // Remove user
