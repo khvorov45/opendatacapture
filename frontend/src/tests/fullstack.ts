@@ -32,7 +32,7 @@ import {
   TableMeta,
 } from "../lib/api/project"
 import { table1, table2, table1data, tableTitre, tableTitreData } from "./util"
-import { defaultAdmin, user1Cred, defaultAdminCred } from "./data"
+import { defaultAdmin, user1Cred, defaultAdminCred, user1 } from "./data"
 
 async function expectFailure(
   fn: (...args: any[]) => any,
@@ -179,8 +179,8 @@ describe("need admin credentials", () => {
     const userToken = await tokenFetcher(user1Cred)
     // Check the user is who we expect them to be
     const user = await tokenValidator(userToken.token)
-    expect(user.access).toBe(Access.User)
-    expect(user.email).toBe(user1Cred.email)
+    expect(user.access).toBe(user1.access)
+    expect(user.email).toBe(user1.email)
     // Creating them again should cause an error
     expectFailure(createUser, [user1Cred], "Request failed")
     // Remove user
