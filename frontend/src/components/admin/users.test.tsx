@@ -8,7 +8,7 @@ import {
   within,
 } from "@testing-library/react"
 import httpStatusCodes from "http-status-codes"
-import { defaultAdmin, newUserCred } from "../../tests/util"
+import { defaultAdmin, newUserCred } from "../../tests/data"
 import { constructDelete, constructGet, constructPut } from "../../tests/api"
 import { user1 } from "../../tests/data"
 import React from "react"

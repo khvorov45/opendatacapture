@@ -31,16 +31,8 @@ import {
   removeAllTableData,
   TableMeta,
 } from "../lib/api/project"
-import {
-  table1,
-  table2,
-  table1data,
-  tableTitre,
-  tableTitreData,
-  defaultAdmin,
-  newUserCred,
-  defaultAdminCred,
-} from "./util"
+import { table1, table2, table1data, tableTitre, tableTitreData } from "./util"
+import { defaultAdmin, newUserCred, defaultAdminCred } from "./data"
 
 async function expectFailure(
   fn: (...args: any[]) => any,

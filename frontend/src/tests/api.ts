@@ -2,7 +2,7 @@
 /** Mocked API calls for tests */
 
 import httpStatusCodes from "http-status-codes"
-import { defaultAdmin } from "./util"
+import { defaultAdmin } from "./data"
 
 const defaultGet = {
   getUsers: async () => ({ status: httpStatusCodes.OK, data: [defaultAdmin] }),
