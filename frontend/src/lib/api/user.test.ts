@@ -4,7 +4,7 @@
 import axios from "axios"
 import httpStatusCodes from "http-status-codes"
 import { constructPut } from "../../tests/api"
-import { newUser } from "../../tests/util"
+import { newUserCred } from "../../tests/util"
 import { createUser } from "./user"
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
@@ -18,7 +18,7 @@ test("createUser", async () => {
   })
   expect.assertions(1)
   try {
-    await createUser(newUser)
+    await createUser(newUserCred)
   } catch (e) {
     expect(e.message).toBe("some create user error")
   }

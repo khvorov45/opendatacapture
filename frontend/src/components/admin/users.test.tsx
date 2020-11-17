@@ -8,7 +8,7 @@ import {
   within,
 } from "@testing-library/react"
 import httpStatusCodes from "http-status-codes"
-import { defaultAdmin, newUser } from "../../tests/util"
+import { defaultAdmin, newUserCred } from "../../tests/util"
 import { constructDelete, constructGet, constructPut } from "../../tests/api"
 import { user1 } from "../../tests/data"
 import React from "react"
@@ -101,16 +101,16 @@ test("create user", async () => {
   })
   fireEvent.click(users.getByTestId("open-new-user-form-button"))
   fireEvent.change(users.getByTestId("user-email-field"), {
-    target: { value: newUser.email },
+    target: { value: newUserCred.email },
   })
   fireEvent.change(users.getByTestId("user-password-field"), {
-    target: { value: newUser.password },
+    target: { value: newUserCred.password },
   })
   fireEvent.click(users.getByTestId("user-submit"))
   await waitForDomChange()
   expect(mockedPut).toHaveBeenLastCalledWith(
     `${API_ROOT}/create/user`,
-    newUser,
+    newUserCred,
     expect.anything()
   )
 })

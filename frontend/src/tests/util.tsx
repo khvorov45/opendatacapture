@@ -41,7 +41,7 @@ export const defaultAdminCred: EmailPassword = {
   password: "admin",
 }
 
-export const newUser: EmailPassword = {
+export const newUserCred: EmailPassword = {
   email: "user@example.com",
   password: "user",
 }

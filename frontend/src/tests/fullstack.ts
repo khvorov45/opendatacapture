@@ -38,7 +38,7 @@ import {
   tableTitre,
   tableTitreData,
   defaultAdmin,
-  newUser,
+  newUserCred,
   defaultAdminCred,
 } from "./util"
 
@@ -180,20 +180,20 @@ describe("need admin credentials", () => {
       expectFailure(tokenFetcher, [cred], LoginFailure.EmailNotFound, msg)
     }
     // User shouldn't exist
-    await failTokenFetch(newUser, "before creation")
+    await failTokenFetch(newUserCred, "before creation")
     // Create them
-    await createUser(newUser)
+    await createUser(newUserCred)
     // Token fetching should work
-    const userToken = await tokenFetcher(newUser)
+    const userToken = await tokenFetcher(newUserCred)
     // Check the user is who we expect them to be
     const user = await tokenValidator(userToken.token)
     expect(user.access).toBe(Access.User)
-    expect(user.email).toBe(newUser.email)
+    expect(user.email).toBe(newUserCred.email)
     // Creating them again should cause an error
-    expectFailure(createUser, [newUser], "Request failed")
+    expectFailure(createUser, [newUserCred], "Request failed")
     // Remove user
-    await removeUser(token, newUser.email)
-    await failTokenFetch(newUser, "after creation")
+    await removeUser(token, newUserCred.email)
+    await failTokenFetch(newUserCred, "after creation")
   })
 })
 
@@ -201,11 +201,11 @@ describe("need user credentials", () => {
   let token: string
 
   beforeAll(async () => {
-    await createUser(newUser)
+    await createUser(newUserCred)
     token = (
       await tokenFetcher({
-        email: newUser.email,
-        password: newUser.password,
+        email: newUserCred.email,
+        password: newUserCred.password,
       })
     ).token
   })
@@ -217,7 +217,7 @@ describe("need user credentials", () => {
         password: "admin",
       })
     ).token
-    await removeUser(adminTok, newUser.email)
+    await removeUser(adminTok, newUserCred.email)
   })
 
   describe("insufficient access", () => {
