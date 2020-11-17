@@ -32,7 +32,7 @@ import {
   TableMeta,
 } from "../lib/api/project"
 import { table1, table2, table1data, tableTitre, tableTitreData } from "./util"
-import { defaultAdmin, newUserCred, defaultAdminCred } from "./data"
+import { defaultAdmin, user1Cred, defaultAdminCred } from "./data"
 
 async function expectFailure(
   fn: (...args: any[]) => any,
@@ -172,20 +172,20 @@ describe("need admin credentials", () => {
       expectFailure(tokenFetcher, [cred], LoginFailure.EmailNotFound, msg)
     }
     // User shouldn't exist
-    await failTokenFetch(newUserCred, "before creation")
+    await failTokenFetch(user1Cred, "before creation")
     // Create them
-    await createUser(newUserCred)
+    await createUser(user1Cred)
     // Token fetching should work
-    const userToken = await tokenFetcher(newUserCred)
+    const userToken = await tokenFetcher(user1Cred)
     // Check the user is who we expect them to be
     const user = await tokenValidator(userToken.token)
     expect(user.access).toBe(Access.User)
-    expect(user.email).toBe(newUserCred.email)
+    expect(user.email).toBe(user1Cred.email)
     // Creating them again should cause an error
-    expectFailure(createUser, [newUserCred], "Request failed")
+    expectFailure(createUser, [user1Cred], "Request failed")
     // Remove user
-    await removeUser(token, newUserCred.email)
-    await failTokenFetch(newUserCred, "after creation")
+    await removeUser(token, user1Cred.email)
+    await failTokenFetch(user1Cred, "after creation")
   })
 })
 
@@ -193,11 +193,11 @@ describe("need user credentials", () => {
   let token: string
 
   beforeAll(async () => {
-    await createUser(newUserCred)
+    await createUser(user1Cred)
     token = (
       await tokenFetcher({
-        email: newUserCred.email,
-        password: newUserCred.password,
+        email: user1Cred.email,
+        password: user1Cred.password,
       })
     ).token
   })
@@ -209,7 +209,7 @@ describe("need user credentials", () => {
         password: "admin",
       })
     ).token
-    await removeUser(adminTok, newUserCred.email)
+    await removeUser(adminTok, user1Cred.email)
   })
 
   describe("insufficient access", () => {
