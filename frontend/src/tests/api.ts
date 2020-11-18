@@ -2,10 +2,33 @@
 /** Mocked API calls for tests */
 
 import httpStatusCodes from "http-status-codes"
-import { defaultAdmin } from "./data"
+import { allTables, defaultAdmin } from "./data"
+
+function findTableEntry(tableName: string) {
+  const tableEntry = allTables.filter((t) => t.meta.name === tableName)
+  if (tableEntry.length !== 1) {
+    throw Error(
+      `want to find entry for '${tableName}'
+      but there is no one such test table`
+    )
+  }
+  return tableEntry[0]
+}
 
 const defaultGet = {
   getUsers: async () => ({ status: httpStatusCodes.OK, data: [defaultAdmin] }),
+  getAllTableNames: async () => ({
+    status: httpStatusCodes.OK,
+    data: allTables.map((t) => t.meta.name),
+  }),
+  getTableData: async (tableName: string) => ({
+    status: httpStatusCodes.OK,
+    data: findTableEntry(tableName).data,
+  }),
+  getTableMeta: async (tableName: string) => ({
+    status: httpStatusCodes.OK,
+    data: findTableEntry(tableName).meta,
+  }),
 }
 
 /** Whatever is in `fns` is supposed to overwrite `defaultGet` */
@@ -14,6 +37,17 @@ export function constructGet(fns?: Record<string, any>) {
   const mockedGet = async (url: string) => {
     if (url.endsWith("/get/users")) {
       return await currentGet.getUsers()
+    }
+    if (url.endsWith("/get/tablenames")) {
+      return await currentGet.getAllTableNames()
+    }
+    const tableDataMatch = url.match("/get/table/(.*)/data")
+    if (tableDataMatch) {
+      return await currentGet.getTableData(tableDataMatch[1])
+    }
+    const tableMetaMatch = url.match("/get/table/(.*)/meta")
+    if (tableMetaMatch) {
+      return await currentGet.getTableMeta(tableMetaMatch[1])
     }
     throw Error("unimplemented path in mocked get")
   }
