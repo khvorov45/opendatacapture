@@ -161,6 +161,8 @@ export const table3: TableMeta = {
   ],
 }
 
+export const table3data: TableData = [{ id: 1 }]
+
 // Has the same name as one of its columns
 export const tableTitre: TableMeta = {
   name: "titre",
@@ -177,3 +179,10 @@ export const tableTitre: TableMeta = {
 }
 
 export const tableTitreData: TableData = [{ titre: 20 }, { titre: 40 }]
+
+export const allTables: { meta: TableMeta; data: TableData }[] = [
+  { meta: table1, data: table1data },
+  { meta: table2, data: table2data },
+  { meta: table3, data: table3data },
+  { meta: tableTitre, data: tableTitreData },
+]
