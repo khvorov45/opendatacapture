@@ -3,6 +3,7 @@ import httpStatusCodes from "http-status-codes"
 import {
   fireEvent,
   render,
+  wait,
   waitForDomChange,
   within,
 } from "@testing-library/react"
@@ -21,39 +22,29 @@ import { decodeUserTable } from "../../lib/api/io-validation"
 import React from "react"
 import { MemoryRouter, Route, Redirect, Switch } from "react-router-dom"
 import DataPanel from "./data-panel"
+import { constructGet, defaultGet } from "../../tests/api"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
+
+const mockProjectName = "some-project"
 
 export function renderDataPanel() {
   return render(
     <MemoryRouter>
       <Switch>
         <Route exact path="/">
-          <Redirect to="/project/some-project/data" />
+          <Redirect to={`/project/${mockProjectName}/data`} />
         </Route>
         <Route path="/project/:name/data">
-          <DataPanel token="123" projectName="some-project" />
+          <DataPanel token="123" projectName={mockProjectName} />
         </Route>
       </Switch>
     </MemoryRouter>
   )
 }
 
-mockedAxios.get.mockImplementation(async (url) => {
-  if (url.endsWith("/get/tablenames")) {
-    return {
-      status: httpStatusCodes.OK,
-      data: [table1.name, table2.name, table3.name],
-    }
-  }
-  if (url.endsWith(`/get/table/${table1.name}/meta`)) {
-    return { status: httpStatusCodes.OK, data: table1 }
-  }
-  if (url.endsWith(`/get/table/${table1.name}/data`)) {
-    return { status: httpStatusCodes.OK, data: [] }
-  }
-})
+const getreq = mockedAxios.get.mockImplementation(constructGet())
 
 const putreq = mockedAxios.put.mockImplementation(async (url, data) => ({
   status: httpStatusCodes.NO_CONTENT,
@@ -82,22 +73,93 @@ function fillNewRow(newRow: HTMLElement, data: TableRow) {
   })
 }
 
-test("data panel functionality", async () => {
+test("links", async () => {
   const dataPanel = renderDataPanel()
   await waitForDomChange()
-  // The first table should be auto-selected
-  const firstLink = dataPanel.getByText(toProperCase(table1.name))
-  expect(firstLink).toBeInTheDocument()
-  expect(firstLink.parentElement).toHaveClass("active")
-  // Check headers
-  const headers = dataPanel.getByTestId("header-row")
-  table1.cols.map((c) =>
-    expect(within(headers).getByText(c.name)).toBeInTheDocument()
+  const allLinksText = (await defaultGet.getAllTableNames()).data.map((n) =>
+    toProperCase(n)
   )
-  // Check that the new row is displayed
+  allLinksText.map((l) => expect(dataPanel.getByText(l)).toBeInTheDocument())
+})
+
+test("new row form - open/close", async () => {
+  const dataPanel = renderDataPanel()
+  await waitForDomChange()
+  const headers = dataPanel.getByTestId("header-row")
+  const inputRow = dataPanel.getByTestId("input-row")
+  const newRowToggle = within(headers).getByTestId("new-row-toggle")
+  // Initially not visible because some fake data is fetched by default
+  expect(inputRow).toHaveClass("nodisplay")
+  // Start clicking on the show/hide button
+  fireEvent.click(newRowToggle)
+  expect(inputRow).not.toHaveClass("nodisplay")
+  fireEvent.click(newRowToggle)
+  expect(inputRow).toHaveClass("nodisplay")
+})
+
+test("refresh", async () => {
+  const dataPanel = renderDataPanel()
+  await waitForDomChange()
+  const refreshButton = dataPanel.getByTestId("refresh-table-button")
+  fireEvent.click(refreshButton)
+  await waitForDomChange()
+  const firstTable = (await defaultGet.getAllTableNames()).data[0]
+  expect(getreq).toHaveBeenLastCalledWith(
+    `${API_ROOT}/project/${mockProjectName}/get/table/${firstTable}/data`,
+    expect.anything()
+  )
+  expect(getreq).toHaveBeenNthCalledWith(
+    getreq.mock.calls.length - 1,
+    `${API_ROOT}/project/${mockProjectName}/get/table/${firstTable}/meta`,
+    expect.anything()
+  )
+})
+
+test("delete", async () => {
+  const dataPanel = renderDataPanel()
+  await waitForDomChange()
+  const deleteButton = dataPanel.getByTestId("delete-all-table-data-button")
+  fireEvent.click(deleteButton)
+  await waitForDomChange()
+  const firstTable = (await defaultGet.getAllTableNames()).data[0]
+  expect(deletereq).toHaveBeenLastCalledWith(
+    `${API_ROOT}/project/${mockProjectName}/remove/${firstTable}/all`,
+    expect.anything()
+  )
+})
+
+test("new row form - no data", async () => {
+  // Should open automatically when page loads and there is no data
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getTableData: async () => ({ status: httpStatusCodes.OK, data: [] }),
+    })
+  )
+  // Render
+  const dataPanel = renderDataPanel()
+  await waitForDomChange()
   const inputRow = dataPanel.getByTestId("input-row")
   expect(inputRow).not.toHaveClass("nodisplay")
-  // Add a row
+
+  // Now hide
+  const headers = dataPanel.getByTestId("header-row")
+  const newRowToggle = within(headers).getByTestId("new-row-toggle")
+  fireEvent.click(newRowToggle)
+  expect(inputRow).toHaveClass("nodisplay")
+
+  // Now refresh data - should show up automatically
+  const refreshButton = dataPanel.getByTestId("refresh-table-button")
+  fireEvent.click(refreshButton)
+  await waitForDomChange()
+  expect(inputRow).not.toHaveClass("nodisplay")
+
+  mockedAxios.get.mockImplementation(constructGet())
+})
+
+test("insert row", async () => {
+  const dataPanel = renderDataPanel()
+  await waitForDomChange()
+  const inputRow = dataPanel.getByTestId("input-row")
   mockedAxios.get.mockResolvedValueOnce({
     status: httpStatusCodes.OK,
     data: [table1data[0]],
@@ -110,26 +172,6 @@ test("data panel functionality", async () => {
     decodeUserTable(table1, [table1data[0]]),
     expect.anything()
   )
-  // Check data
-  Object.entries(table1data[0]).map(([key, val]) => {
-    expect(dataPanel.getByText(val.toString())).toBeInTheDocument()
-  })
-  // Close, open and close the new row form
-  fireEvent.click(within(headers).getByTestId("new-row-toggle"))
-  expect(inputRow).toHaveClass("nodisplay")
-  fireEvent.click(within(headers).getByTestId("new-row-toggle"))
-  expect(inputRow).not.toHaveClass("nodisplay")
-  fireEvent.click(within(headers).getByTestId("new-row-toggle"))
-  expect(inputRow).toHaveClass("nodisplay")
-  // Delete all table data
-  fireEvent.click(within(headers).getByTestId("delete-all-table-data-button"))
-  await waitForDomChange()
-  expect(deletereq).toHaveBeenCalledWith(
-    `${API_ROOT}/project/some-project/remove/${table1.name}/all`,
-    expect.anything()
-  )
-  // Check that the new row form is opened automatically
-  expect(inputRow).not.toHaveClass("nodisplay")
 })
 
 test("fail to get a list of tables", async () => {
