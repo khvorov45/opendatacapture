@@ -16,7 +16,7 @@ import {
   table2data,
 } from "../../tests/data"
 import toProperCase from "../../lib/to-proper-case"
-import { TableRow } from "../../lib/api/project"
+import { getAllTableNames, TableRow } from "../../lib/api/project"
 import { API_ROOT } from "../../lib/config"
 import { decodeUserTable } from "../../lib/api/io-validation"
 import React from "react"
@@ -175,34 +175,53 @@ test("insert row", async () => {
 })
 
 test("fail to get a list of tables", async () => {
-  mockedAxios.get.mockRejectedValueOnce(Error("get tables error"))
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getAllTableNames: async () => {
+        throw Error("get tables error")
+      },
+    })
+  )
   const dataPanel = renderDataPanel()
   await waitForDomChange()
   expect(dataPanel.getByText("get tables error")).toBeInTheDocument()
+  mockedAxios.get.mockImplementation(constructGet())
 })
 
 test("fail to fetch data and meta", async () => {
-  mockedAxios.get
-    // Table names
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: ["table"] })
-    // Meta/data, order is unknown
-    .mockRejectedValueOnce(Error("fetch error"))
-    .mockRejectedValueOnce(Error("fetch error"))
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getTableData: async () => {
+        throw Error("fetch error")
+      },
+      getTableMeta: async () => {
+        throw Error("fetch error")
+      },
+    })
+  )
   const dataPanel = renderDataPanel()
   await waitForDomChange()
   expect(dataPanel.getByText("fetch errorfetch error")).toBeInTheDocument()
+  mockedAxios.get.mockImplementation(constructGet())
 })
 
 test("fail to fetch data/meta after a successful fetch", async () => {
   const dataPanel = renderDataPanel()
   await waitForDomChange()
-  mockedAxios.get
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: ["table"] })
-    .mockRejectedValueOnce(Error("fetch error"))
-    .mockRejectedValueOnce(Error("fetch error"))
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getTableData: async () => {
+        throw Error("fetch error")
+      },
+      getTableMeta: async () => {
+        throw Error("fetch error")
+      },
+    })
+  )
   fireEvent.click(dataPanel.getByTestId("refresh-table-button"))
   await waitForDomChange()
   expect(dataPanel.getByText("fetch errorfetch error")).toBeInTheDocument()
+  mockedAxios.get.mockImplementation(constructGet())
 })
 
 test("fail to submit", async () => {
@@ -224,13 +243,15 @@ test("fail to delete", async () => {
 })
 
 test("no tables", async () => {
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: [],
-  })
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getAllTableNames: async () => ({ status: httpStatusCodes.OK, data: [] }),
+    })
+  )
   const dataPanel = renderDataPanel()
   await waitForDomChange()
   expect(dataPanel.getByText("No tables found")).toBeInTheDocument()
+  mockedAxios.get.mockImplementation(constructGet())
 })
 
 test("fill a new field entry and then remove what's been filled", async () => {
@@ -264,17 +285,17 @@ test("attempt to put a string into a number field", async () => {
 })
 
 test("meta/data mismatch", async () => {
-  mockedAxios.get
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: ["table1"] })
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: table1,
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getTableMeta: async () => ({ status: httpStatusCodes.OK, data: table1 }),
+      getTableData: async () => ({
+        status: httpStatusCodes.OK,
+        data: table2data,
+      }),
     })
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: table2data,
-    })
+  )
   const dataPanel = renderDataPanel()
   await waitForDomChange()
   expect(dataPanel.queryAllByTestId("data-row")).toBeEmpty()
+  mockedAxios.get.mockImplementation(constructGet())
 })
