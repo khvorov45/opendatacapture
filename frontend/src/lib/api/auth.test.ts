@@ -1,7 +1,7 @@
 // Test whatever can't be tested in fullstack
 /* istanbul ignore file */
 import httpStatusCodes from "http-status-codes"
-import { fetchToken, tokenValidator } from "./auth"
+import { fetchToken, validateToken } from "./auth"
 
 import axios from "axios"
 jest.mock("axios")
@@ -37,7 +37,7 @@ test("string id user", async () => {
     access: "Admin",
   }
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: user })
-  tokenValidator("123").catch((e) =>
+  validateToken("123").catch((e) =>
     expect(e.message).toStartWith("decode error")
   )
 })
@@ -46,7 +46,7 @@ test("null user", async () => {
   expect.assertions(1)
   const user = null
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: user })
-  tokenValidator("123").catch((e) =>
+  validateToken("123").catch((e) =>
     expect(e.message).toStartWith("decode error")
   )
 })
@@ -59,7 +59,7 @@ test("number email", async () => {
     access: "Admin",
   }
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: user4 })
-  tokenValidator("123").catch((e) =>
+  validateToken("123").catch((e) =>
     expect(e.message).toStartWith("decode error")
   )
 })
@@ -72,7 +72,7 @@ test("wrong access", async () => {
     access: "Admin1",
   }
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: user })
-  tokenValidator("123").catch((e) =>
+  validateToken("123").catch((e) =>
     expect(e.message).toStartWith("decode error")
   )
 })
@@ -84,7 +84,7 @@ test("not enough fields", async () => {
     email: "test@example.com",
   }
   mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: user })
-  tokenValidator("123").catch((e) =>
+  validateToken("123").catch((e) =>
     expect(e.message).toStartWith("decode error")
   )
 })

@@ -51,7 +51,7 @@ export async function fetchToken(cred: EmailPassword): Promise<Token> {
   return await decode(TokenV, res.data)
 }
 
-export async function tokenValidator(tok: string): Promise<User> {
+export async function validateToken(tok: string): Promise<User> {
   const res = await axios.get(`${API_ROOT}/get/user/by/token/${tok}`, {
     validateStatus: (s) =>
       [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),

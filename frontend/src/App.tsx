@@ -8,7 +8,7 @@ import {
   refreshToken,
   removeToken,
   Token,
-  tokenValidator,
+  validateToken,
   User,
 } from "./lib/api/auth"
 import CssBaseline from "@material-ui/core/CssBaseline"
@@ -72,7 +72,7 @@ export default function App() {
       removeToken(old_token).catch((e) => console.error(e.message))
     }
   }
-  const { user, auth } = useToken(token, tokenValidator)
+  const { user, auth } = useToken(token, validateToken)
   useEffect(() => {
     function conditionalRefresh() {
       // Gotta wait until we actually get a good token from somewhere

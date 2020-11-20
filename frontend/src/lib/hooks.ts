@@ -9,7 +9,7 @@ export enum AuthStatus {
 
 export function useToken(
   token: string | null,
-  tokenValidator: (s: string) => Promise<User>
+  validateToken: (s: string) => Promise<User>
 ): { user: User | null; auth: AuthStatus } {
   const [user, setUser] = useState<User | null>(null)
   const [auth, setAuth] = useState<AuthStatus>(AuthStatus.InProgress)
@@ -18,12 +18,12 @@ export function useToken(
       setAuth(AuthStatus.Err)
       return
     }
-    tokenValidator(token)
+    validateToken(token)
       .then((u) => {
         setUser(u)
         setAuth(AuthStatus.Ok)
       })
       .catch((e) => setAuth(AuthStatus.Err))
-  }, [token, tokenValidator])
+  }, [token, validateToken])
   return { user: user, auth: auth }
 }

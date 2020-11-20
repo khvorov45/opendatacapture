@@ -13,7 +13,7 @@ import {
   refreshToken,
   removeToken,
   fetchToken,
-  tokenValidator,
+  validateToken,
 } from "../lib/api/auth"
 import { decodeUserTable } from "../lib/api/io-validation"
 import {
@@ -59,7 +59,7 @@ async function expectFailure(
 }
 
 test("wrong token", async () => {
-  await expectFailure(tokenValidator, ["123"], 'NoSuchToken("123")')
+  await expectFailure(validateToken, ["123"], 'NoSuchToken("123")')
 })
 
 test("wrong password", async () => {
@@ -80,7 +80,7 @@ test("wrong email", async () => {
 
 test("correct credentials", async () => {
   let token = await fetchToken(defaultAdminCred)
-  let admin = await tokenValidator(token.token)
+  let admin = await validateToken(token.token)
   expect(admin.access).toBe(defaultAdmin.access)
   expect(admin.email).toBe(defaultAdmin.email)
   expect(admin.id).toBe(defaultAdmin.id)
@@ -89,7 +89,7 @@ test("correct credentials", async () => {
 test("remove token", async () => {
   let token = await fetchToken(defaultAdminCred)
   await removeToken(token.token)
-  expectFailure(tokenValidator, [token.token], "NoSuchToken")
+  expectFailure(validateToken, [token.token], "NoSuchToken")
 })
 
 describe("bad token", () => {
@@ -186,7 +186,7 @@ describe("need admin credentials", () => {
     // Token fetching should work
     const userToken = await fetchToken(user1Cred)
     // Check the user is who we expect them to be
-    const user = await tokenValidator(userToken.token)
+    const user = await validateToken(userToken.token)
     expect(user.access).toBe(user1.access)
     expect(user.email).toBe(user1.email)
     // Creating them again should cause an error
