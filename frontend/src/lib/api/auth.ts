@@ -34,7 +34,7 @@ const TokenV = t.type({
 })
 export type Token = t.TypeOf<typeof TokenV>
 
-export async function tokenFetcher(cred: EmailPassword): Promise<Token> {
+export async function fetchToken(cred: EmailPassword): Promise<Token> {
   const res = await axios.post(`${API_ROOT}/auth/session-token`, cred, {
     validateStatus: (s: number) =>
       [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),

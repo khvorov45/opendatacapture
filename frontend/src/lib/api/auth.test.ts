@@ -1,19 +1,19 @@
 // Test whatever can't be tested in fullstack
 /* istanbul ignore file */
 import httpStatusCodes from "http-status-codes"
-import { tokenFetcher, tokenValidator } from "./auth"
+import { fetchToken, tokenValidator } from "./auth"
 
 import axios from "axios"
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
-test("tokenFetcher", async () => {
+test("fetchToken", async () => {
   expect.assertions(2)
   let cred = { email: "test@example.com", password: "test" }
   // Non-string response data
   mockedAxios.post.mockResolvedValue({ status: httpStatusCodes.OK, data: 123 })
   try {
-    await tokenFetcher(cred)
+    await fetchToken(cred)
   } catch (e) {
     expect(e.message).toStartWith("decode error")
   }
@@ -23,7 +23,7 @@ test("tokenFetcher", async () => {
     data: "some random error",
   })
   try {
-    await tokenFetcher(cred)
+    await fetchToken(cred)
   } catch (e) {
     expect(e.message).toBe("some random error")
   }

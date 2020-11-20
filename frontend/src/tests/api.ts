@@ -87,14 +87,14 @@ export function constructPut(fns?: Record<string, any>) {
 }
 
 export const defaultPost: RequestFns = {
-  tokenFetcher: async () => ({ status: httpStatusCodes.OK, data: adminToken }),
+  fetchToken: async () => ({ status: httpStatusCodes.OK, data: adminToken }),
 }
 
 export function constructPost(fns?: Record<string, any>) {
   const currentPost = Object.assign({ ...defaultPost }, fns)
   const mockedPost = async (url: string) => {
     if (url.endsWith("/auth/session-token")) {
-      return await currentPost.tokenFetcher()
+      return await currentPost.fetchToken()
     }
     throw Error("unimplemented path in mocked post")
   }

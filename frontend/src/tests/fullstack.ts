@@ -12,7 +12,7 @@ import {
   LoginFailure,
   refreshToken,
   removeToken,
-  tokenFetcher,
+  fetchToken,
   tokenValidator,
 } from "../lib/api/auth"
 import { decodeUserTable } from "../lib/api/io-validation"
@@ -67,7 +67,7 @@ test("wrong password", async () => {
     email: defaultAdminCred.email,
     password: "123",
   }
-  await expectFailure(tokenFetcher, [wrongCred], LoginFailure.WrongPassword)
+  await expectFailure(fetchToken, [wrongCred], LoginFailure.WrongPassword)
 })
 
 test("wrong email", async () => {
@@ -75,11 +75,11 @@ test("wrong email", async () => {
     email: "user@example.com",
     password: defaultAdminCred.password,
   }
-  await expectFailure(tokenFetcher, [wrongCred], LoginFailure.EmailNotFound)
+  await expectFailure(fetchToken, [wrongCred], LoginFailure.EmailNotFound)
 })
 
 test("correct credentials", async () => {
-  let token = await tokenFetcher(defaultAdminCred)
+  let token = await fetchToken(defaultAdminCred)
   let admin = await tokenValidator(token.token)
   expect(admin.access).toBe(defaultAdmin.access)
   expect(admin.email).toBe(defaultAdmin.email)
@@ -87,7 +87,7 @@ test("correct credentials", async () => {
 })
 
 test("remove token", async () => {
-  let token = await tokenFetcher(defaultAdminCred)
+  let token = await fetchToken(defaultAdminCred)
   await removeToken(token.token)
   expectFailure(tokenValidator, [token.token], "NoSuchToken")
 })
@@ -158,7 +158,7 @@ describe("bad token", () => {
 })
 
 test("token refresh", async () => {
-  let token = (await tokenFetcher(defaultAdminCred)).token
+  let token = (await fetchToken(defaultAdminCred)).token
   const newTok = await refreshToken(token)
   expect(newTok).not.toEqual(token)
 })
@@ -167,7 +167,7 @@ describe("need admin credentials", () => {
   let token: string
 
   beforeAll(async () => {
-    token = (await tokenFetcher(defaultAdminCred)).token
+    token = (await fetchToken(defaultAdminCred)).token
   })
 
   test("get users", async () => {
@@ -177,14 +177,14 @@ describe("need admin credentials", () => {
 
   test("create/remove user", async () => {
     async function failTokenFetch(cred: EmailPassword, msg: string) {
-      expectFailure(tokenFetcher, [cred], LoginFailure.EmailNotFound, msg)
+      expectFailure(fetchToken, [cred], LoginFailure.EmailNotFound, msg)
     }
     // User shouldn't exist
     await failTokenFetch(user1Cred, "before creation")
     // Create them
     await createUser(user1Cred)
     // Token fetching should work
-    const userToken = await tokenFetcher(user1Cred)
+    const userToken = await fetchToken(user1Cred)
     // Check the user is who we expect them to be
     const user = await tokenValidator(userToken.token)
     expect(user.access).toBe(user1.access)
@@ -203,7 +203,7 @@ describe("need user credentials", () => {
   beforeAll(async () => {
     await createUser(user1Cred)
     token = (
-      await tokenFetcher({
+      await fetchToken({
         email: user1Cred.email,
         password: user1Cred.password,
       })
@@ -212,7 +212,7 @@ describe("need user credentials", () => {
 
   afterAll(async () => {
     const adminTok = (
-      await tokenFetcher({
+      await fetchToken({
         email: defaultAdmin.email,
         password: "admin",
       })

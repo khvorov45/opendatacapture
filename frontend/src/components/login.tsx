@@ -1,7 +1,7 @@
 import React, { useState } from "react"
 import { TextField, Button, FormHelperText } from "@material-ui/core"
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles"
-import { LoginFailure, Token, tokenFetcher } from "../lib/api/auth"
+import { LoginFailure, Token, fetchToken } from "../lib/api/auth"
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -44,7 +44,7 @@ function LoginForm({ updateToken }: { updateToken: (tok: Token) => void }) {
   let [password, setPassword] = useState("")
   let [buttonMsg, setButtonMsg] = useState("")
   function handleSubmit() {
-    tokenFetcher({ email: email, password: password })
+    fetchToken({ email: email, password: password })
       .then((tok) => {
         updateToken(tok)
       })
