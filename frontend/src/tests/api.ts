@@ -2,7 +2,7 @@
 /** Mocked API calls for tests */
 
 import httpStatusCodes from "http-status-codes"
-import { allTables, defaultAdmin } from "./data"
+import { adminToken, allTables, defaultAdmin } from "./data"
 
 function findTableEntry(tableName: string) {
   const tableEntry = allTables.filter((t) => t.meta.name === tableName)
@@ -84,4 +84,19 @@ export function constructPut(fns?: Record<string, any>) {
     throw Error("unimplemented path in mocked put")
   }
   return mockedPut
+}
+
+export const defaultPost: RequestFns = {
+  tokenFetcher: async () => ({ status: httpStatusCodes.OK, data: adminToken }),
+}
+
+export function constructPost(fns?: Record<string, any>) {
+  const currentPost = Object.assign({ ...defaultPost }, fns)
+  const mockedPost = async (url: string) => {
+    if (url.endsWith("/auth/session-token")) {
+      return await currentPost.tokenFetcher()
+    }
+    throw Error("unimplemented path in mocked post")
+  }
+  return mockedPost
 }
