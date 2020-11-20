@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 
-import { Access, EmailPassword, User } from "../lib/api/auth"
+import { Access, EmailPassword, Token, User } from "../lib/api/auth"
 import { TableMeta, TableData } from "../lib/api/project"
 
 export const defaultAdmin: User = {
@@ -23,6 +23,12 @@ export const defaultAdminCred: EmailPassword = {
 export const user1Cred: EmailPassword = {
   email: user1.email,
   password: "user",
+}
+
+export const adminToken: Token = {
+  user: defaultAdmin.id,
+  token: "123",
+  created: new Date(),
 }
 
 /* NOTE on postgres and primary keys:
