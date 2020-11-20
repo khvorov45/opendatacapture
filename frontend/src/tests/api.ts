@@ -15,7 +15,9 @@ function findTableEntry(tableName: string) {
   return tableEntry[0]
 }
 
-export const defaultGet = {
+type RequestFns = Record<string, (...[]: any[]) => Promise<any>>
+
+export const defaultGet: RequestFns = {
   getUsers: async () => ({ status: httpStatusCodes.OK, data: [defaultAdmin] }),
   getAllTableNames: async () => ({
     status: httpStatusCodes.OK,
@@ -54,7 +56,7 @@ export function constructGet(fns?: Record<string, any>) {
   return mockedGet
 }
 
-export const defaultDelete = {
+export const defaultDelete: RequestFns = {
   removeUser: async () => ({ status: httpStatusCodes.NO_CONTENT }),
 }
 
@@ -69,7 +71,7 @@ export function constructDelete(fns?: Record<string, any>) {
   return mockedDelete
 }
 
-export const defaultCreate = {
+export const defaultCreate: RequestFns = {
   createUser: async () => ({ status: httpStatusCodes.NO_CONTENT }),
 }
 
