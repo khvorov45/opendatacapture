@@ -31,6 +31,7 @@ export const defaultGet: RequestFns = {
     status: httpStatusCodes.OK,
     data: findTableEntry(tableName).meta,
   }),
+  validateToken: async () => defaultAdmin,
 }
 
 /** Whatever is in `fns` is supposed to overwrite `defaultGet` */
@@ -51,6 +52,9 @@ export function constructGet(fns?: Record<string, any>) {
     if (tableMetaMatch) {
       return await currentGet.getTableMeta(tableMetaMatch[1])
     }
+    if (url.includes("/get/user/by/token/")) {
+      return await currentGet.validateToken()
+    }
     throw Error("unimplemented path in mocked get")
   }
   return mockedGet
@@ -58,6 +62,7 @@ export function constructGet(fns?: Record<string, any>) {
 
 export const defaultDelete: RequestFns = {
   removeUser: async () => ({ status: httpStatusCodes.NO_CONTENT }),
+  removeToken: async () => ({ status: httpStatusCodes.NO_CONTENT }),
 }
 
 export function constructDelete(fns?: Record<string, any>) {
@@ -65,6 +70,9 @@ export function constructDelete(fns?: Record<string, any>) {
   const mockedDelete = async (url: string) => {
     if (url.includes("/remove/user/")) {
       return await currentDelete.removeUser()
+    }
+    if (url.includes("/auth/remove-token/")) {
+      return await currentDelete.removeToken()
     }
     throw Error("unimplemented path in mocked delete")
   }
@@ -88,6 +96,7 @@ export function constructPut(fns?: Record<string, any>) {
 
 export const defaultPost: RequestFns = {
   fetchToken: async () => ({ status: httpStatusCodes.OK, data: adminToken }),
+  refreshToken: async () => adminToken,
 }
 
 export function constructPost(fns?: Record<string, any>) {
@@ -96,6 +105,10 @@ export function constructPost(fns?: Record<string, any>) {
     if (url.endsWith("/auth/session-token")) {
       return await currentPost.fetchToken()
     }
+    if (url.includes("/auth/refresh-token/")) {
+      return await currentPost.refreshToken()
+    }
+
     throw Error("unimplemented path in mocked post")
   }
   return mockedPost
