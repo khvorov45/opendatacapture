@@ -38,14 +38,22 @@ export function renderDataPanel() {
 }
 
 const getreq = mockedAxios.get.mockImplementation(constructGet())
-
 const putreq = mockedAxios.put.mockImplementation(async (url, data) => ({
   status: httpStatusCodes.NO_CONTENT,
 }))
-
 const deletereq = mockedAxios.delete.mockImplementation(async (url) => ({
   status: httpStatusCodes.NO_CONTENT,
 }))
+
+afterEach(() => {
+  mockedAxios.get.mockImplementation(constructGet())
+  mockedAxios.put.mockImplementation(async () => ({
+    status: httpStatusCodes.NO_CONTENT,
+  }))
+  mockedAxios.delete.mockImplementation(async () => ({
+    status: httpStatusCodes.NO_CONTENT,
+  }))
+})
 
 function selectFieldByLabel(region: HTMLElement, fieldName: string) {
   const field = within(region)
@@ -147,8 +155,6 @@ test("new row form - no data", async () => {
   fireEvent.click(refreshButton)
   await waitForDomChange()
   expect(inputRow).not.toHaveClass("nodisplay")
-
-  mockedAxios.get.mockImplementation(constructGet())
 })
 
 test("insert row", async () => {
@@ -180,7 +186,6 @@ test("fail to get a list of tables", async () => {
   const dataPanel = renderDataPanel()
   await waitForDomChange()
   expect(dataPanel.getByText("get tables error")).toBeInTheDocument()
-  mockedAxios.get.mockImplementation(constructGet())
 })
 
 test("fail to fetch data and meta", async () => {
@@ -197,7 +202,6 @@ test("fail to fetch data and meta", async () => {
   const dataPanel = renderDataPanel()
   await waitForDomChange()
   expect(dataPanel.getByText("fetch errorfetch error")).toBeInTheDocument()
-  mockedAxios.get.mockImplementation(constructGet())
 })
 
 test("fail to fetch data/meta after a successful fetch", async () => {
@@ -216,7 +220,6 @@ test("fail to fetch data/meta after a successful fetch", async () => {
   fireEvent.click(dataPanel.getByTestId("refresh-table-button"))
   await waitForDomChange()
   expect(dataPanel.getByText("fetch errorfetch error")).toBeInTheDocument()
-  mockedAxios.get.mockImplementation(constructGet())
 })
 
 test("fail to submit", async () => {
@@ -246,7 +249,6 @@ test("no tables", async () => {
   const dataPanel = renderDataPanel()
   await waitForDomChange()
   expect(dataPanel.getByText("No tables found")).toBeInTheDocument()
-  mockedAxios.get.mockImplementation(constructGet())
 })
 
 test("fill a new field entry and then remove what's been filled", async () => {
@@ -292,5 +294,4 @@ test("meta/data mismatch", async () => {
   const dataPanel = renderDataPanel()
   await waitForDomChange()
   expect(dataPanel.queryAllByTestId("data-row")).toBeEmpty()
-  mockedAxios.get.mockImplementation(constructGet())
 })
