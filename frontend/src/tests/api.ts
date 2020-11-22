@@ -35,7 +35,7 @@ export const defaultGet: RequestFns = {
 }
 
 /** Whatever is in `fns` is supposed to overwrite `defaultGet` */
-export function constructGet(fns?: Record<string, any>) {
+export function constructGet(fns?: RequestFns) {
   const currentGet = Object.assign({ ...defaultGet }, fns)
   const mockedGet = async (url: string) => {
     if (url.endsWith("/get/users")) {
@@ -65,7 +65,7 @@ export const defaultDelete: RequestFns = {
   removeToken: async () => ({ status: httpStatusCodes.NO_CONTENT }),
 }
 
-export function constructDelete(fns?: Record<string, any>) {
+export function constructDelete(fns?: RequestFns) {
   const currentDelete = Object.assign({ ...defaultDelete }, fns)
   const mockedDelete = async (url: string) => {
     if (url.includes("/remove/user/")) {
@@ -83,7 +83,7 @@ export const defaultCreate: RequestFns = {
   createUser: async () => ({ status: httpStatusCodes.NO_CONTENT }),
 }
 
-export function constructPut(fns?: Record<string, any>) {
+export function constructPut(fns?: RequestFns) {
   const currentPut = Object.assign({ ...defaultCreate }, fns)
   const mockedPut = async (url: string) => {
     if (url.endsWith("/create/user")) {
@@ -99,7 +99,7 @@ export const defaultPost: RequestFns = {
   refreshToken: async () => adminToken,
 }
 
-export function constructPost(fns?: Record<string, any>) {
+export function constructPost(fns?: RequestFns) {
   const currentPost = Object.assign({ ...defaultPost }, fns)
   const mockedPost = async (url: string) => {
     if (url.endsWith("/auth/session-token")) {
