@@ -108,7 +108,6 @@ export function constructPost(fns?: Record<string, any>) {
     if (url.includes("/auth/refresh-token/")) {
       return await currentPost.refreshToken()
     }
-
     throw Error("unimplemented path in mocked post")
   }
   return mockedPost
