@@ -21,7 +21,7 @@ mockedAxios.get.mockImplementation(constructGet())
 const mockedDelete = mockedAxios.delete.mockImplementation(constructDelete())
 const mockedPut = mockedAxios.put.mockImplementation(constructPut())
 
-afterAll(() => {
+afterEach(() => {
   mockedAxios.get.mockImplementation(constructGet())
   mockedAxios.delete.mockImplementation(constructDelete())
   mockedAxios.put.mockImplementation(constructPut())
