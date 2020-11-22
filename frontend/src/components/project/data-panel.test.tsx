@@ -3,20 +3,13 @@ import httpStatusCodes from "http-status-codes"
 import {
   fireEvent,
   render,
-  wait,
   waitForDomChange,
   within,
 } from "@testing-library/react"
 import axios from "axios"
-import {
-  table1,
-  table2,
-  table3,
-  table1data,
-  table2data,
-} from "../../tests/data"
+import { table1, table1data, table2data } from "../../tests/data"
 import toProperCase from "../../lib/to-proper-case"
-import { getAllTableNames, TableRow } from "../../lib/api/project"
+import { TableRow } from "../../lib/api/project"
 import { API_ROOT } from "../../lib/config"
 import { decodeUserTable } from "../../lib/api/io-validation"
 import React from "react"
