@@ -76,10 +76,12 @@ function fillNewRow(newRow: HTMLElement, data: TableRow) {
 test("links", async () => {
   const dataPanel = renderDataPanel()
   await waitForDomChange()
-  const allLinksText = (await defaultGet.getAllTableNames()).data.map((n) =>
-    toProperCase(n)
+  const allLinksText = (
+    await defaultGet.getAllTableNames()
+  ).data.map((n: string) => toProperCase(n))
+  allLinksText.map((l: string) =>
+    expect(dataPanel.getByText(l)).toBeInTheDocument()
   )
-  allLinksText.map((l) => expect(dataPanel.getByText(l)).toBeInTheDocument())
 })
 
 test("new row form - open/close", async () => {
