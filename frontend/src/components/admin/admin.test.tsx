@@ -11,6 +11,8 @@ const mockedAxios = axios as jest.Mocked<typeof axios>
 
 mockedAxios.get.mockImplementation(constructGet())
 
+afterAll(() => mockedAxios.get.mockImplementation(constructGet()))
+
 export function renderAdminPage(
   token?: string | null,
   path?: "users" | "all-projects"

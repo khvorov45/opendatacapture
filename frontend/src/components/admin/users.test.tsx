@@ -21,6 +21,12 @@ mockedAxios.get.mockImplementation(constructGet())
 const mockedDelete = mockedAxios.delete.mockImplementation(constructDelete())
 const mockedPut = mockedAxios.put.mockImplementation(constructPut())
 
+afterAll(() => {
+  mockedAxios.get.mockImplementation(constructGet())
+  mockedAxios.delete.mockImplementation(constructDelete())
+  mockedAxios.put.mockImplementation(constructPut())
+})
+
 function renderUsers() {
   return render(<Users token="123" />)
 }
@@ -49,7 +55,7 @@ test("refresh users", async () => {
   expect(users.queryByText(user1.email)).not.toBeInTheDocument()
 
   // Refresh
-  mockedAxios.get.mockImplementationOnce(
+  mockedAxios.get.mockImplementation(
     constructGet({
       getUsers: async () => ({
         status: httpStatusCodes.OK,
@@ -67,7 +73,7 @@ test("refresh users", async () => {
 
 test("delete user", async () => {
   // Make sure there is a user to delete
-  mockedAxios.get.mockImplementationOnce(
+  mockedAxios.get.mockImplementation(
     constructGet({
       getUsers: async () => ({
         status: httpStatusCodes.OK,
