@@ -33,6 +33,7 @@ export const defaultGet: RequestFns = {
   }),
   validateToken: async () => defaultAdmin,
   getUserProjects: async () => [project1],
+  getAllMeta: async () => allTables.map((t) => t.meta),
 }
 
 /** Whatever is in `fns` is supposed to overwrite `defaultGet` */
@@ -55,6 +56,9 @@ export function constructGet(fns?: RequestFns) {
     }
     if (url.includes("/get/user/by/token/")) {
       return await currentGet.validateToken()
+    }
+    if (url.includes("/get/meta")) {
+      return await currentGet.getAllMeta()
     }
     throw Error("unimplemented path in mocked get")
   }
