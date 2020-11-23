@@ -79,15 +79,19 @@ export function constructDelete(fns?: RequestFns) {
   return mockedDelete
 }
 
-export const defaultCreate: RequestFns = {
+export const defaultPut: RequestFns = {
   createUser: async () => ({ status: httpStatusCodes.NO_CONTENT }),
+  createProject: async () => ({ status: httpStatusCodes.NO_CONTENT }),
 }
 
 export function constructPut(fns?: RequestFns) {
-  const currentPut = Object.assign({ ...defaultCreate }, fns)
+  const currentPut = Object.assign({ ...defaultPut }, fns)
   const mockedPut = async (url: string) => {
     if (url.endsWith("/create/user")) {
       return await currentPut.createUser()
+    }
+    if (url.includes("create/project")) {
+      return await currentPut.createProject()
     }
     throw Error("unimplemented path in mocked put")
   }
