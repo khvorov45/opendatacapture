@@ -15,7 +15,12 @@ import { decodeUserTable } from "../../lib/api/io-validation"
 import React from "react"
 import { MemoryRouter, Route, Redirect, Switch } from "react-router-dom"
 import DataPanel from "./data-panel"
-import { constructGet, constructPut, defaultGet } from "../../tests/api"
+import {
+  constructDelete,
+  constructGet,
+  constructPut,
+  defaultGet,
+} from "../../tests/api"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
@@ -240,7 +245,13 @@ test("fail to submit", async () => {
 test("fail to delete", async () => {
   const dataPanel = renderDataPanel()
   await waitForDomChange()
-  mockedAxios.delete.mockRejectedValueOnce(Error("delete error"))
+  mockedAxios.delete.mockImplementation(
+    constructDelete({
+      removeAllTableData: async () => {
+        throw Error("delete error")
+      },
+    })
+  )
   fireEvent.click(dataPanel.getByTestId("delete-all-table-data-button"))
   await waitForDomChange()
   expect(dataPanel.getByText("delete error")).toBeInTheDocument()
