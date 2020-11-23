@@ -16,11 +16,13 @@ import { constructGet } from "../../tests/api"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
-mockedAxios.get.mockImplementation(constructGet())
+const getreq = mockedAxios.get.mockImplementation(constructGet())
 afterEach(() => mockedAxios.get.mockImplementation(constructGet()))
 
+const testProjectName = "some-project"
+
 export function renderTablePanel() {
-  return render(<TablePanel token="123" projectName="some-project" />)
+  return render(<TablePanel token="123" projectName={testProjectName} />)
 }
 
 function performSelectAction(selectElement: HTMLElement, value: string) {
@@ -145,6 +147,17 @@ test("new table form - open/close", async () => {
   expect(newTableForm).not.toHaveClass("nodisplay")
   fireEvent.click(createTableButton)
   expect(newTableForm).toHaveClass("nodisplay")
+})
+
+test("refresh button", async () => {
+  const tablePanel = renderTablePanel()
+  await waitForDomChange()
+  fireEvent.click(tablePanel.getByTestId("refresh-tables-button"))
+  await waitForDomChange()
+  expect(getreq).toHaveBeenLastCalledWith(
+    `${API_ROOT}/project/${testProjectName}/get/meta`,
+    expect.anything()
+  )
 })
 
 test("table panel functionality - no initial tables", async () => {
