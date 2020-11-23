@@ -12,9 +12,12 @@ import { API_ROOT } from "../../lib/config"
 import { table1, table2, table3 } from "../../tests/data"
 import React from "react"
 import TablePanel from "./table-panel"
+import { constructGet } from "../../tests/api"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
+mockedAxios.get.mockImplementation(constructGet())
+afterEach(() => mockedAxios.get.mockImplementation(constructGet()))
 
 export function renderTablePanel() {
   return render(<TablePanel token="123" projectName="some-project" />)
@@ -112,6 +115,37 @@ function expectTableFormToBeEmpty(form: HTMLElement) {
   expect(within(form).getByTestId("unique")).not.toBeChecked()
   expect(within(form).getByTestId("foreign-key")).not.toBeChecked()
 }
+
+test("new table form - no initial tables", async () => {
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getAllMeta: async () => ({ status: httpStatusCodes.OK, data: [] }),
+    })
+  )
+  const tablePanel = renderTablePanel()
+  await waitForDomChange()
+  const newTableForm = tablePanel.getByTestId("new-table-form")
+  expect(newTableForm).not.toHaveClass("nodisplay")
+})
+
+test("new table form - some initial tables", async () => {
+  const tablePanel = renderTablePanel()
+  await waitForDomChange()
+  const newTableForm = tablePanel.getByTestId("new-table-form")
+  expect(newTableForm).toHaveClass("nodisplay")
+})
+
+test("new table form - open/close", async () => {
+  const tablePanel = renderTablePanel()
+  await waitForDomChange()
+  const newTableForm = tablePanel.getByTestId("new-table-form")
+  expect(newTableForm).toHaveClass("nodisplay")
+  const createTableButton = tablePanel.getByTestId("create-table-button")
+  fireEvent.click(createTableButton)
+  expect(newTableForm).not.toHaveClass("nodisplay")
+  fireEvent.click(createTableButton)
+  expect(newTableForm).toHaveClass("nodisplay")
+})
 
 test("table panel functionality - no initial tables", async () => {
   // List of tables
