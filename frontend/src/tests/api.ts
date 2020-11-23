@@ -65,6 +65,7 @@ export const defaultDelete: RequestFns = {
   removeUser: async () => ({ status: httpStatusCodes.NO_CONTENT }),
   removeToken: async () => ({ status: httpStatusCodes.NO_CONTENT }),
   deleteProject: async () => ({ status: httpStatusCodes.NO_CONTENT }),
+  removeTable: async () => ({ status: httpStatusCodes.NO_CONTENT }),
 }
 
 export function constructDelete(fns?: RequestFns) {
@@ -78,6 +79,9 @@ export function constructDelete(fns?: RequestFns) {
     }
     if (url.includes("/delete/project")) {
       return await currentDelete.deleteProject()
+    }
+    if (url.includes("/remove/table")) {
+      return await currentDelete.removeTable()
     }
     throw Error("unimplemented path in mocked delete")
   }
