@@ -15,7 +15,7 @@ import { decodeUserTable } from "../../lib/api/io-validation"
 import React from "react"
 import { MemoryRouter, Route, Redirect, Switch } from "react-router-dom"
 import DataPanel from "./data-panel"
-import { constructGet, defaultGet } from "../../tests/api"
+import { constructGet, constructPut, defaultGet } from "../../tests/api"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
@@ -225,7 +225,13 @@ test("fail to fetch data/meta after a successful fetch", async () => {
 test("fail to submit", async () => {
   const dataPanel = renderDataPanel()
   await waitForDomChange()
-  mockedAxios.put.mockRejectedValueOnce(Error("submit error"))
+  mockedAxios.put.mockImplementation(
+    constructPut({
+      insertData: async () => {
+        throw Error("submit error")
+      },
+    })
+  )
   fireEvent.click(dataPanel.getByTestId("submit-row-button"))
   await waitForDomChange()
   expect(dataPanel.getByText("submit error")).toBeInTheDocument()
