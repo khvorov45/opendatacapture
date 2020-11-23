@@ -12,9 +12,12 @@ import toProperCase from "../../lib/to-proper-case"
 import React from "react"
 import { MemoryRouter, Route, Redirect, Switch } from "react-router-dom"
 import ProjectPage from "./project"
+import { constructGet } from "../../tests/api"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
+mockedAxios.get.mockImplementation(constructGet())
+afterEach(() => mockedAxios.get.mockImplementation(constructGet()))
 
 export function renderProjectPage(
   token?: string | null,
@@ -84,10 +87,14 @@ test("data links", async () => {
 
   const mockedTables = ["tables", "subject", "subject-extra"]
 
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: mockedTables,
-  })
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getAllTableNames: async () => ({
+        status: httpStatusCodes.OK,
+        data: mockedTables,
+      }),
+    })
+  )
   let data = renderProjectPage("123", "data")
   await waitForDomChange()
 
