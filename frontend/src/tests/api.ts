@@ -96,6 +96,7 @@ export const defaultPut: RequestFns = {
   createUser: async () => ({ status: httpStatusCodes.NO_CONTENT }),
   createProject: async () => ({ status: httpStatusCodes.NO_CONTENT }),
   createTable: async () => ({ status: httpStatusCodes.NO_CONTENT }),
+  insertData: async () => ({ status: httpStatusCodes.NO_CONTENT }),
 }
 
 export function constructPut(fns?: RequestFns) {
@@ -109,6 +110,9 @@ export function constructPut(fns?: RequestFns) {
     }
     if (url.includes("create/table")) {
       return await currentPut.createTable()
+    }
+    if (url.match("/project/.*/insert/.*")) {
+      return await currentPut.insertData()
     }
     throw Error("unimplemented path in mocked put")
   }
