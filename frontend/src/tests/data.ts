@@ -1,7 +1,7 @@
 /* istanbul ignore file */
 
 import { Access, EmailPassword, Token, User } from "../lib/api/auth"
-import { TableMeta, TableData } from "../lib/api/project"
+import { TableMeta, TableData, Project } from "../lib/api/project"
 
 export const defaultAdmin: User = {
   id: 1, // Should be the same on fetch because it's the first user created
@@ -28,6 +28,12 @@ export const user1Cred: EmailPassword = {
 export const adminToken: Token = {
   user: defaultAdmin.id,
   token: "123",
+  created: new Date(),
+}
+
+export const project1: Project = {
+  user: defaultAdmin.id,
+  name: "project1",
   created: new Date(),
 }
 

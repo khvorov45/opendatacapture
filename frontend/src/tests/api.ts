@@ -2,7 +2,7 @@
 /** Mocked API calls for tests */
 
 import httpStatusCodes from "http-status-codes"
-import { adminToken, allTables, defaultAdmin } from "./data"
+import { adminToken, allTables, defaultAdmin, project1 } from "./data"
 
 function findTableEntry(tableName: string) {
   const tableEntry = allTables.filter((t) => t.meta.name === tableName)
@@ -32,6 +32,7 @@ export const defaultGet: RequestFns = {
     data: findTableEntry(tableName).meta,
   }),
   validateToken: async () => defaultAdmin,
+  getUserProjects: async () => [project1],
 }
 
 /** Whatever is in `fns` is supposed to overwrite `defaultGet` */
@@ -63,6 +64,7 @@ export function constructGet(fns?: RequestFns) {
 export const defaultDelete: RequestFns = {
   removeUser: async () => ({ status: httpStatusCodes.NO_CONTENT }),
   removeToken: async () => ({ status: httpStatusCodes.NO_CONTENT }),
+  deleteProject: async () => ({ status: httpStatusCodes.NO_CONTENT }),
 }
 
 export function constructDelete(fns?: RequestFns) {
@@ -73,6 +75,9 @@ export function constructDelete(fns?: RequestFns) {
     }
     if (url.includes("/auth/remove-token/")) {
       return await currentDelete.removeToken()
+    }
+    if (url.includes("/delete/project")) {
+      return await currentDelete.deleteProject()
     }
     throw Error("unimplemented path in mocked delete")
   }
