@@ -15,7 +15,10 @@ function findTableEntry(tableName: string) {
   return tableEntry[0]
 }
 
-type RequestFns = Record<string, (...[]: any[]) => Promise<any>>
+type RequestFns = Record<
+  string,
+  (...[]: any[]) => Promise<{ status: number; data?: any }>
+>
 
 export const defaultGet: RequestFns = {
   getUsers: async () => ({ status: httpStatusCodes.OK, data: [defaultAdmin] }),
@@ -31,9 +34,18 @@ export const defaultGet: RequestFns = {
     status: httpStatusCodes.OK,
     data: findTableEntry(tableName).meta,
   }),
-  validateToken: async () => defaultAdmin,
-  getUserProjects: async () => [project1],
-  getAllMeta: async () => allTables.map((t) => t.meta),
+  validateToken: async () => ({
+    status: httpStatusCodes.OK,
+    data: defaultAdmin,
+  }),
+  getUserProjects: async () => ({
+    status: httpStatusCodes.OK,
+    data: [project1],
+  }),
+  getAllMeta: async () => ({
+    status: httpStatusCodes.OK,
+    data: allTables.map((t) => t.meta),
+  }),
 }
 
 /** Whatever is in `fns` is supposed to overwrite `defaultGet` */
@@ -125,7 +137,7 @@ export function constructPut(fns?: RequestFns) {
 
 export const defaultPost: RequestFns = {
   fetchToken: async () => ({ status: httpStatusCodes.OK, data: adminToken }),
-  refreshToken: async () => adminToken,
+  refreshToken: async () => ({ status: httpStatusCodes.OK, data: adminToken }),
 }
 
 export function constructPost(fns?: RequestFns) {
