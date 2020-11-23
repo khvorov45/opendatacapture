@@ -87,6 +87,7 @@ export function constructDelete(fns?: RequestFns) {
 export const defaultPut: RequestFns = {
   createUser: async () => ({ status: httpStatusCodes.NO_CONTENT }),
   createProject: async () => ({ status: httpStatusCodes.NO_CONTENT }),
+  createTable: async () => ({ status: httpStatusCodes.NO_CONTENT }),
 }
 
 export function constructPut(fns?: RequestFns) {
@@ -97,6 +98,9 @@ export function constructPut(fns?: RequestFns) {
     }
     if (url.includes("create/project")) {
       return await currentPut.createProject()
+    }
+    if (url.includes("create/table")) {
+      return await currentPut.createTable()
     }
     throw Error("unimplemented path in mocked put")
   }
