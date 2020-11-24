@@ -267,6 +267,72 @@ test("new table form - FK behavior", async () => {
   )
 })
 
+test("new table form - column removal", async () => {
+  let { getByTestId } = renderTablePanel()
+  await waitForDomChange()
+
+  const newTableForm = getByTestId("new-table-form")
+  fillTableForm(newTableForm, table1)
+
+  // Remove from the begining
+  fireEvent.click(
+    within(within(newTableForm).getByTestId("new-column-entry-0")).getByTestId(
+      "remove-column"
+    )
+  )
+
+  // Check that the second column shifted up
+  expect(
+    within(within(newTableForm).getByTestId("new-column-entry-0")).getByTestId(
+      "new-column-name-field"
+    )
+  ).toHaveValue(table1.cols[1].name)
+
+  // Remove from the middle
+  fireEvent.click(
+    within(within(newTableForm).getByTestId("new-column-entry-1")).getByTestId(
+      "remove-column"
+    )
+  )
+  // Check that the 4th column is now second
+  expect(
+    within(within(newTableForm).getByTestId("new-column-entry-1")).getByTestId(
+      "new-column-name-field"
+    )
+  ).toHaveValue(table1.cols[3].name)
+
+  // Remove from the bottom
+  for (let i = table1.cols.length - 3; i >= 1; i--) {
+    fireEvent.click(
+      within(
+        within(newTableForm).getByTestId(`new-column-entry-${i}`)
+      ).getByTestId("remove-column")
+    )
+  }
+  // There should be one left
+  expect(
+    within(newTableForm).queryByTestId("new-column-entry-1")
+  ).not.toBeInTheDocument()
+  expect(
+    within(within(newTableForm).getByTestId("new-column-entry-0")).getByTestId(
+      "new-column-name-field"
+    )
+  ).toHaveValue(table1.cols[1].name)
+
+  // Remove the only column
+  fireEvent.click(
+    within(within(newTableForm).getByTestId("new-column-entry-0")).getByTestId(
+      "remove-column"
+    )
+  )
+  // Check that the new column form is still there but empty
+  expect(
+    within(within(newTableForm).getByTestId("new-column-entry-0")).getByTestId(
+      "new-column-name-field"
+    )
+  ).toHaveValue("")
+})
+
 test("refresh button", async () => {
   const tablePanel = renderTablePanel()
   await waitForDomChange()
@@ -434,75 +500,6 @@ test("table panel - table delete error", async () => {
   fireEvent.click(within(table1card).getByTestId("delete-table-button"))
   await waitForDomChange()
   expect(queryByTestId(`table-card-${table1.name}`)).not.toBeInTheDocument()
-})
-
-test("table panel - column removal", async () => {
-  // List of tables
-  mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: [] })
-
-  let { getByTestId } = renderTablePanel()
-  await waitForDomChange()
-
-  const newTableForm = getByTestId("new-table-form")
-  fillTableForm(newTableForm, table1)
-
-  // Remove from the begining
-  fireEvent.click(
-    within(within(newTableForm).getByTestId("new-column-entry-0")).getByTestId(
-      "remove-column"
-    )
-  )
-
-  // Check that the second column shifted up
-  expect(
-    within(within(newTableForm).getByTestId("new-column-entry-0")).getByTestId(
-      "new-column-name-field"
-    )
-  ).toHaveValue(table1.cols[1].name)
-
-  // Remove from the middle
-  fireEvent.click(
-    within(within(newTableForm).getByTestId("new-column-entry-1")).getByTestId(
-      "remove-column"
-    )
-  )
-  // Check that the 4th column is now second
-  expect(
-    within(within(newTableForm).getByTestId("new-column-entry-1")).getByTestId(
-      "new-column-name-field"
-    )
-  ).toHaveValue(table1.cols[3].name)
-
-  // Remove from the bottom
-  for (let i = table1.cols.length - 3; i >= 1; i--) {
-    fireEvent.click(
-      within(
-        within(newTableForm).getByTestId(`new-column-entry-${i}`)
-      ).getByTestId("remove-column")
-    )
-  }
-  // There should be one left
-  expect(
-    within(newTableForm).queryByTestId("new-column-entry-1")
-  ).not.toBeInTheDocument()
-  expect(
-    within(within(newTableForm).getByTestId("new-column-entry-0")).getByTestId(
-      "new-column-name-field"
-    )
-  ).toHaveValue(table1.cols[1].name)
-
-  // Remove the only column
-  fireEvent.click(
-    within(within(newTableForm).getByTestId("new-column-entry-0")).getByTestId(
-      "remove-column"
-    )
-  )
-  // Check that the new column form is still there but empty
-  expect(
-    within(within(newTableForm).getByTestId("new-column-entry-0")).getByTestId(
-      "new-column-name-field"
-    )
-  ).toHaveValue("")
 })
 
 test("submit table error", async () => {
