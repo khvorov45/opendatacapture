@@ -40,7 +40,7 @@ test("homepage with no token", () => {
   expect(queryByTestId("project-widget")).not.toBeInTheDocument()
 })
 
-test("homepage - no projects", async () => {
+test("new project form - no projects", async () => {
   mockedAxios.get.mockImplementation(
     constructGet({
       getUserProjects: async () => ({ status: httpStatusCodes.OK, data: [] }),
@@ -50,16 +50,14 @@ test("homepage - no projects", async () => {
   await waitForDomChange()
   expect(getByTestId("homepage")).toBeInTheDocument()
   expect(getByTestId("project-widget")).toBeInTheDocument()
-  // Check that the new project from is visible
   expect(getByTestId("project-create-form")).not.toHaveClass("hidden")
 })
 
-test("homepage - some projects", async () => {
+test("new project form - some projects", async () => {
   const { getByTestId } = renderHome("123")
   await waitForDomChange()
   expect(getByTestId("homepage")).toBeInTheDocument()
   expect(getByTestId("project-widget")).toBeInTheDocument()
-  // Check that the new project form is hidden
   expect(getByTestId("project-create-form")).toHaveClass("hidden")
 })
 
