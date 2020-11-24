@@ -54,15 +54,8 @@ test("homepage - no projects", async () => {
   expect(getByTestId("project-create-form")).not.toHaveClass("hidden")
 })
 
-test("homepage with token and some projects", async () => {
-  // Get projects
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: [
-      { user: 1, name: "some-project", created: new Date().toISOString() },
-    ],
-  })
-  const { getByTestId, getByText } = renderHome("123")
+test("homepage - some projects", async () => {
+  const { getByTestId } = renderHome("123")
   await waitForDomChange()
   expect(getByTestId("homepage")).toBeInTheDocument()
   expect(getByTestId("project-widget")).toBeInTheDocument()
