@@ -12,7 +12,7 @@ import { API_ROOT } from "../../lib/config"
 import { table1, table2, table3 } from "../../tests/data"
 import React from "react"
 import TablePanel from "./table-panel"
-import { constructGet } from "../../tests/api"
+import { constructGet, defaultGet } from "../../tests/api"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
@@ -158,6 +158,15 @@ test("refresh button", async () => {
     `${API_ROOT}/project/${testProjectName}/get/meta`,
     expect.anything()
   )
+})
+
+test("table cards presence", async () => {
+  const tablePanel = renderTablePanel()
+  await waitForDomChange()
+  const tableNames = (await defaultGet.getAllTableNames()).data
+  tableNames.map((t: string) => {
+    expect(tablePanel.getByTestId(`table-card-${t}`)).toBeInTheDocument()
+  })
 })
 
 test("table panel functionality - no initial tables", async () => {
