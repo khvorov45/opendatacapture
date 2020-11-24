@@ -374,6 +374,22 @@ test("table card - remove table", async () => {
   )
 })
 
+test("table card - set editable", async () => {
+  const firstTableName = (await defaultGet.getAllTableNames()).data[0]
+  let { getByTestId } = renderTablePanel()
+  await waitForDomChange()
+  // Table card should be disabled
+  const card = getByTestId(`table-card-${firstTableName}`)
+  const tableNameField = within(card).getByTestId("table-card-name-field")
+  expect(tableNameField).toBeDisabled()
+  // Enable editing
+  fireEvent.click(within(card).getByTestId("enable-edit"))
+  expect(tableNameField).not.toBeDisabled()
+  // Disable editing
+  fireEvent.click(within(card).getByTestId("enable-edit"))
+  expect(tableNameField).toBeDisabled()
+})
+
 test("error - project refresh", async () => {
   mockedAxios.get.mockImplementation(
     constructGet({
@@ -436,20 +452,4 @@ test("error - submit table", async () => {
   fireEvent.click(getByTestId("submit-table-button"))
   await waitForDomChange()
   expect(getByTestId("table-submit-error")).toHaveTextContent("")
-})
-
-test("table card - set editable", async () => {
-  const firstTableName = (await defaultGet.getAllTableNames()).data[0]
-  let { getByTestId } = renderTablePanel()
-  await waitForDomChange()
-  // Table card should be disabled
-  const card = getByTestId(`table-card-${firstTableName}`)
-  const tableNameField = within(card).getByTestId("table-card-name-field")
-  expect(tableNameField).toBeDisabled()
-  // Enable editing
-  fireEvent.click(within(card).getByTestId("enable-edit"))
-  expect(tableNameField).not.toBeDisabled()
-  // Disable editing
-  fireEvent.click(within(card).getByTestId("enable-edit"))
-  expect(tableNameField).toBeDisabled()
 })
