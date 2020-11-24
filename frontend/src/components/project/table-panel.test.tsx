@@ -212,6 +212,61 @@ test("new table form - viability checks", async () => {
   expect(tableSubmit).toBeDisabled()
 })
 
+test("new table form - FK behavior", async () => {
+  let { getByTestId, getAllByRole } = renderTablePanel()
+  await waitForDomChange()
+
+  fireEvent.click(getByTestId("create-table-button"))
+  const newTableForm = getByTestId("new-table-form")
+  performCheckboxClick(within(newTableForm).getByTestId("foreign-key"))
+  const foreignTable = within(newTableForm).getByTestId("foreign-table-select")
+  const foreignColumn = within(newTableForm).getByTestId(
+    "foreign-column-select"
+  )
+  // Foreign table should be auto-selected
+  expect(foreignTable).toHaveTextContent(table1.name)
+  // Foreign column selection should be disabled
+  expect(within(foreignColumn).getByRole("button")).toHaveAttribute(
+    "aria-disabled"
+  )
+  // Only the first table should be available
+  fireEvent.mouseDown(within(foreignTable).getByRole("button"))
+  const popovers = getAllByRole("presentation")
+  const popover = popovers[popovers.length - 1]
+  expect(within(popover).getByText(table1.name)).toBeInTheDocument()
+  expect(within(popover).queryByText(table2.name)).not.toBeInTheDocument()
+  expect(within(popover).queryByText(table3.name)).not.toBeInTheDocument()
+  fireEvent.click(within(popover).getByText(table1.name))
+  // Make the new table viable
+  const newTable: TableMeta = {
+    name: "fkTest",
+    cols: [
+      {
+        name: "fkTestCol",
+        postgres_type: "integer",
+        not_null: false,
+        unique: false,
+        primary_key: false,
+        foreign_key: null,
+      },
+    ],
+  }
+  fillTableForm(newTableForm, newTable)
+  // The foreign key constraint should still be there
+  expect(foreignTable).toHaveTextContent(table1.name)
+  // Now remove the foreign key constraint
+  performCheckboxClick(within(newTableForm).getByTestId("foreign-key"))
+
+  // See that the expected table would be created
+  fireEvent.click(getByTestId("submit-table-button"))
+  await waitForDomChange()
+  expect(putreq).toHaveBeenCalledWith(
+    expect.anything(),
+    newTable,
+    expect.anything()
+  )
+})
+
 test("refresh button", async () => {
   const tablePanel = renderTablePanel()
   await waitForDomChange()
@@ -353,72 +408,6 @@ test("table panel - some initial tables", async () => {
   // Table cards should be present
   expect(getByTestId(`table-card-${table1.name}`)).toBeInTheDocument()
   expect(getByTestId(`table-card-${table2.name}`)).toBeInTheDocument()
-})
-
-test("table panel - FK behavior", async () => {
-  // List of tables
-  mockedAxios.get.mockResolvedValue({
-    status: httpStatusCodes.OK,
-    data: [table1, table2, table3],
-  })
-
-  let { getByTestId, getAllByRole } = renderTablePanel()
-  await waitForDomChange()
-
-  fireEvent.click(getByTestId("create-table-button"))
-  const newTableForm = getByTestId("new-table-form")
-  performCheckboxClick(within(newTableForm).getByTestId("foreign-key"))
-  const foreignTable = within(newTableForm).getByTestId("foreign-table-select")
-  const foreignColumn = within(newTableForm).getByTestId(
-    "foreign-column-select"
-  )
-  // Foreign table should be auto-selected
-  expect(foreignTable).toHaveTextContent(table1.name)
-  // Foreign column selection should be disabled
-  expect(within(foreignColumn).getByRole("button")).toHaveAttribute(
-    "aria-disabled"
-  )
-  // Only the first table should be available
-  fireEvent.mouseDown(within(foreignTable).getByRole("button"))
-  const popovers = getAllByRole("presentation")
-  const popover = popovers[popovers.length - 1]
-  expect(within(popover).getByText(table1.name)).toBeInTheDocument()
-  expect(within(popover).queryByText(table2.name)).not.toBeInTheDocument()
-  expect(within(popover).queryByText(table3.name)).not.toBeInTheDocument()
-  fireEvent.click(within(popover).getByText(table1.name))
-  // Make the new table viable
-  const newTable: TableMeta = {
-    name: "fkTest",
-    cols: [
-      {
-        name: "fkTestCol",
-        postgres_type: "integer",
-        not_null: false,
-        unique: false,
-        primary_key: false,
-        foreign_key: null,
-      },
-    ],
-  }
-  fillTableForm(newTableForm, newTable)
-  // The foreign key constraint should still be there
-  expect(foreignTable).toHaveTextContent(table1.name)
-  // Now remove the foreign key constraint
-  performCheckboxClick(within(newTableForm).getByTestId("foreign-key"))
-  // Check that it was actually removed
-  let createTables = mockedAxios.put.mockImplementation(
-    async (url, data, config) => {
-      return { status: httpStatusCodes.NO_CONTENT }
-    }
-  )
-  expect(getByTestId("submit-table-button")).not.toBeDisabled()
-  fireEvent.click(getByTestId("submit-table-button"))
-  await waitForDomChange()
-  expect(createTables).toHaveBeenCalledWith(
-    expect.anything(),
-    newTable,
-    expect.anything()
-  )
 })
 
 test("table panel - project refresh error", async () => {
