@@ -392,32 +392,28 @@ test("error - project refresh", async () => {
   expect(getByTestId("refresh-tables-error")).toHaveTextContent("")
 })
 
-test("table panel - table delete error", async () => {
-  mockedAxios.get
-    // On load
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: [table1],
+test("error - table delete", async () => {
+  mockedAxios.delete.mockImplementation(
+    constructDelete({
+      removeTable: async () => {
+        throw Error("some delete error")
+      },
     })
-    // On successful delete
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: [],
-    })
-  mockedAxios.delete
-    .mockRejectedValueOnce(Error("some delete error"))
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.NO_CONTENT,
-    })
-  let { getByTestId, getByText, queryByTestId } = renderTablePanel()
+  )
+  const firstTableName = (await defaultGet.getAllTableNames()).data[0]
+  let { getByTestId, getByText } = renderTablePanel()
   await waitForDomChange()
-  let table1card = getByTestId(`table-card-${table1.name}`)
+  let table1card = getByTestId(`table-card-${firstTableName}`)
   fireEvent.click(within(table1card).getByTestId("delete-table-button"))
   await waitForDomChange()
   expect(getByText("some delete error")).toBeInTheDocument()
+  // Error should go away on successful delete
+  mockedAxios.delete.mockImplementation(constructDelete())
   fireEvent.click(within(table1card).getByTestId("delete-table-button"))
   await waitForDomChange()
-  expect(queryByTestId(`table-card-${table1.name}`)).not.toBeInTheDocument()
+  expect(
+    within(table1card).getByTestId("delete-table-error")
+  ).toHaveTextContent("")
 })
 
 test("submit table error", async () => {
