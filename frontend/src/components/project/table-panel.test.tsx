@@ -416,22 +416,23 @@ test("error - table delete", async () => {
   ).toHaveTextContent("")
 })
 
-test("submit table error", async () => {
-  mockedAxios.get
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: [] })
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: [table1] })
-  mockedAxios.put
-    .mockRejectedValueOnce(Error("some table submit error"))
-    .mockResolvedValueOnce({ status: httpStatusCodes.NO_CONTENT })
-  let { getByTestId } = renderTablePanel()
+test("error - submit table", async () => {
+  mockedAxios.put.mockImplementation(
+    constructPut({
+      createTable: async () => {
+        throw Error("some table submit error")
+      },
+    })
+  )
+  let { getByTestId, getByText } = renderTablePanel()
   await waitForDomChange()
   expect(getByTestId("table-submit-error")).toHaveTextContent("")
   fillTableForm(getByTestId("new-table-form"), table1)
   fireEvent.click(getByTestId("submit-table-button"))
   await waitForDomChange()
-  expect(getByTestId("table-submit-error")).toHaveTextContent(
-    "some table submit error"
-  )
+  expect(getByText("some table submit error")).toBeInTheDocument()
+  // Should go away on successful submit
+  mockedAxios.put.mockImplementation(constructPut())
   fireEvent.click(getByTestId("submit-table-button"))
   await waitForDomChange()
   expect(getByTestId("table-submit-error")).toHaveTextContent("")
