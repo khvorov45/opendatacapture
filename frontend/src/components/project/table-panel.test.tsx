@@ -168,6 +168,50 @@ test("new table form - fill and submit", async () => {
   )
 })
 
+test("new table form - viability checks", async () => {
+  let tablePanel = renderTablePanel()
+  await waitForDomChange()
+
+  const tableSubmit = tablePanel.getByTestId("submit-table-button")
+
+  // Should be disabled since the form is empty
+  expect(tableSubmit).toBeDisabled()
+
+  // Enter table name
+  fireEvent.change(tablePanel.getByTestId("new-table-name-field"), {
+    target: { value: table1.name },
+  })
+  // Should be disabled since the one column doesn't have a name nor a type
+  expect(tableSubmit).toBeDisabled()
+
+  // Enter column name
+  fireEvent.change(
+    within(tablePanel.getByTestId("new-column-entry-0")).getByTestId(
+      "new-column-name-field"
+    ),
+    {
+      target: { value: table1.cols[0].name },
+    }
+  )
+  // Should be disabled since the one column doesn't have a type
+  expect(tableSubmit).toBeDisabled()
+
+  // Enter type
+  performSelectAction(
+    within(tablePanel.getByTestId("new-column-entry-0")).getByTestId(
+      "new-column-type-select"
+    ),
+    table1.cols[0].postgres_type
+  )
+  // Should not be disabled
+  expect(tableSubmit).not.toBeDisabled()
+
+  // Add a column
+  fireEvent.click(tablePanel.getByTestId("add-column"))
+  // Should be disabled since the second column is empty
+  expect(tableSubmit).toBeDisabled()
+})
+
 test("refresh button", async () => {
   const tablePanel = renderTablePanel()
   await waitForDomChange()
@@ -487,51 +531,6 @@ test("table panel - column removal", async () => {
       "new-column-name-field"
     )
   ).toHaveValue("")
-})
-
-test("table viability checks", async () => {
-  // List of tables
-  mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: [] })
-
-  let { getByTestId } = renderTablePanel()
-  await waitForDomChange()
-
-  // Should be disabled since the form is empty
-  expect(getByTestId("submit-table-button")).toBeDisabled()
-
-  // Enter table name
-  fireEvent.change(getByTestId("new-table-name-field"), {
-    target: { value: table1.name },
-  })
-  // Should be disabled since the one column doesn't have a name nor a type
-  expect(getByTestId("submit-table-button")).toBeDisabled()
-
-  // Enter column name
-  fireEvent.change(
-    within(getByTestId("new-column-entry-0")).getByTestId(
-      "new-column-name-field"
-    ),
-    {
-      target: { value: table1.cols[0].name },
-    }
-  )
-  // Should be disabled since the one column doesn't have a type
-  expect(getByTestId("submit-table-button")).toBeDisabled()
-
-  // Enter type
-  performSelectAction(
-    within(getByTestId("new-column-entry-0")).getByTestId(
-      "new-column-type-select"
-    ),
-    table1.cols[0].postgres_type
-  )
-  // Should not be disabled
-  expect(getByTestId("submit-table-button")).not.toBeDisabled()
-
-  // Add a column
-  fireEvent.click(getByTestId("add-column"))
-  // Should be disabled since the second column is empty
-  expect(getByTestId("submit-table-button")).toBeDisabled()
 })
 
 test("submit table error", async () => {
