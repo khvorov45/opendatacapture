@@ -12,12 +12,16 @@ import { API_ROOT } from "../../lib/config"
 import { table1, table2, table3 } from "../../tests/data"
 import React from "react"
 import TablePanel from "./table-panel"
-import { constructGet, defaultGet } from "../../tests/api"
+import { constructGet, constructPut, defaultGet } from "../../tests/api"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 const getreq = mockedAxios.get.mockImplementation(constructGet())
-afterEach(() => mockedAxios.get.mockImplementation(constructGet()))
+const putreq = mockedAxios.put.mockImplementation(constructPut())
+afterEach(() => {
+  mockedAxios.get.mockImplementation(constructGet())
+  mockedAxios.put.mockImplementation(constructPut())
+})
 
 const testProjectName = "some-project"
 
@@ -147,6 +151,21 @@ test("new table form - open/close", async () => {
   expect(newTableForm).not.toHaveClass("nodisplay")
   fireEvent.click(createTableButton)
   expect(newTableForm).toHaveClass("nodisplay")
+})
+
+test("new table form - fill and submit", async () => {
+  const tablePanel = renderTablePanel()
+  await waitForDomChange()
+  const newTableForm = tablePanel.getByTestId("new-table-form")
+  fillTableForm(newTableForm, table1)
+  const tableSubmit = tablePanel.getByTestId("submit-table-button")
+  fireEvent.click(tableSubmit)
+  await waitForDomChange()
+  expect(putreq).toHaveBeenCalledWith(
+    expect.anything(),
+    table1,
+    expect.anything()
+  )
 })
 
 test("refresh button", async () => {
