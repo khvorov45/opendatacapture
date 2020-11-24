@@ -438,20 +438,18 @@ test("error - submit table", async () => {
   expect(getByTestId("table-submit-error")).toHaveTextContent("")
 })
 
-test("set table card to editable", async () => {
-  mockedAxios.get.mockResolvedValue({
-    status: httpStatusCodes.OK,
-    data: [table1],
-  })
+test("table card - set editable", async () => {
+  const firstTableName = (await defaultGet.getAllTableNames()).data[0]
   let { getByTestId } = renderTablePanel()
   await waitForDomChange()
   // Table card should be disabled
-  const card = getByTestId(`table-card-${table1.name}`)
-  expect(within(card).getByTestId("table-card-name-field")).toBeDisabled()
+  const card = getByTestId(`table-card-${firstTableName}`)
+  const tableNameField = within(card).getByTestId("table-card-name-field")
+  expect(tableNameField).toBeDisabled()
   // Enable editing
   fireEvent.click(within(card).getByTestId("enable-edit"))
-  expect(within(card).getByTestId("table-card-name-field")).not.toBeDisabled()
+  expect(tableNameField).not.toBeDisabled()
   // Disable editing
   fireEvent.click(within(card).getByTestId("enable-edit"))
-  expect(within(card).getByTestId("table-card-name-field")).toBeDisabled()
+  expect(tableNameField).toBeDisabled()
 })
