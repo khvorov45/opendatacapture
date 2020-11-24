@@ -5,9 +5,19 @@ import httpStatusCodes from "http-status-codes"
 import Home, { ProjectWidget } from "./home"
 import { render, waitForDomChange, fireEvent } from "@testing-library/react"
 import { MemoryRouter as Router, Route } from "react-router"
+import { constructGet, constructPut, constructDelete } from "../tests/api"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
+
+const getreq = mockedAxios.get.mockImplementation(constructGet())
+const putreq = mockedAxios.put.mockImplementation(constructPut())
+const deletereq = mockedAxios.delete.mockImplementation(constructDelete())
+afterEach(() => {
+  mockedAxios.get.mockImplementation(constructGet())
+  mockedAxios.put.mockImplementation(constructPut())
+  mockedAxios.delete.mockImplementation(constructDelete())
+})
 
 function renderHome(token: string | null) {
   return render(
@@ -30,12 +40,12 @@ test("homepage with no token", () => {
   expect(queryByTestId("project-widget")).not.toBeInTheDocument()
 })
 
-test("homepage with token and no projects", async () => {
-  // Get projects
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: [],
-  })
+test("homepage - no projects", async () => {
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getUserProjects: async () => ({ status: httpStatusCodes.OK, data: [] }),
+    })
+  )
   const { getByTestId } = renderHome("123")
   await waitForDomChange()
   expect(getByTestId("homepage")).toBeInTheDocument()
