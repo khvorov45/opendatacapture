@@ -393,23 +393,6 @@ test("table panel functionality - no initial tables", async () => {
   expect(getByTestId(`table-card-${table1.name}`)).toBeInTheDocument()
 }, 20000)
 
-test("table panel - some initial tables", async () => {
-  // List of tables
-  mockedAxios.get.mockResolvedValue({
-    status: httpStatusCodes.OK,
-    data: [table1, table2],
-  })
-
-  let { getByTestId } = renderTablePanel()
-  await waitForDomChange()
-
-  // Table form should be closed
-  expect(getByTestId("new-table-form")).toHaveClass("nodisplay")
-  // Table cards should be present
-  expect(getByTestId(`table-card-${table1.name}`)).toBeInTheDocument()
-  expect(getByTestId(`table-card-${table2.name}`)).toBeInTheDocument()
-})
-
 test("table panel - project refresh error", async () => {
   mockedAxios.get
     .mockRejectedValueOnce(Error("some refresh error"))
