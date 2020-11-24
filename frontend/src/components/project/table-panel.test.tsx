@@ -12,15 +12,22 @@ import { API_ROOT } from "../../lib/config"
 import { table1, table2, table3 } from "../../tests/data"
 import React from "react"
 import TablePanel from "./table-panel"
-import { constructGet, constructPut, defaultGet } from "../../tests/api"
+import {
+  constructDelete,
+  constructGet,
+  constructPut,
+  defaultGet,
+} from "../../tests/api"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 const getreq = mockedAxios.get.mockImplementation(constructGet())
 const putreq = mockedAxios.put.mockImplementation(constructPut())
+const deletereq = mockedAxios.delete.mockImplementation(constructDelete())
 afterEach(() => {
   mockedAxios.get.mockImplementation(constructGet())
   mockedAxios.put.mockImplementation(constructPut())
+  mockedAxios.delete.mockImplementation(constructDelete())
 })
 
 const testProjectName = "some-project"
@@ -351,6 +358,20 @@ test("table cards presence", async () => {
   tableNames.map((t: string) => {
     expect(tablePanel.getByTestId(`table-card-${t}`)).toBeInTheDocument()
   })
+})
+
+test("table card - remove table", async () => {
+  const tablePanel = renderTablePanel()
+  await waitForDomChange()
+  const table1Name = (await defaultGet.getAllTableNames()).data[0]
+  const table1Card = tablePanel.getByTestId(`table-card-${table1Name}`)
+  const deleteButton = within(table1Card).getByTestId("delete-table-button")
+  fireEvent.click(deleteButton)
+  await waitForDomChange()
+  expect(deletereq).toHaveBeenLastCalledWith(
+    `${API_ROOT}/project/${testProjectName}/remove/table/${table1Name}`,
+    expect.anything()
+  )
 })
 
 test("table panel functionality - no initial tables", async () => {
