@@ -69,6 +69,9 @@ export function constructGet(fns?: RequestFns) {
     if (url.includes("/get/user/by/token/")) {
       return await currentGet.validateToken()
     }
+    if (url.includes("get/projects")) {
+      return await currentGet.getUserProjects()
+    }
     if (url.includes("/get/meta")) {
       return await currentGet.getAllMeta()
     }
