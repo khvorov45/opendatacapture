@@ -374,16 +374,19 @@ test("table card - remove table", async () => {
   )
 })
 
-test("table panel - project refresh error", async () => {
-  mockedAxios.get
-    .mockRejectedValueOnce(Error("some refresh error"))
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: [],
+test("error - project refresh", async () => {
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getAllMeta: async () => {
+        throw Error("some refresh error")
+      },
     })
+  )
   let { getByTestId, getByText } = renderTablePanel()
   await waitForDomChange()
   expect(getByText("some refresh error")).toBeInTheDocument()
+  // Error should go away on successful refresh
+  mockedAxios.get.mockImplementation(constructGet())
   fireEvent.click(getByTestId("refresh-tables-button"))
   await waitForDomChange()
   expect(getByTestId("refresh-tables-error")).toHaveTextContent("")
