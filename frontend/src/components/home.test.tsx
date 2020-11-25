@@ -79,6 +79,17 @@ test("new project form - open/close", async () => {
   expect(form).toHaveClass("hidden")
 })
 
+test("refresh button", async () => {
+  const { getByTestId } = renderProjectWidget()
+  await waitForDomChange()
+  fireEvent.click(getByTestId("project-refresh-button"))
+  await waitForDomChange()
+  expect(getreq).toHaveBeenLastCalledWith(
+    `${API_ROOT}/get/projects`,
+    expect.anything()
+  )
+})
+
 test("create project", async () => {
   const { getByTestId, getByText } = renderProjectWidget()
   await waitForDomChange()
