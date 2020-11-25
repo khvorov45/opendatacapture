@@ -5,7 +5,12 @@ import httpStatusCodes from "http-status-codes"
 import Home, { ProjectWidget } from "./home"
 import { render, waitForDomChange, fireEvent } from "@testing-library/react"
 import { MemoryRouter as Router, Route } from "react-router"
-import { constructGet, constructPut, constructDelete } from "../tests/api"
+import {
+  constructGet,
+  constructPut,
+  constructDelete,
+  defaultGet,
+} from "../tests/api"
 import { API_ROOT } from "../lib/config"
 
 jest.mock("axios")
@@ -90,27 +95,18 @@ test("create project", async () => {
   )
 })
 
-test("project widget - remove projects", async () => {
-  mockedAxios.delete.mockResolvedValue({ status: httpStatusCodes.NO_CONTENT })
-  mockedAxios.get
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: [{ user: 1, name: "2", created: new Date().toISOString() }],
-    })
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: [],
-    })
-  const { getByTestId, queryByTestId } = renderProjectWidget()
+test("remove a project", async () => {
+  const { getByTestId } = renderProjectWidget()
   await waitForDomChange()
-  expect(getByTestId("project-entry-2")).toBeInTheDocument()
+  const firstProjectName = (await defaultGet.getUserProjects()).data[0].name
+  expect(getByTestId(`project-entry-${firstProjectName}`)).toBeInTheDocument()
   // Create form should be hidden
-  expect(getByTestId("project-create-form")).toHaveClass("hidden")
-  fireEvent.click(getByTestId("project-remove-2"))
+  fireEvent.click(getByTestId(`project-remove-${firstProjectName}`))
   await waitForDomChange()
-  expect(queryByTestId("project-entry-2")).not.toBeInTheDocument()
-  // Create form should appear
-  expect(getByTestId("project-create-form")).not.toHaveClass("hidden")
+  expect(deletereq).toHaveBeenCalledWith(
+    `${API_ROOT}/delete/project/${firstProjectName}`,
+    expect.anything()
+  )
 })
 
 test("project widget - routing", async () => {
