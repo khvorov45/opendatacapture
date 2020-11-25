@@ -6,6 +6,7 @@ import Home, { ProjectWidget } from "./home"
 import { render, waitForDomChange, fireEvent } from "@testing-library/react"
 import { MemoryRouter as Router, Route } from "react-router"
 import { constructGet, constructPut, constructDelete } from "../tests/api"
+import { API_ROOT } from "../lib/config"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
@@ -73,31 +74,20 @@ test("new project form - open/close", async () => {
   expect(form).toHaveClass("hidden")
 })
 
-test("project widget - create project", async () => {
-  mockedAxios.put.mockResolvedValueOnce({ status: httpStatusCodes.NO_CONTENT })
-  mockedAxios.get
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: [],
-    })
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: [
-        { user: 1, name: "newproject", created: new Date().toISOString() },
-      ],
-    })
+test("create project", async () => {
   const { getByTestId, getByText } = renderProjectWidget()
   await waitForDomChange()
-  expect(getByTestId("project-create-form")).not.toHaveClass("hidden")
   // Fill in the form
   fireEvent.change(getByTestId("project-name-field") as HTMLInputElement, {
     target: { value: "newproject" },
   })
   fireEvent.click(getByTestId("create-project-submit"))
   await waitForDomChange()
-  expect(getByText("newproject")).toBeInTheDocument()
-  // Create form should hide
-  expect(getByTestId("project-create-form")).toHaveClass("hidden")
+  expect(putreq).toHaveBeenLastCalledWith(
+    `${API_ROOT}/create/project/newproject`,
+    expect.anything(),
+    expect.anything()
+  )
 })
 
 test("project widget - remove projects", async () => {
