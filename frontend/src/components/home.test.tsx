@@ -61,20 +61,16 @@ test("new project form - some projects", async () => {
   expect(getByTestId("project-create-form")).toHaveClass("hidden")
 })
 
-test("project widget - click on project create", async () => {
-  // Project list
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: [{ user: 1, name: "2", created: new Date().toISOString() }],
-  })
+test("new project form - open/close", async () => {
   const { getByTestId } = renderProjectWidget()
   await waitForDomChange()
-  expect(getByTestId("project-control")).toBeInTheDocument()
-  expect(getByTestId("project-list")).toBeInTheDocument()
-  // Click the create project button
-  expect(getByTestId("project-create-form")).toHaveClass("hidden")
-  fireEvent.click(getByTestId("project-create-button"))
-  expect(getByTestId("project-create-form")).not.toHaveClass("hidden")
+  const form = getByTestId("project-create-form")
+  const openFormButton = getByTestId("project-create-button")
+  expect(form).toHaveClass("hidden")
+  fireEvent.click(openFormButton)
+  expect(form).not.toHaveClass("hidden")
+  fireEvent.click(openFormButton)
+  expect(form).toHaveClass("hidden")
 })
 
 test("project widget - create project", async () => {
