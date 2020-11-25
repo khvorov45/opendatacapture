@@ -145,15 +145,14 @@ test("error - fetch projects", async () => {
   expect(error).toHaveTextContent("")
 })
 
-test("project widget - project already exists", async () => {
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: [],
-  })
-  mockedAxios.put
-    .mockRejectedValueOnce(Error("ProjectAlreadyExists"))
-    .mockRejectedValueOnce(Error("some other error"))
-    .mockResolvedValueOnce({ status: httpStatusCodes.NO_CONTENT })
+test("error - project already exists", async () => {
+  mockedAxios.put.mockImplementation(
+    constructPut({
+      createProject: async () => {
+        throw Error("ProjectAlreadyExists")
+      },
+    })
+  )
   const { getByTestId } = renderProjectWidget()
   await waitForDomChange()
   fireEvent.change(getByTestId("project-name-field") as HTMLInputElement, {
@@ -164,14 +163,6 @@ test("project widget - project already exists", async () => {
   expect(getByTestId("create-project-error")).toHaveTextContent(
     "Name 'newproject' already in use"
   )
-  fireEvent.click(getByTestId("create-project-submit"))
-  await waitForDomChange()
-  expect(getByTestId("create-project-error")).toHaveTextContent(
-    "some other error"
-  )
-  fireEvent.click(getByTestId("create-project-submit"))
-  await waitForDomChange()
-  expect(getByTestId("create-project-error")).toHaveTextContent("")
 })
 
 test("project widget - fail to delete project", async () => {
