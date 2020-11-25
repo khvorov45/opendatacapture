@@ -126,21 +126,23 @@ test("project widget - routing", async () => {
   expect(getByText("Page for some project")).toBeInTheDocument()
 })
 
-test("project widget - fail to get projects", async () => {
-  mockedAxios.get
-    .mockRejectedValueOnce(Error("failed to get projects"))
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: [],
+test("error - fetch projects", async () => {
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getUserProjects: async () => {
+        throw Error("failed to get projects")
+      },
     })
-  const { getByTestId } = render(<ProjectWidget token="123" />)
-  await waitForDomChange()
-  expect(getByTestId("project-control-error")).toHaveTextContent(
-    "failed to get projects"
   )
+  const { getByTestId, getByText } = renderProjectWidget()
+  await waitForDomChange()
+  const error = getByTestId("project-control-error")
+  expect(getByText("failed to get projects")).toBeInTheDocument()
+  // Should go away on success
+  mockedAxios.get.mockImplementation(constructGet())
   fireEvent.click(getByTestId("project-refresh-button"))
   await waitForDomChange()
-  expect(getByTestId("project-control-error")).toHaveTextContent("")
+  expect(error).toHaveTextContent("")
 })
 
 test("project widget - project already exists", async () => {
