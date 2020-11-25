@@ -27,7 +27,7 @@ export const UserV = t.type({
 })
 export type User = t.TypeOf<typeof UserV>
 
-const TokenV = t.type({
+export const TokenV = t.type({
   user: t.number,
   token: t.string,
   created: DateFromISOString,
