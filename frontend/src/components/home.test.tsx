@@ -165,18 +165,21 @@ test("error - project already exists", async () => {
   )
 })
 
-test("project widget - fail to delete project", async () => {
-  mockedAxios.delete.mockRejectedValueOnce(Error("some delete project error"))
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: [{ user: 1, name: "prj", created: new Date().toISOString() }],
-  })
-  const { getByTestId } = renderProjectWidget()
-  await waitForDomChange()
-  expect(getByTestId("project-entry-buttons-error-prj")).toHaveTextContent("")
-  fireEvent.click(getByTestId("project-remove-prj"))
-  await waitForDomChange()
-  expect(getByTestId("project-entry-buttons-error-prj")).toHaveTextContent(
-    "some delete project error"
+test("error - fail to delete project", async () => {
+  const firstProjectName = (await defaultGet.getUserProjects()).data[0].name
+  mockedAxios.delete.mockImplementation(
+    constructDelete({
+      deleteProject: async () => {
+        throw Error("some delete project error")
+      },
+    })
   )
+  const { getByTestId, getByText } = renderProjectWidget()
+  await waitForDomChange()
+  expect(
+    getByTestId(`project-entry-buttons-error-${firstProjectName}`)
+  ).toHaveTextContent("")
+  fireEvent.click(getByTestId(`project-remove-${firstProjectName}`))
+  await waitForDomChange()
+  expect(getByText("some delete project error")).toBeInTheDocument()
 })
