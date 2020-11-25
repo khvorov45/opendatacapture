@@ -110,25 +110,20 @@ test("remove a project", async () => {
 })
 
 test("project widget - routing", async () => {
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: [
-      { user: 1, name: "some-project", created: new Date().toISOString() },
-    ],
-  })
+  const firstProjectName = (await defaultGet.getUserProjects()).data[0].name
   const { getByText } = render(
     <Router>
       <Route exact to="/">
         <ProjectWidget token="123" />
       </Route>
-      <Route exact to="/project/some-project">
-        <div>Page for some-project</div>
+      <Route exact to={`/project/${firstProjectName}`}>
+        <div>Page for some project</div>
       </Route>
     </Router>
   )
   await waitForDomChange()
-  fireEvent.click(getByText("some-project"))
-  expect(getByText("Page for some-project")).toBeInTheDocument()
+  fireEvent.click(getByText(firstProjectName))
+  expect(getByText("Page for some project")).toBeInTheDocument()
 })
 
 test("project widget - fail to get projects", async () => {
