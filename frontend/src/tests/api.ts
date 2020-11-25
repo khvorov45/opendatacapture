@@ -2,6 +2,8 @@
 /** Mocked API calls for tests */
 
 import httpStatusCodes from "http-status-codes"
+import { TokenV, UserV } from "../lib/api/auth"
+import { ProjectV } from "../lib/api/project"
 import { adminToken, allTables, defaultAdmin, project1 } from "./data"
 
 function findTableEntry(tableName: string) {
@@ -36,11 +38,11 @@ export const defaultGet: RequestFns = {
   }),
   validateToken: async () => ({
     status: httpStatusCodes.OK,
-    data: defaultAdmin,
+    data: UserV.encode(defaultAdmin),
   }),
   getUserProjects: async () => ({
     status: httpStatusCodes.OK,
-    data: [project1],
+    data: [ProjectV.encode(project1)],
   }),
   getAllMeta: async () => ({
     status: httpStatusCodes.OK,
@@ -139,8 +141,14 @@ export function constructPut(fns?: RequestFns) {
 }
 
 export const defaultPost: RequestFns = {
-  fetchToken: async () => ({ status: httpStatusCodes.OK, data: adminToken }),
-  refreshToken: async () => ({ status: httpStatusCodes.OK, data: adminToken }),
+  fetchToken: async () => ({
+    status: httpStatusCodes.OK,
+    data: TokenV.encode(adminToken),
+  }),
+  refreshToken: async () => ({
+    status: httpStatusCodes.OK,
+    data: TokenV.encode(adminToken),
+  }),
 }
 
 export function constructPost(fns?: RequestFns) {
