@@ -21,14 +21,8 @@ import {
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
-const getreq = mockedAxios.get.mockImplementation(constructGet())
-const putreq = mockedAxios.put.mockImplementation(constructPut())
-const deletereq = mockedAxios.delete.mockImplementation(constructDelete())
 const postreq = mockedAxios.post.mockImplementation(constructPost())
 afterEach(() => {
-  mockedAxios.get.mockImplementation(constructGet())
-  mockedAxios.put.mockImplementation(constructPut())
-  mockedAxios.delete.mockImplementation(constructDelete())
   mockedAxios.post.mockImplementation(constructPost())
 })
 
