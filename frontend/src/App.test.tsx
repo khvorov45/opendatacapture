@@ -143,21 +143,6 @@ test("token refresh error", async () => {
 })
 
 test("logout", async () => {
-  const consoleSpy = jest
-    .spyOn(console, "error")
-    .mockImplementation((message) => {})
-  // Token verification
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: {
-      id: 1,
-      email: "test@example.com",
-      password_hash: "123",
-      access: "Admin",
-    },
-  })
-  // Token removal
-  const del = mockedAxios.delete.mockImplementationOnce(async () => {})
   localStorage.setItem("last-refresh", new Date().toISOString())
   const app = renderApp("123")
   await wait(() => {
@@ -168,11 +153,10 @@ test("logout", async () => {
   fireEvent.click(logout)
   expect(logout).toHaveClass("nodisplay")
   expect(app.getByTestId("login-form")).toBeInTheDocument()
-  expect(del).toHaveBeenLastCalledWith(
+  expect(deletereq).toHaveBeenLastCalledWith(
     `${API_ROOT}/auth/remove-token/123`,
     expect.anything()
   )
-  consoleSpy.mockRestore()
 })
 
 test("fail to remove token", async () => {
