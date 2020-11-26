@@ -21,6 +21,7 @@ import {
   defaultGet,
   defaultPost,
 } from "./tests/api"
+import { user1 } from "./tests/data"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
@@ -210,15 +211,14 @@ test("admin dashboard access", async () => {
 })
 
 test("admin dashboard user no access", async () => {
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: {
-      id: 1,
-      email: "test@example.com",
-      access: "User",
-    },
-  })
-  localStorage.setItem("last-refresh", new Date().toISOString())
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      validateToken: async () => ({
+        status: httpStatusCodes.OK,
+        data: user1,
+      }),
+    })
+  )
   const app = renderApp("123")
   await wait(() => {
     expect(app.getByTestId("homepage")).toBeInTheDocument()
