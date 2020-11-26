@@ -18,6 +18,7 @@ import {
   constructGet,
   constructPost,
   constructPut,
+  defaultGet,
   defaultPost,
 } from "./tests/api"
 
@@ -79,35 +80,16 @@ test("reroute to login when token is wrong", async () => {
 })
 
 test("route to project page", async () => {
-  let user = {
-    id: 1,
-    email: "test@example.com",
-    password_hash: "123",
-    access: "Admin",
-  }
-  let project = {
-    user: 1,
-    name: "somename",
-    created: new Date().toISOString(),
-  }
-  mockedAxios.get
-    // Token validation
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: user })
-    // Project list
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: [project] })
-    // Project metadata
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: [] })
-    // Project list
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: [project] })
   const { getByTestId, getByText } = renderApp("123")
+  const firstProjectName = (await defaultGet.getUserProjects()).data[0].name
   await wait(() => {
-    expect(getByText("somename")).toBeInTheDocument()
+    expect(getByText(firstProjectName)).toBeInTheDocument()
     expect(getByTestId("nav-project-info")).toHaveClass("nodisplay")
   })
-  fireEvent.click(getByText("somename"))
+  fireEvent.click(getByText(firstProjectName))
   await wait(() => {
     // Check redirection
-    expect(getByTestId("project-page-somename")).toBeInTheDocument()
+    expect(getByTestId(`project-page-${firstProjectName}`)).toBeInTheDocument()
     // Check that project info on nav updated
     expect(getByTestId("nav-project-info")).not.toHaveClass("nodisplay")
   })
