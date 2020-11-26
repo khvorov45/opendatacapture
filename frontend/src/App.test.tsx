@@ -108,26 +108,16 @@ test("route to project page", async () => {
 
 test("token refresh", async () => {
   const curTime = new Date().toISOString()
-  mockedAxios.post.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: {
-      user: 1,
-      token: "234",
-      created: curTime,
-    },
-  })
-  // Token verification
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: {
-      id: 1,
-      email: "test@example.com",
-      password_hash: "123",
-      access: "Admin",
-    },
-  })
+  mockedAxios.post.mockImplementation(
+    constructPost({
+      refreshToken: async () => ({
+        status: httpStatusCodes.OK,
+        data: { user: 1, token: "234", created: curTime },
+      }),
+    })
+  )
   localStorage.removeItem("last-refresh")
-  const app = renderApp("123")
+  renderApp("123")
   await wait(() => {
     expect(localStorage.getItem("last-refresh")).toBe(curTime)
   })
