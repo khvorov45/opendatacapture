@@ -9,14 +9,9 @@ import {
   wait,
 } from "@testing-library/react"
 import Login from "./login"
-import { EmailPassword, LoginFailure, Token } from "../lib/api/auth"
+import { EmailPassword, Token } from "../lib/api/auth"
 import { API_ROOT } from "../lib/config"
-import {
-  constructGet,
-  constructPut,
-  constructDelete,
-  constructPost,
-} from "../tests/api"
+import { constructPost } from "../tests/api"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
