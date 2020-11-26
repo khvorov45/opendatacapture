@@ -103,7 +103,7 @@ jobs:
           wget https://github.com/xd009642/tarpaulin/releases/download/0.16.0/cargo-tarpaulin-0.16.0-travis.tar.gz &&
           tar xf cargo-tarpaulin-0.16.0-travis.tar.gz
       - name: Generate coverage report
-        run: ./cargo-tarpaulin tarpaulin --out Lcov --exclude-files **/target/** --ignore-tests
+        run: ./cargo-tarpaulin tarpaulin --manifest-path backend/Cargo.toml --out Lcov --exclude-files **/target/** --ignore-tests
       - name: Rename report
         run: mv lcov.info backend.info
       - name: Upload report as artifact
@@ -171,8 +171,10 @@ jobs:
         working-directory: frontend
       - name: Compile backend
         run: cargo build
+        working-directory: backend
       - name: Run backend
         run: cargo run &
+        working-directory: backend
       - name: Generate coverage
         run: sleep 5 && npm run test-fullstack -- --watchAll=false --coverage --coverageReporters lcov
         working-directory: frontend
