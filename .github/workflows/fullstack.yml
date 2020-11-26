@@ -83,8 +83,10 @@ jobs:
         working-directory: frontend
       - name: Compile backend
         run: cargo build
+        working-directory: backend
       - name: Run backend
         run: cargo run &
+        working-directory: backend
       - name: Run fullstack tests
         run: sleep 5 && npm run test-fullstack -- --watchAll=false
         working-directory: frontend
