@@ -5,10 +5,9 @@ import {
   render,
   wait,
   waitForDomChange,
-  within,
 } from "@testing-library/react"
 import httpStatusCodes from "http-status-codes"
-import { defaultAdmin, newUser } from "../../tests/util"
+import { defaultAdmin, user1Cred } from "../../tests/data"
 import { constructDelete, constructGet, constructPut } from "../../tests/api"
 import { user1 } from "../../tests/data"
 import React from "react"
@@ -21,6 +20,12 @@ const mockedAxios = axios as jest.Mocked<typeof axios>
 mockedAxios.get.mockImplementation(constructGet())
 const mockedDelete = mockedAxios.delete.mockImplementation(constructDelete())
 const mockedPut = mockedAxios.put.mockImplementation(constructPut())
+
+afterEach(() => {
+  mockedAxios.get.mockImplementation(constructGet())
+  mockedAxios.delete.mockImplementation(constructDelete())
+  mockedAxios.put.mockImplementation(constructPut())
+})
 
 function renderUsers() {
   return render(<Users token="123" />)
@@ -50,7 +55,7 @@ test("refresh users", async () => {
   expect(users.queryByText(user1.email)).not.toBeInTheDocument()
 
   // Refresh
-  mockedAxios.get.mockImplementationOnce(
+  mockedAxios.get.mockImplementation(
     constructGet({
       getUsers: async () => ({
         status: httpStatusCodes.OK,
@@ -68,7 +73,7 @@ test("refresh users", async () => {
 
 test("delete user", async () => {
   // Make sure there is a user to delete
-  mockedAxios.get.mockImplementationOnce(
+  mockedAxios.get.mockImplementation(
     constructGet({
       getUsers: async () => ({
         status: httpStatusCodes.OK,
@@ -101,16 +106,16 @@ test("create user", async () => {
   })
   fireEvent.click(users.getByTestId("open-new-user-form-button"))
   fireEvent.change(users.getByTestId("user-email-field"), {
-    target: { value: newUser.email },
+    target: { value: user1Cred.email },
   })
   fireEvent.change(users.getByTestId("user-password-field"), {
-    target: { value: newUser.password },
+    target: { value: user1Cred.password },
   })
   fireEvent.click(users.getByTestId("user-submit"))
   await waitForDomChange()
   expect(mockedPut).toHaveBeenLastCalledWith(
     `${API_ROOT}/create/user`,
-    newUser,
+    user1Cred,
     expect.anything()
   )
 })

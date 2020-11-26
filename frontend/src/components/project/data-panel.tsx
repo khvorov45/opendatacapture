@@ -91,8 +91,9 @@ export default function DataPanel({
   useEffect(() => {
     refreshTables()
   }, [refreshTables])
-
+  // Base URL, e.g. /project/test/data
   const { url } = useRouteMatch()
+  // Actual current url, e.g. /project/test/data/table1
   const { pathname } = useLocation()
   return (
     <div data-testid="data-panel">

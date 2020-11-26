@@ -7,20 +7,20 @@ import httpStatusCodes from "http-status-codes"
 import { API_ROOT } from "../config"
 import { decode } from "./io-validation"
 
-const ProjectV = t.type({
+export const ProjectV = t.type({
   user: t.number,
   name: t.string,
   created: DateFromISOString,
 })
 export type Project = t.TypeOf<typeof ProjectV>
 
-const ForeignKeyV = t.type({
+export const ForeignKeyV = t.type({
   table: t.string,
   column: t.string,
 })
 export type ForeignKey = t.TypeOf<typeof ForeignKeyV>
 
-const ColMetaV = t.type({
+export const ColMetaV = t.type({
   name: t.string,
   postgres_type: t.string,
   not_null: t.boolean,
@@ -31,7 +31,7 @@ const ColMetaV = t.type({
 export type ColMeta = t.TypeOf<typeof ColMetaV>
 export type ColSpec = ColMeta[]
 
-const TableMetaV = t.type({
+export const TableMetaV = t.type({
   name: t.string,
   cols: t.array(ColMetaV),
 })

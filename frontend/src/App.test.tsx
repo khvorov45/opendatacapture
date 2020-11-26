@@ -11,11 +11,30 @@ import App from "./App"
 import { themeInit } from "./lib/theme"
 import httpStatusCodes from "http-status-codes"
 import axios from "axios"
-import { Access, User } from "./lib/api/auth"
 import { API_ROOT } from "./lib/config"
+import {
+  constructDelete,
+  constructGet,
+  constructPost,
+  constructPut,
+  defaultGet,
+  defaultPost,
+} from "./tests/api"
+import { user1 } from "./tests/data"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
+
+mockedAxios.post.mockImplementation(constructPost())
+mockedAxios.get.mockImplementation(constructGet())
+mockedAxios.put.mockImplementation(constructPut())
+const deletereq = mockedAxios.delete.mockImplementation(constructDelete())
+afterEach(() => {
+  mockedAxios.get.mockImplementation(constructGet())
+  mockedAxios.put.mockImplementation(constructPut())
+  mockedAxios.delete.mockImplementation(constructDelete())
+  mockedAxios.post.mockImplementation(constructPost())
+})
 
 function renderApp(token?: string) {
   token
@@ -43,34 +62,14 @@ test("theme switching", () => {
 })
 
 test("route to homepage from login", async () => {
-  localStorage.removeItem("token")
-  // Login response
-  mockedAxios.post.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: { user: 1, token: "123", created: new Date().toISOString() },
-  })
-  let user: User = {
-    id: 1,
-    email: "test@example.com",
-    access: Access.Admin,
-  }
-  mockedAxios.get
-    // Token validation response
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: user,
-    })
-    // Project list response
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: [],
-    })
   // Attempt to render the homepage
   const { getByTestId } = renderApp()
   // Will only work if successfully redirected to login
   fireEvent.click(getByTestId("login-submit"))
   await waitForDomChange()
-  expect(localStorage.getItem("token")).toBe("123")
+  expect(localStorage.getItem("token")).toBe(
+    (await defaultPost.fetchToken()).data.token
+  )
   // Check that successful login redirects to homepage
   expect(getByTestId("homepage")).toBeInTheDocument()
 })
@@ -81,35 +80,16 @@ test("reroute to login when token is wrong", async () => {
 })
 
 test("route to project page", async () => {
-  let user = {
-    id: 1,
-    email: "test@example.com",
-    password_hash: "123",
-    access: "Admin",
-  }
-  let project = {
-    user: 1,
-    name: "somename",
-    created: new Date().toISOString(),
-  }
-  mockedAxios.get
-    // Token validation
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: user })
-    // Project list
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: [project] })
-    // Project metadata
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: [] })
-    // Project list
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: [project] })
   const { getByTestId, getByText } = renderApp("123")
+  const firstProjectName = (await defaultGet.getUserProjects()).data[0].name
   await wait(() => {
-    expect(getByText("somename")).toBeInTheDocument()
+    expect(getByText(firstProjectName)).toBeInTheDocument()
     expect(getByTestId("nav-project-info")).toHaveClass("nodisplay")
   })
-  fireEvent.click(getByText("somename"))
+  fireEvent.click(getByText(firstProjectName))
   await wait(() => {
     // Check redirection
-    expect(getByTestId("project-page-somename")).toBeInTheDocument()
+    expect(getByTestId(`project-page-${firstProjectName}`)).toBeInTheDocument()
     // Check that project info on nav updated
     expect(getByTestId("nav-project-info")).not.toHaveClass("nodisplay")
   })
@@ -128,26 +108,16 @@ test("route to project page", async () => {
 
 test("token refresh", async () => {
   const curTime = new Date().toISOString()
-  mockedAxios.post.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: {
-      user: 1,
-      token: "234",
-      created: curTime,
-    },
-  })
-  // Token verification
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: {
-      id: 1,
-      email: "test@example.com",
-      password_hash: "123",
-      access: "Admin",
-    },
-  })
+  mockedAxios.post.mockImplementation(
+    constructPost({
+      refreshToken: async () => ({
+        status: httpStatusCodes.OK,
+        data: { user: 1, token: "234", created: curTime },
+      }),
+    })
+  )
   localStorage.removeItem("last-refresh")
-  const app = renderApp("123")
+  renderApp("123")
   await wait(() => {
     expect(localStorage.getItem("last-refresh")).toBe(curTime)
   })
@@ -155,44 +125,37 @@ test("token refresh", async () => {
 })
 
 test("token refresh error", async () => {
-  const consoleSpy = jest
-    .spyOn(console, "error")
-    .mockImplementation((message) => {})
+  const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {})
   // Token verification
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: {
-      id: 1,
-      email: "test@example.com",
-      password_hash: "123",
-      access: "Admin",
-    },
-  })
-  mockedAxios.post.mockRejectedValueOnce(Error("some refresh error"))
+  mockedAxios.post.mockImplementation(
+    constructPost({
+      refreshToken: async () => {
+        throw Error("some refresh error")
+      },
+    })
+  )
   localStorage.removeItem("last-refresh")
-  const app = renderApp("123")
+  renderApp("123")
   await wait(() => {
     expect(console.error).toHaveBeenLastCalledWith("some refresh error")
   })
   consoleSpy.mockRestore()
 })
 
+test("error - token validation", async () => {
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      validateToken: async () => {
+        throw Error("some validation error")
+      },
+    })
+  )
+  const app = renderApp("123")
+  await waitForDomChange()
+  expect(app.getByTestId("login-form")).toBeInTheDocument()
+})
+
 test("logout", async () => {
-  const consoleSpy = jest
-    .spyOn(console, "error")
-    .mockImplementation((message) => {})
-  // Token verification
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: {
-      id: 1,
-      email: "test@example.com",
-      password_hash: "123",
-      access: "Admin",
-    },
-  })
-  // Token removal
-  const del = mockedAxios.delete.mockImplementationOnce(async () => {})
   localStorage.setItem("last-refresh", new Date().toISOString())
   const app = renderApp("123")
   await wait(() => {
@@ -203,32 +166,28 @@ test("logout", async () => {
   fireEvent.click(logout)
   expect(logout).toHaveClass("nodisplay")
   expect(app.getByTestId("login-form")).toBeInTheDocument()
-  expect(del).toHaveBeenLastCalledWith(
+  expect(deletereq).toHaveBeenLastCalledWith(
     `${API_ROOT}/auth/remove-token/123`,
     expect.anything()
   )
-  consoleSpy.mockRestore()
 })
 
 test("fail to remove token", async () => {
   const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {})
-  mockedAxios.delete.mockRejectedValue(Error("some delete token error"))
-  // Token verification
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: {
-      id: 1,
-      email: "test@example.com",
-      password_hash: "123",
-      access: "Admin",
-    },
-  })
-  localStorage.setItem("last-refresh", new Date().toISOString())
+  mockedAxios.delete.mockImplementation(
+    constructDelete({
+      removeToken: async () => {
+        throw Error("some delete token error")
+      },
+    })
+  )
   const app = renderApp("123")
   await wait(() => {
     expect(app.getByTestId("homepage")).toBeInTheDocument()
   })
   fireEvent.click(app.getByTestId("logout-button"))
+  // We still logout locally even if the remove token api call fails
+  // The token then remains valid but we no longer know what it is
   await wait(() => {
     expect(consoleSpy).toHaveBeenLastCalledWith("some delete token error")
   })
@@ -236,24 +195,17 @@ test("fail to remove token", async () => {
   // shouldn't happen
   expect(consoleSpy).toHaveBeenCalledTimes(1)
   localStorage.setItem("last-refresh", new Date().toISOString())
+  const deleteCalls = deletereq.mock.calls.length
   fireEvent.click(app.getByTestId("logout-button"))
   await wait(() => {
     expect(localStorage.getItem("last-refresh")).toBeNull()
   })
   expect(consoleSpy).toHaveBeenCalledTimes(1)
+  expect(deletereq).toHaveBeenCalledTimes(deleteCalls)
   consoleSpy.mockRestore()
 })
 
 test("admin dashboard access", async () => {
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: {
-      id: 1,
-      email: "test@example.com",
-      access: "Admin",
-    },
-  })
-  localStorage.setItem("last-refresh", new Date().toISOString())
   const app = renderApp("123")
   await wait(() => {
     expect(app.getByTestId("homepage")).toBeInTheDocument()
@@ -270,15 +222,14 @@ test("admin dashboard access", async () => {
 })
 
 test("admin dashboard user no access", async () => {
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: {
-      id: 1,
-      email: "test@example.com",
-      access: "User",
-    },
-  })
-  localStorage.setItem("last-refresh", new Date().toISOString())
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      validateToken: async () => ({
+        status: httpStatusCodes.OK,
+        data: user1,
+      }),
+    })
+  )
   const app = renderApp("123")
   await wait(() => {
     expect(app.getByTestId("homepage")).toBeInTheDocument()

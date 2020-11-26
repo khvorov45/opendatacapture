@@ -1,45 +1,64 @@
 /* istanbul ignore file */
 import httpStatusCodes from "http-status-codes"
-import { fireEvent, waitForDomChange, within } from "@testing-library/react"
-import axios from "axios"
 import {
-  renderProjectPage,
-  table1,
-  table2,
-  table3,
-  table1data,
-  table2data,
-} from "../../tests/util"
+  fireEvent,
+  render,
+  waitForDomChange,
+  within,
+} from "@testing-library/react"
+import axios from "axios"
+import { table1, table1data, table2data } from "../../tests/data"
 import toProperCase from "../../lib/to-proper-case"
 import { TableRow } from "../../lib/api/project"
 import { API_ROOT } from "../../lib/config"
 import { decodeUserTable } from "../../lib/api/io-validation"
+import React from "react"
+import { MemoryRouter, Route, Redirect, Switch } from "react-router-dom"
+import DataPanel from "./data-panel"
+import {
+  constructDelete,
+  constructGet,
+  constructPut,
+  defaultGet,
+} from "../../tests/api"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
-mockedAxios.get.mockImplementation(async (url) => {
-  if (url.endsWith("/get/tablenames")) {
-    return {
-      status: httpStatusCodes.OK,
-      data: [table1.name, table2.name, table3.name],
-    }
-  }
-  if (url.endsWith(`/get/table/${table1.name}/meta`)) {
-    return { status: httpStatusCodes.OK, data: table1 }
-  }
-  if (url.endsWith(`/get/table/${table1.name}/data`)) {
-    return { status: httpStatusCodes.OK, data: [] }
-  }
-})
+const mockProjectName = "some-project"
 
+export function renderDataPanel() {
+  return render(
+    <MemoryRouter>
+      <Switch>
+        <Route exact path="/">
+          <Redirect to={`/project/${mockProjectName}/data`} />
+        </Route>
+        <Route path="/project/:name/data">
+          <DataPanel token="123" projectName={mockProjectName} />
+        </Route>
+      </Switch>
+    </MemoryRouter>
+  )
+}
+
+const getreq = mockedAxios.get.mockImplementation(constructGet())
 const putreq = mockedAxios.put.mockImplementation(async (url, data) => ({
   status: httpStatusCodes.NO_CONTENT,
 }))
-
 const deletereq = mockedAxios.delete.mockImplementation(async (url) => ({
   status: httpStatusCodes.NO_CONTENT,
 }))
+
+afterEach(() => {
+  mockedAxios.get.mockImplementation(constructGet())
+  mockedAxios.put.mockImplementation(async () => ({
+    status: httpStatusCodes.NO_CONTENT,
+  }))
+  mockedAxios.delete.mockImplementation(async () => ({
+    status: httpStatusCodes.NO_CONTENT,
+  }))
+})
 
 function selectFieldByLabel(region: HTMLElement, fieldName: string) {
   const field = within(region)
@@ -60,22 +79,93 @@ function fillNewRow(newRow: HTMLElement, data: TableRow) {
   })
 }
 
-test("data panel functionality", async () => {
-  const dataPanel = renderProjectPage("123", "data")
+test("links", async () => {
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
-  // The first table should be auto-selected
-  const firstLink = dataPanel.getByText(toProperCase(table1.name))
-  expect(firstLink).toBeInTheDocument()
-  expect(firstLink.parentElement).toHaveClass("active")
-  // Check headers
-  const headers = dataPanel.getByTestId("header-row")
-  table1.cols.map((c) =>
-    expect(within(headers).getByText(c.name)).toBeInTheDocument()
+  const allLinksText = (
+    await defaultGet.getAllTableNames()
+  ).data.map((n: string) => toProperCase(n))
+  allLinksText.map((l: string) =>
+    expect(dataPanel.getByText(l)).toBeInTheDocument()
   )
-  // Check that the new row is displayed
+})
+
+test("new row form - open/close", async () => {
+  const dataPanel = renderDataPanel()
+  await waitForDomChange()
+  const headers = dataPanel.getByTestId("header-row")
+  const inputRow = dataPanel.getByTestId("input-row")
+  const newRowToggle = within(headers).getByTestId("new-row-toggle")
+  // Initially not visible because some fake data is fetched by default
+  expect(inputRow).toHaveClass("nodisplay")
+  // Start clicking on the show/hide button
+  fireEvent.click(newRowToggle)
+  expect(inputRow).not.toHaveClass("nodisplay")
+  fireEvent.click(newRowToggle)
+  expect(inputRow).toHaveClass("nodisplay")
+})
+
+test("refresh", async () => {
+  const dataPanel = renderDataPanel()
+  await waitForDomChange()
+  const refreshButton = dataPanel.getByTestId("refresh-table-button")
+  fireEvent.click(refreshButton)
+  await waitForDomChange()
+  const firstTable = (await defaultGet.getAllTableNames()).data[0]
+  expect(getreq).toHaveBeenLastCalledWith(
+    `${API_ROOT}/project/${mockProjectName}/get/table/${firstTable}/data`,
+    expect.anything()
+  )
+  expect(getreq).toHaveBeenNthCalledWith(
+    getreq.mock.calls.length - 1,
+    `${API_ROOT}/project/${mockProjectName}/get/table/${firstTable}/meta`,
+    expect.anything()
+  )
+})
+
+test("delete", async () => {
+  const dataPanel = renderDataPanel()
+  await waitForDomChange()
+  const deleteButton = dataPanel.getByTestId("delete-all-table-data-button")
+  fireEvent.click(deleteButton)
+  await waitForDomChange()
+  const firstTable = (await defaultGet.getAllTableNames()).data[0]
+  expect(deletereq).toHaveBeenLastCalledWith(
+    `${API_ROOT}/project/${mockProjectName}/remove/${firstTable}/all`,
+    expect.anything()
+  )
+})
+
+test("new row form - no data", async () => {
+  // Should open automatically when page loads and there is no data
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getTableData: async () => ({ status: httpStatusCodes.OK, data: [] }),
+    })
+  )
+  // Render
+  const dataPanel = renderDataPanel()
+  await waitForDomChange()
   const inputRow = dataPanel.getByTestId("input-row")
   expect(inputRow).not.toHaveClass("nodisplay")
-  // Add a row
+
+  // Now hide
+  const headers = dataPanel.getByTestId("header-row")
+  const newRowToggle = within(headers).getByTestId("new-row-toggle")
+  fireEvent.click(newRowToggle)
+  expect(inputRow).toHaveClass("nodisplay")
+
+  // Now refresh data - should show up automatically
+  const refreshButton = dataPanel.getByTestId("refresh-table-button")
+  fireEvent.click(refreshButton)
+  await waitForDomChange()
+  expect(inputRow).not.toHaveClass("nodisplay")
+})
+
+test("insert row", async () => {
+  const dataPanel = renderDataPanel()
+  await waitForDomChange()
+  const inputRow = dataPanel.getByTestId("input-row")
   mockedAxios.get.mockResolvedValueOnce({
     status: httpStatusCodes.OK,
     data: [table1data[0]],
@@ -88,89 +178,98 @@ test("data panel functionality", async () => {
     decodeUserTable(table1, [table1data[0]]),
     expect.anything()
   )
-  // Check data
-  Object.entries(table1data[0]).map(([key, val]) => {
-    expect(dataPanel.getByText(val.toString())).toBeInTheDocument()
-  })
-  // Close, open and close the new row form
-  fireEvent.click(within(headers).getByTestId("new-row-toggle"))
-  expect(inputRow).toHaveClass("nodisplay")
-  fireEvent.click(within(headers).getByTestId("new-row-toggle"))
-  expect(inputRow).not.toHaveClass("nodisplay")
-  fireEvent.click(within(headers).getByTestId("new-row-toggle"))
-  expect(inputRow).toHaveClass("nodisplay")
-  // Delete all table data
-  fireEvent.click(within(headers).getByTestId("delete-all-table-data-button"))
-  await waitForDomChange()
-  expect(deletereq).toHaveBeenCalledWith(
-    `${API_ROOT}/project/some-project/remove/${table1.name}/all`,
-    expect.anything()
-  )
-  // Check that the new row form is opened automatically
-  expect(inputRow).not.toHaveClass("nodisplay")
 })
 
 test("fail to get a list of tables", async () => {
-  mockedAxios.get.mockRejectedValueOnce(Error("get tables error"))
-  const dataPanel = renderProjectPage("123", "data")
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getAllTableNames: async () => {
+        throw Error("get tables error")
+      },
+    })
+  )
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
   expect(dataPanel.getByText("get tables error")).toBeInTheDocument()
 })
 
 test("fail to fetch data and meta", async () => {
-  mockedAxios.get
-    // Table names
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: ["table"] })
-    // Meta/data, order is unknown
-    .mockRejectedValueOnce(Error("fetch error"))
-    .mockRejectedValueOnce(Error("fetch error"))
-  const dataPanel = renderProjectPage("123", "data")
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getTableData: async () => {
+        throw Error("fetch error")
+      },
+      getTableMeta: async () => {
+        throw Error("fetch error")
+      },
+    })
+  )
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
   expect(dataPanel.getByText("fetch errorfetch error")).toBeInTheDocument()
 })
 
 test("fail to fetch data/meta after a successful fetch", async () => {
-  const dataPanel = renderProjectPage("123", "data")
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
-  mockedAxios.get
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: ["table"] })
-    .mockRejectedValueOnce(Error("fetch error"))
-    .mockRejectedValueOnce(Error("fetch error"))
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getTableData: async () => {
+        throw Error("fetch error")
+      },
+      getTableMeta: async () => {
+        throw Error("fetch error")
+      },
+    })
+  )
   fireEvent.click(dataPanel.getByTestId("refresh-table-button"))
   await waitForDomChange()
   expect(dataPanel.getByText("fetch errorfetch error")).toBeInTheDocument()
 })
 
 test("fail to submit", async () => {
-  const dataPanel = renderProjectPage("123", "data")
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
-  mockedAxios.put.mockRejectedValueOnce(Error("submit error"))
+  mockedAxios.put.mockImplementation(
+    constructPut({
+      insertData: async () => {
+        throw Error("submit error")
+      },
+    })
+  )
   fireEvent.click(dataPanel.getByTestId("submit-row-button"))
   await waitForDomChange()
   expect(dataPanel.getByText("submit error")).toBeInTheDocument()
 })
 
 test("fail to delete", async () => {
-  const dataPanel = renderProjectPage("123", "data")
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
-  mockedAxios.delete.mockRejectedValueOnce(Error("delete error"))
+  mockedAxios.delete.mockImplementation(
+    constructDelete({
+      removeAllTableData: async () => {
+        throw Error("delete error")
+      },
+    })
+  )
   fireEvent.click(dataPanel.getByTestId("delete-all-table-data-button"))
   await waitForDomChange()
   expect(dataPanel.getByText("delete error")).toBeInTheDocument()
 })
 
 test("no tables", async () => {
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: [],
-  })
-  const dataPanel = renderProjectPage("123", "data")
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getAllTableNames: async () => ({ status: httpStatusCodes.OK, data: [] }),
+    })
+  )
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
   expect(dataPanel.getByText("No tables found")).toBeInTheDocument()
 })
 
 test("fill a new field entry and then remove what's been filled", async () => {
-  const dataPanel = renderProjectPage("123", "data")
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
   const inputRow = dataPanel.getByTestId("input-row")
   fillNewRow(inputRow, table1data[0])
@@ -190,7 +289,7 @@ test("fill a new field entry and then remove what's been filled", async () => {
 })
 
 test("attempt to put a string into a number field", async () => {
-  const dataPanel = renderProjectPage("123", "data")
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
   const inputRow = dataPanel.getByTestId("input-row")
   fillNewRow(inputRow, table1data[0])
@@ -200,17 +299,16 @@ test("attempt to put a string into a number field", async () => {
 })
 
 test("meta/data mismatch", async () => {
-  mockedAxios.get
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: ["table1"] })
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: table1,
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getTableMeta: async () => ({ status: httpStatusCodes.OK, data: table1 }),
+      getTableData: async () => ({
+        status: httpStatusCodes.OK,
+        data: table2data,
+      }),
     })
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: table2data,
-    })
-  const dataPanel = renderProjectPage("123", "data")
+  )
+  const dataPanel = renderDataPanel()
   await waitForDomChange()
   expect(dataPanel.queryAllByTestId("data-row")).toBeEmpty()
 })

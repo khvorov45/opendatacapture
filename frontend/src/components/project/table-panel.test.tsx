@@ -1,13 +1,40 @@
 /* istanbul ignore file */
 import httpStatusCodes from "http-status-codes"
-import { fireEvent, waitForDomChange, within } from "@testing-library/react"
+import {
+  fireEvent,
+  render,
+  waitForDomChange,
+  within,
+} from "@testing-library/react"
 import axios from "axios"
 import { TableMeta, ColMeta } from "../../lib/api/project"
 import { API_ROOT } from "../../lib/config"
-import { renderProjectPage, table1, table2, table3 } from "../../tests/util"
+import { table1, table2, table3 } from "../../tests/data"
+import React from "react"
+import TablePanel from "./table-panel"
+import {
+  constructDelete,
+  constructGet,
+  constructPut,
+  defaultGet,
+} from "../../tests/api"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
+const getreq = mockedAxios.get.mockImplementation(constructGet())
+const putreq = mockedAxios.put.mockImplementation(constructPut())
+const deletereq = mockedAxios.delete.mockImplementation(constructDelete())
+afterEach(() => {
+  mockedAxios.get.mockImplementation(constructGet())
+  mockedAxios.put.mockImplementation(constructPut())
+  mockedAxios.delete.mockImplementation(constructDelete())
+})
+
+const testProjectName = "some-project"
+
+export function renderTablePanel() {
+  return render(<TablePanel token="123" projectName={testProjectName} />)
+}
 
 function performSelectAction(selectElement: HTMLElement, value: string) {
   fireEvent.mouseDown(within(selectElement).getByRole("button"))
@@ -102,140 +129,98 @@ function expectTableFormToBeEmpty(form: HTMLElement) {
   expect(within(form).getByTestId("foreign-key")).not.toBeChecked()
 }
 
-test("table panel functionality - no initial tables", async () => {
-  // List of tables
-  mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: [] })
-
-  let { getByTestId, getByText, queryByTestId } = renderProjectPage()
-  await waitForDomChange()
-
-  // Sidebar links
-  expect(getByText("Tables")).toBeInTheDocument()
-
-  // Open and close the new table form
-  const newTableForm = getByTestId("new-table-form")
-  expect(newTableForm).not.toHaveClass("nodisplay")
-  fireEvent.click(getByTestId("create-table-button"))
-  expect(newTableForm).toHaveClass("nodisplay")
-  fireEvent.click(getByTestId("create-table-button"))
-  expect(newTableForm).not.toHaveClass("nodisplay")
-
-  // Submit button should be disabled
-  const tableSubmit = getByTestId("submit-table-button")
-  expect(tableSubmit).toBeDisabled()
-
-  // Create a table
-  fillTableForm(newTableForm, table1)
-
-  // Submit button should now be enabled
-  expect(tableSubmit).not.toBeDisabled()
-
-  // Create table response
-  let createTables = mockedAxios.put.mockImplementation(
-    async (url, data, config) => {
-      return { status: httpStatusCodes.NO_CONTENT }
-    }
+test("new table form - no initial tables", async () => {
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getAllMeta: async () => ({ status: httpStatusCodes.OK, data: [] }),
+    })
   )
+  const tablePanel = renderTablePanel()
+  await waitForDomChange()
+  const newTableForm = tablePanel.getByTestId("new-table-form")
+  expect(newTableForm).not.toHaveClass("nodisplay")
+})
 
-  // Refresh tables response
-  mockedAxios.get.mockResolvedValue({
-    status: httpStatusCodes.OK,
-    data: [table1],
-  })
+test("new table form - some initial tables", async () => {
+  const tablePanel = renderTablePanel()
+  await waitForDomChange()
+  const newTableForm = tablePanel.getByTestId("new-table-form")
+  expect(newTableForm).toHaveClass("nodisplay")
+})
 
-  // There should be no table cards
-  expect(queryByTestId(`table-card-${table1.name}`)).not.toBeInTheDocument()
+test("new table form - open/close", async () => {
+  const tablePanel = renderTablePanel()
+  await waitForDomChange()
+  const newTableForm = tablePanel.getByTestId("new-table-form")
+  expect(newTableForm).toHaveClass("nodisplay")
+  const createTableButton = tablePanel.getByTestId("create-table-button")
+  fireEvent.click(createTableButton)
+  expect(newTableForm).not.toHaveClass("nodisplay")
+  fireEvent.click(createTableButton)
+  expect(newTableForm).toHaveClass("nodisplay")
+})
 
-  // Submit table
+test("new table form - fill and submit", async () => {
+  const tablePanel = renderTablePanel()
+  await waitForDomChange()
+  const newTableForm = tablePanel.getByTestId("new-table-form")
+  fillTableForm(newTableForm, table1)
+  const tableSubmit = tablePanel.getByTestId("submit-table-button")
   fireEvent.click(tableSubmit)
   await waitForDomChange()
-  expect(createTables).toHaveBeenCalledWith(
+  expect(putreq).toHaveBeenCalledWith(
     expect.anything(),
     table1,
     expect.anything()
   )
-
-  // Now there should be a table card
-  expect(getByTestId(`table-card-${table1.name}`)).toBeInTheDocument()
-
-  // The table form should still be visible
-  expect(newTableForm).not.toHaveClass("nodisplay")
-  // And empty
-  expectTableFormToBeEmpty(newTableForm)
-
-  // Create another table
-  fillTableForm(newTableForm, table2)
-
-  // Refresh tables response
-  mockedAxios.get.mockResolvedValue({
-    status: httpStatusCodes.OK,
-    data: [table1, table2],
-  })
-
-  // Need to get again because it gets replaced with a spinner and then
-  // re-rendered
-  fireEvent.click(getByTestId("submit-table-button"))
-  await waitForDomChange()
-  expect(createTables).toHaveBeenCalledWith(
-    expect.anything(),
-    table2,
-    expect.anything()
-  )
-  expectTableFormToBeEmpty(newTableForm)
-
-  // There should be another table card
-  expect(getByTestId(`table-card-${table1.name}`)).toBeInTheDocument()
-  expect(getByTestId(`table-card-${table2.name}`)).toBeInTheDocument()
-
-  // Delete a table
-  const deleteTable = mockedAxios.delete.mockImplementation(
-    async (url, config) => {
-      return { status: httpStatusCodes.NO_CONTENT }
-    }
-  )
-  mockedAxios.get.mockResolvedValue({
-    status: httpStatusCodes.OK,
-    data: [table1],
-  })
-  fireEvent.click(
-    within(getByTestId(`table-card-${table2.name}`)).getByTestId(
-      "delete-table-button"
-    )
-  )
-  await waitForDomChange()
-  expect(deleteTable).toHaveBeenCalledWith(
-    `${API_ROOT}/project/some-project/remove/table/${table2.name}`,
-    expect.anything()
-  )
-  expect(queryByTestId(`table-card-${table2.name}`)).not.toBeInTheDocument()
-  expect(getByTestId(`table-card-${table1.name}`)).toBeInTheDocument()
-}, 20000)
-
-test("table panel - some initial tables", async () => {
-  // List of tables
-  mockedAxios.get.mockResolvedValue({
-    status: httpStatusCodes.OK,
-    data: [table1, table2],
-  })
-
-  let { getByTestId } = renderProjectPage()
-  await waitForDomChange()
-
-  // Table form should be closed
-  expect(getByTestId("new-table-form")).toHaveClass("nodisplay")
-  // Table cards should be present
-  expect(getByTestId(`table-card-${table1.name}`)).toBeInTheDocument()
-  expect(getByTestId(`table-card-${table2.name}`)).toBeInTheDocument()
 })
 
-test("table panel - FK behavior", async () => {
-  // List of tables
-  mockedAxios.get.mockResolvedValue({
-    status: httpStatusCodes.OK,
-    data: [table1, table2, table3],
-  })
+test("new table form - viability checks", async () => {
+  let tablePanel = renderTablePanel()
+  await waitForDomChange()
 
-  let { getByTestId, getAllByRole } = renderProjectPage()
+  const tableSubmit = tablePanel.getByTestId("submit-table-button")
+
+  // Should be disabled since the form is empty
+  expect(tableSubmit).toBeDisabled()
+
+  // Enter table name
+  fireEvent.change(tablePanel.getByTestId("new-table-name-field"), {
+    target: { value: table1.name },
+  })
+  // Should be disabled since the one column doesn't have a name nor a type
+  expect(tableSubmit).toBeDisabled()
+
+  // Enter column name
+  fireEvent.change(
+    within(tablePanel.getByTestId("new-column-entry-0")).getByTestId(
+      "new-column-name-field"
+    ),
+    {
+      target: { value: table1.cols[0].name },
+    }
+  )
+  // Should be disabled since the one column doesn't have a type
+  expect(tableSubmit).toBeDisabled()
+
+  // Enter type
+  performSelectAction(
+    within(tablePanel.getByTestId("new-column-entry-0")).getByTestId(
+      "new-column-type-select"
+    ),
+    table1.cols[0].postgres_type
+  )
+  // Should not be disabled
+  expect(tableSubmit).not.toBeDisabled()
+
+  // Add a column
+  fireEvent.click(tablePanel.getByTestId("add-column"))
+  // Should be disabled since the second column is empty
+  expect(tableSubmit).toBeDisabled()
+})
+
+test("new table form - FK behavior", async () => {
+  let { getByTestId, getAllByRole } = renderTablePanel()
   await waitForDomChange()
 
   fireEvent.click(getByTestId("create-table-button"))
@@ -278,70 +263,19 @@ test("table panel - FK behavior", async () => {
   expect(foreignTable).toHaveTextContent(table1.name)
   // Now remove the foreign key constraint
   performCheckboxClick(within(newTableForm).getByTestId("foreign-key"))
-  // Check that it was actually removed
-  let createTables = mockedAxios.put.mockImplementation(
-    async (url, data, config) => {
-      return { status: httpStatusCodes.NO_CONTENT }
-    }
-  )
-  expect(getByTestId("submit-table-button")).not.toBeDisabled()
+
+  // See that the expected table would be created
   fireEvent.click(getByTestId("submit-table-button"))
   await waitForDomChange()
-  expect(createTables).toHaveBeenCalledWith(
+  expect(putreq).toHaveBeenCalledWith(
     expect.anything(),
     newTable,
     expect.anything()
   )
 })
 
-test("table panel - project refresh error", async () => {
-  mockedAxios.get
-    .mockRejectedValueOnce(Error("some refresh error"))
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: [],
-    })
-  let { getByTestId, getByText } = renderProjectPage()
-  await waitForDomChange()
-  expect(getByText("some refresh error")).toBeInTheDocument()
-  fireEvent.click(getByTestId("refresh-tables-button"))
-  await waitForDomChange()
-  expect(getByTestId("refresh-tables-error")).toHaveTextContent("")
-})
-
-test("table panel - table delete error", async () => {
-  mockedAxios.get
-    // On load
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: [table1],
-    })
-    // On successful delete
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: [],
-    })
-  mockedAxios.delete
-    .mockRejectedValueOnce(Error("some delete error"))
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.NO_CONTENT,
-    })
-  let { getByTestId, getByText, queryByTestId } = renderProjectPage()
-  await waitForDomChange()
-  let table1card = getByTestId(`table-card-${table1.name}`)
-  fireEvent.click(within(table1card).getByTestId("delete-table-button"))
-  await waitForDomChange()
-  expect(getByText("some delete error")).toBeInTheDocument()
-  fireEvent.click(within(table1card).getByTestId("delete-table-button"))
-  await waitForDomChange()
-  expect(queryByTestId(`table-card-${table1.name}`)).not.toBeInTheDocument()
-})
-
-test("table panel - column removal", async () => {
-  // List of tables
-  mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: [] })
-
-  let { getByTestId } = renderProjectPage()
+test("new table form - column removal", async () => {
+  let { getByTestId } = renderTablePanel()
   await waitForDomChange()
 
   const newTableForm = getByTestId("new-table-form")
@@ -406,86 +340,116 @@ test("table panel - column removal", async () => {
   ).toHaveValue("")
 })
 
-test("table viability checks", async () => {
-  // List of tables
-  mockedAxios.get.mockResolvedValue({ status: httpStatusCodes.OK, data: [] })
-
-  let { getByTestId } = renderProjectPage()
+test("refresh button", async () => {
+  const tablePanel = renderTablePanel()
   await waitForDomChange()
-
-  // Should be disabled since the form is empty
-  expect(getByTestId("submit-table-button")).toBeDisabled()
-
-  // Enter table name
-  fireEvent.change(getByTestId("new-table-name-field"), {
-    target: { value: table1.name },
-  })
-  // Should be disabled since the one column doesn't have a name nor a type
-  expect(getByTestId("submit-table-button")).toBeDisabled()
-
-  // Enter column name
-  fireEvent.change(
-    within(getByTestId("new-column-entry-0")).getByTestId(
-      "new-column-name-field"
-    ),
-    {
-      target: { value: table1.cols[0].name },
-    }
+  fireEvent.click(tablePanel.getByTestId("refresh-tables-button"))
+  await waitForDomChange()
+  expect(getreq).toHaveBeenLastCalledWith(
+    `${API_ROOT}/project/${testProjectName}/get/meta`,
+    expect.anything()
   )
-  // Should be disabled since the one column doesn't have a type
-  expect(getByTestId("submit-table-button")).toBeDisabled()
-
-  // Enter type
-  performSelectAction(
-    within(getByTestId("new-column-entry-0")).getByTestId(
-      "new-column-type-select"
-    ),
-    table1.cols[0].postgres_type
-  )
-  // Should not be disabled
-  expect(getByTestId("submit-table-button")).not.toBeDisabled()
-
-  // Add a column
-  fireEvent.click(getByTestId("add-column"))
-  // Should be disabled since the second column is empty
-  expect(getByTestId("submit-table-button")).toBeDisabled()
 })
 
-test("submit table error", async () => {
-  mockedAxios.get
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: [] })
-    .mockResolvedValueOnce({ status: httpStatusCodes.OK, data: [table1] })
-  mockedAxios.put
-    .mockRejectedValueOnce(Error("some table submit error"))
-    .mockResolvedValueOnce({ status: httpStatusCodes.NO_CONTENT })
-  let { getByTestId } = renderProjectPage()
+test("table cards presence", async () => {
+  const tablePanel = renderTablePanel()
+  await waitForDomChange()
+  const tableNames = (await defaultGet.getAllTableNames()).data
+  tableNames.map((t: string) => {
+    expect(tablePanel.getByTestId(`table-card-${t}`)).toBeInTheDocument()
+  })
+})
+
+test("table card - remove table", async () => {
+  const tablePanel = renderTablePanel()
+  await waitForDomChange()
+  const table1Name = (await defaultGet.getAllTableNames()).data[0]
+  const table1Card = tablePanel.getByTestId(`table-card-${table1Name}`)
+  const deleteButton = within(table1Card).getByTestId("delete-table-button")
+  fireEvent.click(deleteButton)
+  await waitForDomChange()
+  expect(deletereq).toHaveBeenLastCalledWith(
+    `${API_ROOT}/project/${testProjectName}/remove/table/${table1Name}`,
+    expect.anything()
+  )
+})
+
+test("table card - set editable", async () => {
+  const firstTableName = (await defaultGet.getAllTableNames()).data[0]
+  let { getByTestId } = renderTablePanel()
+  await waitForDomChange()
+  // Table card should be disabled
+  const card = getByTestId(`table-card-${firstTableName}`)
+  const tableNameField = within(card).getByTestId("table-card-name-field")
+  expect(tableNameField).toBeDisabled()
+  // Enable editing
+  fireEvent.click(within(card).getByTestId("enable-edit"))
+  expect(tableNameField).not.toBeDisabled()
+  // Disable editing
+  fireEvent.click(within(card).getByTestId("enable-edit"))
+  expect(tableNameField).toBeDisabled()
+})
+
+test("error - project refresh", async () => {
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      getAllMeta: async () => {
+        throw Error("some refresh error")
+      },
+    })
+  )
+  let { getByTestId, getByText } = renderTablePanel()
+  await waitForDomChange()
+  expect(getByText("some refresh error")).toBeInTheDocument()
+  // Error should go away on successful refresh
+  mockedAxios.get.mockImplementation(constructGet())
+  fireEvent.click(getByTestId("refresh-tables-button"))
+  await waitForDomChange()
+  expect(getByTestId("refresh-tables-error")).toHaveTextContent("")
+})
+
+test("error - table delete", async () => {
+  mockedAxios.delete.mockImplementation(
+    constructDelete({
+      removeTable: async () => {
+        throw Error("some delete error")
+      },
+    })
+  )
+  const firstTableName = (await defaultGet.getAllTableNames()).data[0]
+  let { getByTestId, getByText } = renderTablePanel()
+  await waitForDomChange()
+  let table1card = getByTestId(`table-card-${firstTableName}`)
+  fireEvent.click(within(table1card).getByTestId("delete-table-button"))
+  await waitForDomChange()
+  expect(getByText("some delete error")).toBeInTheDocument()
+  // Error should go away on successful delete
+  mockedAxios.delete.mockImplementation(constructDelete())
+  fireEvent.click(within(table1card).getByTestId("delete-table-button"))
+  await waitForDomChange()
+  expect(
+    within(table1card).getByTestId("delete-table-error")
+  ).toHaveTextContent("")
+})
+
+test("error - submit table", async () => {
+  mockedAxios.put.mockImplementation(
+    constructPut({
+      createTable: async () => {
+        throw Error("some table submit error")
+      },
+    })
+  )
+  let { getByTestId, getByText } = renderTablePanel()
   await waitForDomChange()
   expect(getByTestId("table-submit-error")).toHaveTextContent("")
   fillTableForm(getByTestId("new-table-form"), table1)
   fireEvent.click(getByTestId("submit-table-button"))
   await waitForDomChange()
-  expect(getByTestId("table-submit-error")).toHaveTextContent(
-    "some table submit error"
-  )
+  expect(getByText("some table submit error")).toBeInTheDocument()
+  // Should go away on successful submit
+  mockedAxios.put.mockImplementation(constructPut())
   fireEvent.click(getByTestId("submit-table-button"))
   await waitForDomChange()
   expect(getByTestId("table-submit-error")).toHaveTextContent("")
-})
-
-test("set table card to editable", async () => {
-  mockedAxios.get.mockResolvedValue({
-    status: httpStatusCodes.OK,
-    data: [table1],
-  })
-  let { getByTestId } = renderProjectPage()
-  await waitForDomChange()
-  // Table card should be disabled
-  const card = getByTestId(`table-card-${table1.name}`)
-  expect(within(card).getByTestId("table-card-name-field")).toBeDisabled()
-  // Enable editing
-  fireEvent.click(within(card).getByTestId("enable-edit"))
-  expect(within(card).getByTestId("table-card-name-field")).not.toBeDisabled()
-  // Disable editing
-  fireEvent.click(within(card).getByTestId("enable-edit"))
-  expect(within(card).getByTestId("table-card-name-field")).toBeDisabled()
 })

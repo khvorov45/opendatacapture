@@ -27,14 +27,14 @@ export const UserV = t.type({
 })
 export type User = t.TypeOf<typeof UserV>
 
-const TokenV = t.type({
+export const TokenV = t.type({
   user: t.number,
   token: t.string,
   created: DateFromISOString,
 })
 export type Token = t.TypeOf<typeof TokenV>
 
-export async function tokenFetcher(cred: EmailPassword): Promise<Token> {
+export async function fetchToken(cred: EmailPassword): Promise<Token> {
   const res = await axios.post(`${API_ROOT}/auth/session-token`, cred, {
     validateStatus: (s: number) =>
       [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),
@@ -51,7 +51,7 @@ export async function tokenFetcher(cred: EmailPassword): Promise<Token> {
   return await decode(TokenV, res.data)
 }
 
-export async function tokenValidator(tok: string): Promise<User> {
+export async function validateToken(tok: string): Promise<User> {
   const res = await axios.get(`${API_ROOT}/get/user/by/token/${tok}`, {
     validateStatus: (s) =>
       [httpStatusCodes.OK, httpStatusCodes.UNAUTHORIZED].includes(s),
