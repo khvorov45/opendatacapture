@@ -194,15 +194,6 @@ test("fail to remove token", async () => {
 })
 
 test("admin dashboard access", async () => {
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: {
-      id: 1,
-      email: "test@example.com",
-      access: "Admin",
-    },
-  })
-  localStorage.setItem("last-refresh", new Date().toISOString())
   const app = renderApp("123")
   await wait(() => {
     expect(app.getByTestId("homepage")).toBeInTheDocument()
