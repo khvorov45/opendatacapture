@@ -142,6 +142,19 @@ test("token refresh error", async () => {
   consoleSpy.mockRestore()
 })
 
+test("error - token validation", async () => {
+  mockedAxios.get.mockImplementation(
+    constructGet({
+      validateToken: async () => {
+        throw Error("some validation error")
+      },
+    })
+  )
+  const app = renderApp("123")
+  await waitForDomChange()
+  expect(app.getByTestId("login-form")).toBeInTheDocument()
+})
+
 test("logout", async () => {
   localStorage.setItem("last-refresh", new Date().toISOString())
   const app = renderApp("123")
