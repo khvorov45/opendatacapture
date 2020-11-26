@@ -11,15 +11,25 @@ import {
 import Login from "./login"
 import { EmailPassword, LoginFailure, Token } from "../lib/api/auth"
 import { API_ROOT } from "../lib/config"
+import {
+  constructGet,
+  constructPut,
+  constructDelete,
+  constructPost,
+} from "../tests/api"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
-const post = mockedAxios.post.mockImplementation(async () => {
-  return {
-    status: httpStatusCodes.OK,
-    data: { user: 1, token: "123", created: new Date().toISOString() },
-  }
+const getreq = mockedAxios.get.mockImplementation(constructGet())
+const putreq = mockedAxios.put.mockImplementation(constructPut())
+const deletereq = mockedAxios.delete.mockImplementation(constructDelete())
+const postreq = mockedAxios.post.mockImplementation(constructPost())
+afterEach(() => {
+  mockedAxios.get.mockImplementation(constructGet())
+  mockedAxios.put.mockImplementation(constructPut())
+  mockedAxios.delete.mockImplementation(constructDelete())
+  mockedAxios.post.mockImplementation(constructPost())
 })
 
 function renderLogin(updateToken?: (t: Token) => void) {
@@ -43,7 +53,7 @@ test("login - basic functionality", async () => {
   expect(passwordInput.value).toBe(cred.password)
   fireEvent.click(submitButton)
   await wait(() => {
-    expect(post).toHaveBeenCalledWith(
+    expect(postreq).toHaveBeenCalledWith(
       `${API_ROOT}/auth/session-token`,
       cred,
       expect.anything()
