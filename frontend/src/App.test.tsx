@@ -61,7 +61,6 @@ test("theme switching", () => {
 })
 
 test("route to homepage from login", async () => {
-  localStorage.removeItem("token")
   // Attempt to render the homepage
   const { getByTestId } = renderApp()
   // Will only work if successfully redirected to login
