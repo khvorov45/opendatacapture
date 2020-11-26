@@ -161,23 +161,21 @@ test("logout", async () => {
 
 test("fail to remove token", async () => {
   const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {})
-  mockedAxios.delete.mockRejectedValue(Error("some delete token error"))
-  // Token verification
-  mockedAxios.get.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: {
-      id: 1,
-      email: "test@example.com",
-      password_hash: "123",
-      access: "Admin",
-    },
-  })
+  mockedAxios.delete.mockImplementation(
+    constructDelete({
+      removeToken: async () => {
+        throw Error("some delete token error")
+      },
+    })
+  )
   localStorage.setItem("last-refresh", new Date().toISOString())
   const app = renderApp("123")
   await wait(() => {
     expect(app.getByTestId("homepage")).toBeInTheDocument()
   })
   fireEvent.click(app.getByTestId("logout-button"))
+  // We still logout locally even if the remove token api call fails
+  // The token then remains valid but we no longer know what it is
   await wait(() => {
     expect(consoleSpy).toHaveBeenLastCalledWith("some delete token error")
   })
@@ -185,11 +183,13 @@ test("fail to remove token", async () => {
   // shouldn't happen
   expect(consoleSpy).toHaveBeenCalledTimes(1)
   localStorage.setItem("last-refresh", new Date().toISOString())
+  const deleteCalls = deletereq.mock.calls.length
   fireEvent.click(app.getByTestId("logout-button"))
   await wait(() => {
     expect(localStorage.getItem("last-refresh")).toBeNull()
   })
   expect(consoleSpy).toHaveBeenCalledTimes(1)
+  expect(deletereq).toHaveBeenCalledTimes(deleteCalls)
   consoleSpy.mockRestore()
 })
 
