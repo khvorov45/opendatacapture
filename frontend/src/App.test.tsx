@@ -13,9 +13,27 @@ import httpStatusCodes from "http-status-codes"
 import axios from "axios"
 import { Access, User } from "./lib/api/auth"
 import { API_ROOT } from "./lib/config"
+import {
+  constructDelete,
+  constructGet,
+  constructPost,
+  constructPut,
+  defaultPost,
+} from "./tests/api"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
+
+const postreq = mockedAxios.post.mockImplementation(constructPost())
+const getreq = mockedAxios.get.mockImplementation(constructGet())
+const putreq = mockedAxios.put.mockImplementation(constructPut())
+const deletereq = mockedAxios.delete.mockImplementation(constructDelete())
+afterEach(() => {
+  mockedAxios.get.mockImplementation(constructGet())
+  mockedAxios.put.mockImplementation(constructPut())
+  mockedAxios.delete.mockImplementation(constructDelete())
+  mockedAxios.post.mockImplementation(constructPost())
+})
 
 function renderApp(token?: string) {
   token
@@ -44,33 +62,14 @@ test("theme switching", () => {
 
 test("route to homepage from login", async () => {
   localStorage.removeItem("token")
-  // Login response
-  mockedAxios.post.mockResolvedValueOnce({
-    status: httpStatusCodes.OK,
-    data: { user: 1, token: "123", created: new Date().toISOString() },
-  })
-  let user: User = {
-    id: 1,
-    email: "test@example.com",
-    access: Access.Admin,
-  }
-  mockedAxios.get
-    // Token validation response
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: user,
-    })
-    // Project list response
-    .mockResolvedValueOnce({
-      status: httpStatusCodes.OK,
-      data: [],
-    })
   // Attempt to render the homepage
   const { getByTestId } = renderApp()
   // Will only work if successfully redirected to login
   fireEvent.click(getByTestId("login-submit"))
   await waitForDomChange()
-  expect(localStorage.getItem("token")).toBe("123")
+  expect(localStorage.getItem("token")).toBe(
+    (await defaultPost.fetchToken()).data.token
+  )
   // Check that successful login redirects to homepage
   expect(getByTestId("homepage")).toBeInTheDocument()
 })
