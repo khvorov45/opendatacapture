@@ -169,7 +169,6 @@ test("fail to remove token", async () => {
       },
     })
   )
-  localStorage.setItem("last-refresh", new Date().toISOString())
   const app = renderApp("123")
   await wait(() => {
     expect(app.getByTestId("homepage")).toBeInTheDocument()
