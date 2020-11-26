@@ -1,10 +1,10 @@
 // Test whatever can't be tested in fullstack
 /* istanbul ignore file */
 import httpStatusCodes from "http-status-codes"
-import { fetchToken } from "./auth"
-
 import axios from "axios"
+import { fetchToken } from "./auth"
 import { constructPost } from "../../tests/api"
+
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
