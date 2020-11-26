@@ -83,31 +83,46 @@ test("login errors", async () => {
   verifyFieldError(emailField, "")
   verifyFieldError(passwordField, "")
 
-  mockedAxios.post
-    .mockRejectedValueOnce(Error(LoginFailure.EmailNotFound))
-    .mockRejectedValueOnce(Error(LoginFailure.WrongPassword))
-    .mockRejectedValueOnce(Error("Network Error"))
-
+  // Wrong email
+  mockedAxios.post.mockImplementation(
+    constructPost({
+      fetchToken: async () => ({
+        status: httpStatusCodes.UNAUTHORIZED,
+        data: "NoSuchUserEmail",
+      }),
+    })
+  )
   fireEvent.click(submitButton)
   await waitForDomChange()
-
-  // Wrong email
   expect(submitButtonMsg.innerHTML).toBe("")
   verifyFieldError(emailField, "Email not found")
   verifyFieldError(passwordField, "")
 
+  // Wrong password
+  mockedAxios.post.mockImplementation(
+    constructPost({
+      fetchToken: async () => ({
+        status: httpStatusCodes.UNAUTHORIZED,
+        data: "WrongPassword",
+      }),
+    })
+  )
   fireEvent.click(submitButton)
   await waitForDomChange()
-
-  // Wrong password
   expect(submitButtonMsg.innerHTML).toBe("")
   verifyFieldError(emailField, "")
   verifyFieldError(passwordField, "Wrong password")
 
+  // Unhandled axios error
+  mockedAxios.post.mockImplementation(
+    constructPost({
+      fetchToken: async () => {
+        throw Error("Network Error")
+      },
+    })
+  )
   fireEvent.click(submitButton)
   await waitForDomChange()
-
-  // Network error
   expect(submitButtonMsg.innerHTML).toBe("Network Error")
   verifyFieldError(emailField, "")
   verifyFieldError(passwordField, "")
