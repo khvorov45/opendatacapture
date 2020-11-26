@@ -164,16 +164,24 @@ test("error - project already exists", async () => {
       },
     })
   )
-  const { getByTestId } = renderProjectWidget()
+  const { getByTestId, getByText } = renderProjectWidget()
   await waitForDomChange()
   fireEvent.change(getByTestId("project-name-field") as HTMLInputElement, {
     target: { value: "newproject" },
   })
   fireEvent.click(getByTestId("create-project-submit"))
   await waitForDomChange()
-  expect(getByTestId("create-project-error")).toHaveTextContent(
-    "Name 'newproject' already in use"
+  expect(getByText("Name 'newproject' already in use")).toBeInTheDocument()
+  mockedAxios.put.mockImplementation(
+    constructPut({
+      createProject: async () => {
+        throw Error("some other error")
+      },
+    })
   )
+  fireEvent.click(getByTestId("create-project-submit"))
+  await waitForDomChange()
+  expect(getByText("some other error")).toBeInTheDocument()
 })
 
 test("error - fail to delete project", async () => {
