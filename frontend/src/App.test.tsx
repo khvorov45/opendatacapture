@@ -11,7 +11,6 @@ import App from "./App"
 import { themeInit } from "./lib/theme"
 import httpStatusCodes from "http-status-codes"
 import axios from "axios"
-import { Access, User } from "./lib/api/auth"
 import { API_ROOT } from "./lib/config"
 import {
   constructDelete,
@@ -26,9 +25,9 @@ import { user1 } from "./tests/data"
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
-const postreq = mockedAxios.post.mockImplementation(constructPost())
-const getreq = mockedAxios.get.mockImplementation(constructGet())
-const putreq = mockedAxios.put.mockImplementation(constructPut())
+mockedAxios.post.mockImplementation(constructPost())
+mockedAxios.get.mockImplementation(constructGet())
+mockedAxios.put.mockImplementation(constructPut())
 const deletereq = mockedAxios.delete.mockImplementation(constructDelete())
 afterEach(() => {
   mockedAxios.get.mockImplementation(constructGet())
