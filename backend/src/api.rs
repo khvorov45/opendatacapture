@@ -698,25 +698,9 @@ mod tests {
         }
 
         // Generate tokens to be used below
-        let admin_token_full = admindb_ref
-            .lock()
-            .await
-            .generate_session_token(auth::EmailPassword {
-                email: "admin@example.com".to_string(),
-                password: "admin".to_string(),
-            })
-            .await
-            .unwrap();
+        let admin_token_full = gen_admin_tok(admindb_ref.clone()).await;
         let admin_token = admin_token_full.token();
-        let user_token_full = admindb_ref
-            .lock()
-            .await
-            .generate_session_token(auth::EmailPassword {
-                email: "user@example.com".to_string(),
-                password: "user".to_string(),
-            })
-            .await
-            .unwrap();
+        let user_token_full = gen_user_tok(admindb_ref.clone()).await;
         let user_token = user_token_full.token();
 
         // Refresh session token
