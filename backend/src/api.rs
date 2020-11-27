@@ -686,7 +686,6 @@ mod tests {
 
         // Remove session token
         {
-            let admin_tok = gen_admin_tok(admindb_ref.clone()).await;
             let user_tok = gen_user_tok(admindb_ref.clone()).await;
             let resp = warp::test::request()
                 .method("DELETE")
@@ -696,32 +695,6 @@ mod tests {
                 .reply(&remove_token(admindb_ref.clone()))
                 .await;
             assert_eq!(resp.status(), StatusCode::NO_CONTENT);
-            // Shouldn't be able to get user
-            let resp = warp::test::request()
-                .method("GET")
-                .path(
-                    format!("/get/user/by/token/{}", user_tok.token()).as_str(),
-                )
-                .reply(&get_user_by_token(admindb_ref.clone()))
-                .await;
-            // One filter doesn't have rejection handling
-            assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
-            // Should still be able to get admin
-            let resp = warp::test::request()
-                .method("GET")
-                .path(
-                    format!("/get/user/by/token/{}", admin_tok.token())
-                        .as_str(),
-                )
-                .reply(&get_user_by_token(admindb_ref.clone()))
-                .await;
-            assert_eq!(resp.status(), StatusCode::OK);
-            admindb_ref
-                .lock()
-                .await
-                .remove_token(admin_tok.token())
-                .await
-                .unwrap();
         }
 
         // Generate tokens to be used below
