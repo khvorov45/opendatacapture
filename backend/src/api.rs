@@ -658,15 +658,13 @@ mod tests {
 
         // Health check
         {
-            let health_filter = health(admindb_ref.clone());
-            let health_resp = warp::test::request()
+            let resp = warp::test::request()
                 .method("GET")
                 .path("/health")
-                .reply(&health_filter)
-                .await
-                .into_body();
-            let health = serde_json::from_slice::<bool>(&*health_resp).unwrap();
-            assert!(health);
+                .reply(&health(admindb_ref.clone()))
+                .await;
+            assert_eq!(resp.status(), StatusCode::OK);
+            assert!(serde_json::from_slice::<bool>(&*resp.body()).unwrap());
         }
 
         // Get session token
