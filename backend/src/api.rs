@@ -669,8 +669,6 @@ mod tests {
 
         // Get session token
         {
-            let session_token_filter =
-                generate_session_token(admindb_ref.clone());
             let resp = warp::test::request()
                 .method("POST")
                 .path("/auth/session-token")
@@ -678,9 +676,12 @@ mod tests {
                     email: "user@example.com".to_string(),
                     password: "user".to_string(),
                 })
-                .reply(&session_token_filter)
+                .reply(&generate_session_token(admindb_ref.clone()))
                 .await;
             assert_eq!(resp.status(), StatusCode::OK);
+            assert!(
+                serde_json::from_slice::<auth::Token>(&*resp.body()).is_ok()
+            );
         }
 
         // Remove session token
