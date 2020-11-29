@@ -722,18 +722,15 @@ mod tests {
 
         // Get user by token
         {
-            let get_user_by_token_filter =
-                get_user_by_token(admindb_ref.clone());
-            let user_response = warp::test::request()
+            let resp = warp::test::request()
                 .method("GET")
                 .path(format!("/get/user/by/token/{}", user_token).as_str())
                 .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&get_user_by_token_filter)
+                .reply(&get_user_by_token(admindb_ref.clone()))
                 .await;
-            assert_eq!(user_response.status(), StatusCode::OK);
+            assert_eq!(resp.status(), StatusCode::OK);
             let user_obtained =
-                serde_json::from_slice::<admin::User>(&*user_response.body())
-                    .unwrap();
+                serde_json::from_slice::<admin::User>(&*resp.body()).unwrap();
             assert_eq!(user_obtained.email(), "user@example.com");
             assert_eq!(user_obtained.access(), auth::Access::User);
         }
