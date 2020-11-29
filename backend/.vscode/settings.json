@@ -10,6 +10,7 @@
     "dbhost",
     "dbname",
     "dbport",
+    "deserialization",
     "initialise",
     "initialised",
     "initialising",

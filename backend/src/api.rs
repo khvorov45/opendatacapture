@@ -642,6 +642,7 @@ mod tests {
             .unwrap()
     }
 
+    /// Meant to test individual filters given good input
     struct FilterTester {
         builder: warp::test::RequestBuilder,
     }
@@ -660,6 +661,8 @@ mod tests {
             self.builder = self.builder.path(path);
             self
         }
+        /// Check that status is what's expected and that body deserialization
+        /// is successful
         pub async fn test<F>(self, f: &F)
         where
             F: warp::Filter + 'static,
