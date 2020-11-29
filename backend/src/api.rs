@@ -647,6 +647,7 @@ mod tests {
         method: String,
         path: String,
         status: Option<StatusCode>,
+        body: Option<Vec<u8>>,
     }
 
     impl FilterTester {
@@ -655,6 +656,7 @@ mod tests {
                 method: "".to_string(),
                 path: "".to_string(),
                 status: None,
+                body: None,
             }
         }
         pub fn method(mut self, method: &str) -> Self {
@@ -676,11 +678,18 @@ mod tests {
                 .reply(f)
                 .await;
             self.status = Some(resp.status());
+            self.body = Some((&*resp.body()).to_vec());
             self
         }
         pub fn expect_status(self, status: StatusCode) -> Self {
             assert_eq!(self.status.unwrap(), status);
             self
+        }
+        pub fn expect_body<T>(self)
+        where
+            T: serde::de::DeserializeOwned,
+        {
+            assert!(serde_json::from_slice::<T>(&self.body.unwrap()).is_ok());
         }
     }
 
@@ -704,7 +713,8 @@ mod tests {
             .path("/health")
             .reply(&health(admindb_ref.clone()))
             .await
-            .expect_status(StatusCode::OK);
+            .expect_status(StatusCode::OK)
+            .expect_body::<bool>();
 
         // Get session token
         {
