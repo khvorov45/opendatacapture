@@ -705,26 +705,13 @@ mod tests {
 
         // Refresh session token
         {
-            // Genereate new, will be removed on refresh
-            let admin_token = admindb_ref
-                .lock()
-                .await
-                .generate_session_token(auth::EmailPassword {
-                    email: "admin@example.com".to_string(),
-                    password: "admin".to_string(),
-                })
-                .await
-                .unwrap();
+            let admin_token = gen_admin_tok(admindb_ref.clone()).await;
             let resp = warp::test::request()
                 .method("POST")
                 .path(
                     format!("/auth/refresh-token/{}", admin_token.token())
                         .as_str(),
                 )
-                .json(&auth::EmailPassword {
-                    email: "user@example.com".to_string(),
-                    password: "user".to_string(),
-                })
                 .reply(&refresh_token(admindb_ref.clone()))
                 .await;
             assert_eq!(resp.status(), StatusCode::OK);
