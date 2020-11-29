@@ -645,12 +645,14 @@ mod tests {
     /// Meant to test individual filters given good input
     struct FilterTester {
         builder: warp::test::RequestBuilder,
+        expected_status: StatusCode,
     }
 
     impl FilterTester {
         pub fn new() -> Self {
             Self {
                 builder: warp::test::request(),
+                expected_status: StatusCode::OK,
             }
         }
         pub fn method(mut self, method: &str) -> Self {
@@ -661,6 +663,10 @@ mod tests {
             self.builder = self.builder.path(path);
             self
         }
+        pub fn expected_status(mut self, expected_status: StatusCode) -> Self {
+            self.expected_status = expected_status;
+            self
+        }
         /// Check that status is what's expected and that body deserialization
         /// is successful
         pub async fn test<F>(self, f: &F)
@@ -669,7 +675,7 @@ mod tests {
             F::Extract: warp::Reply + Send,
         {
             let resp = self.builder.reply(f).await;
-            assert_eq!(resp.status(), StatusCode::OK);
+            assert_eq!(resp.status(), self.expected_status);
             assert!(serde_json::from_slice::<bool>(&*resp.body()).is_ok());
         }
     }
