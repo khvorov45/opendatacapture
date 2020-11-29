@@ -644,39 +644,43 @@ mod tests {
 
     /// Meant to test individual filters given good input
     struct FilterTester {
-        builder: warp::test::RequestBuilder,
-        expected_status: StatusCode,
+        method: String,
+        path: String,
+        status: Option<StatusCode>,
     }
 
     impl FilterTester {
         pub fn new() -> Self {
             Self {
-                builder: warp::test::request(),
-                expected_status: StatusCode::OK,
+                method: "".to_string(),
+                path: "".to_string(),
+                status: None,
             }
         }
         pub fn method(mut self, method: &str) -> Self {
-            self.builder = self.builder.method(method);
+            self.method = method.to_string();
             self
         }
         pub fn path(mut self, path: &str) -> Self {
-            self.builder = self.builder.path(path);
+            self.path = path.to_string();
             self
         }
-        pub fn expected_status(mut self, expected_status: StatusCode) -> Self {
-            self.expected_status = expected_status;
-            self
-        }
-        /// Check that status is what's expected and that body deserialization
-        /// is successful
-        pub async fn test<F>(self, f: &F)
+        pub async fn reply<F>(mut self, f: &F) -> Self
         where
             F: warp::Filter + 'static,
             F::Extract: warp::Reply + Send,
         {
-            let resp = self.builder.reply(f).await;
-            assert_eq!(resp.status(), self.expected_status);
-            assert!(serde_json::from_slice::<bool>(&*resp.body()).is_ok());
+            let resp = warp::test::request()
+                .method(self.method.as_str())
+                .path(self.path.as_str())
+                .reply(f)
+                .await;
+            self.status = Some(resp.status());
+            self
+        }
+        pub fn expect_status(self, status: StatusCode) -> Self {
+            assert_eq!(self.status.unwrap(), status);
+            self
         }
     }
 
@@ -698,8 +702,9 @@ mod tests {
         FilterTester::new()
             .method("GET")
             .path("/health")
-            .test(&health(admindb_ref.clone()))
-            .await;
+            .reply(&health(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK);
 
         // Get session token
         {
