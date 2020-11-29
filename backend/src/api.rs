@@ -642,6 +642,35 @@ mod tests {
             .unwrap()
     }
 
+    struct FilterTester {
+        builder: warp::test::RequestBuilder,
+    }
+
+    impl FilterTester {
+        pub fn new() -> Self {
+            Self {
+                builder: warp::test::request(),
+            }
+        }
+        pub fn method(mut self, method: &str) -> Self {
+            self.builder = self.builder.method(method);
+            self
+        }
+        pub fn path(mut self, path: &str) -> Self {
+            self.builder = self.builder.path(path);
+            self
+        }
+        pub async fn test<F>(self, f: &F)
+        where
+            F: warp::Filter + 'static,
+            F::Extract: warp::Reply + Send,
+        {
+            let resp = self.builder.reply(f).await;
+            assert_eq!(resp.status(), StatusCode::OK);
+            assert!(serde_json::from_slice::<bool>(&*resp.body()).is_ok());
+        }
+    }
+
     #[tokio::test]
     async fn test_api() {
         let _ = pretty_env_logger::try_init();
@@ -657,15 +686,11 @@ mod tests {
         // Individual filters given good input --------------------------------
 
         // Health check
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/health")
-                .reply(&health(admindb_ref.clone()))
-                .await;
-            assert_eq!(resp.status(), StatusCode::OK);
-            assert!(serde_json::from_slice::<bool>(&*resp.body()).unwrap());
-        }
+        FilterTester::new()
+            .method("GET")
+            .path("/health")
+            .test(&health(admindb_ref.clone()))
+            .await;
 
         // Get session token
         {
