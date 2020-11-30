@@ -665,8 +665,8 @@ mod tests {
             self.method = method.to_string();
             self
         }
-        pub fn path(mut self, path: &str) -> Self {
-            self.path = path.to_string();
+        pub fn path<T: AsRef<str>>(mut self, path: T) -> Self {
+            self.path = path.as_ref().to_string();
             self
         }
         pub fn json(mut self, val: impl serde::Serialize + 'static) -> Self {
@@ -738,17 +738,13 @@ mod tests {
             .expect_body::<auth::Token>();
 
         // Remove session token
-        {
-            let user_tok = gen_user_tok(admindb_ref.clone()).await;
-            let resp = warp::test::request()
-                .method("DELETE")
-                .path(
-                    format!("/auth/remove-token/{}", user_tok.token()).as_str(),
-                )
-                .reply(&remove_token(admindb_ref.clone()))
-                .await;
-            assert_eq!(resp.status(), StatusCode::NO_CONTENT);
-        }
+        let user_tok = gen_user_tok(admindb_ref.clone()).await;
+        FilterTester::new()
+            .method("DELETE")
+            .path(format!("/auth/remove-token/{}", user_tok.token()))
+            .reply(&remove_token(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::NO_CONTENT);
 
         // Generate tokens to be used below
         let admin_token_full = gen_admin_tok(admindb_ref.clone()).await;
