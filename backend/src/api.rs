@@ -816,7 +816,7 @@ mod tests {
         // Test projects
         let test_project1 = db::admin::Project::new(1, "test");
 
-        // Make sure test projects aren't present
+        // Make sure the corresponding databases aren't present
         log::info!("remove test projects");
         crate::tests::remove_dbs(
             &*admindb_ref.lock().await,
@@ -825,19 +825,13 @@ mod tests {
         .await;
 
         // Create projects
-        {
-            let create_project_filter = create_project(admindb_ref.clone());
-            let create_project_response = warp::test::request()
-                .method("PUT")
-                .path("/create/project/test")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&create_project_filter)
-                .await;
-            assert_eq!(
-                create_project_response.status(),
-                StatusCode::NO_CONTENT
-            );
-        }
+        FilterTester::new()
+            .method("PUT")
+            .path("/create/project/test")
+            .bearer_header(admin_token)
+            .reply(&create_project(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::NO_CONTENT);
 
         // Get projects
         {
