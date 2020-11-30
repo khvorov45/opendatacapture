@@ -795,25 +795,23 @@ mod tests {
             .expect_body::<Vec<admin::User>>();
 
         // Create/remove user
-        {
-            let resp = warp::test::request()
-                .method("PUT")
-                .path("/create/user")
-                .json(&auth::EmailPassword {
-                    email: "newuser@example.com".to_string(),
-                    password: "newpassword".to_string(),
-                })
-                .reply(&create_user(admindb_ref.clone()))
-                .await;
-            assert_eq!(resp.status(), StatusCode::NO_CONTENT);
-            let resp = warp::test::request()
-                .method("DELETE")
-                .path("/remove/user/newuser@example.com")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&remove_user(admindb_ref.clone()))
-                .await;
-            assert_eq!(resp.status(), StatusCode::NO_CONTENT);
-        }
+        FilterTester::new()
+            .method("PUT")
+            .path("/create/user")
+            .json(auth::EmailPassword {
+                email: "newuser@example.com".to_string(),
+                password: "newpassword".to_string(),
+            })
+            .reply(&create_user(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::NO_CONTENT);
+        FilterTester::new()
+            .method("DELETE")
+            .path("/remove/user/newuser@example.com")
+            .bearer_header(admin_token)
+            .reply(&remove_user(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::NO_CONTENT);
 
         // Test projects
         let test_project1 = db::admin::Project::new(1, "test");
