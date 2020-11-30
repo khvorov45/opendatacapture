@@ -680,6 +680,9 @@ mod tests {
                 .insert(name.to_string(), value.as_ref().to_string());
             self
         }
+        pub fn bearer_header(self, tok: &str) -> Self {
+            self.header("Authorization", format!("Bearer {}", tok))
+        }
         pub async fn reply<F>(mut self, f: &F) -> Self
         where
             F: warp::Filter + 'static,
@@ -785,7 +788,7 @@ mod tests {
         FilterTester::new()
             .method("GET")
             .path("/get/users")
-            .header("Authorization", format!("Bearer {}", admin_token))
+            .bearer_header(admin_token)
             .reply(&get_users(admindb_ref.clone()))
             .await
             .expect_status(StatusCode::OK)
