@@ -647,6 +647,7 @@ mod tests {
         method: String,
         path: String,
         json: Option<Box<dyn erased_serde::Serialize>>,
+        headers: std::collections::HashMap<String, String>,
         status: Option<StatusCode>,
         body: Option<Vec<u8>>,
     }
@@ -657,6 +658,7 @@ mod tests {
                 method: "".to_string(),
                 path: "".to_string(),
                 json: None,
+                headers: std::collections::HashMap::new(),
                 status: None,
                 body: None,
             }
@@ -673,6 +675,11 @@ mod tests {
             self.json = Some(Box::new(val));
             self
         }
+        pub fn header<T: AsRef<str>>(mut self, name: &str, value: T) -> Self {
+            self.headers
+                .insert(name.to_string(), value.as_ref().to_string());
+            self
+        }
         pub async fn reply<F>(mut self, f: &F) -> Self
         where
             F: warp::Filter + 'static,
@@ -683,6 +690,9 @@ mod tests {
                 .path(self.path.as_str());
             if let Some(v) = &self.json {
                 req = req.json(&v);
+            }
+            for (name, value) in &self.headers {
+                req = req.header(name, value);
             }
             let resp = req.reply(f).await;
             self.status = Some(resp.status());
@@ -760,19 +770,17 @@ mod tests {
         let user_token = user_token_full.token();
 
         // Get user by token
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path(format!("/get/user/by/token/{}", user_token).as_str())
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&get_user_by_token(admindb_ref.clone()))
-                .await;
-            assert_eq!(resp.status(), StatusCode::OK);
-            let user_obtained =
-                serde_json::from_slice::<admin::User>(&*resp.body()).unwrap();
-            assert_eq!(user_obtained.email(), "user@example.com");
-            assert_eq!(user_obtained.access(), auth::Access::User);
-        }
+        let usr = FilterTester::new()
+            .method("GET")
+            .path(format!("/get/user/by/token/{}", user_token))
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&get_user_by_token(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<admin::User>();
+        assert_eq!(usr.email(), "user@example.com");
+        assert_eq!(usr.access(), auth::Access::User);
+        drop(usr);
 
         // Get users
         {
