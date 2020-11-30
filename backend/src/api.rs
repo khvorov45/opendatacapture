@@ -773,7 +773,6 @@ mod tests {
         let usr = FilterTester::new()
             .method("GET")
             .path(format!("/get/user/by/token/{}", user_token))
-            .header("Authorization", format!("Bearer {}", admin_token))
             .reply(&get_user_by_token(admindb_ref.clone()))
             .await
             .expect_status(StatusCode::OK)
