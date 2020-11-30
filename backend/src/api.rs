@@ -726,7 +726,7 @@ mod tests {
             .expect_status(StatusCode::OK)
             .expect_body::<bool>();
 
-        // Create/remove session token
+        // Create/refresh/remove session token
         let tok = FilterTester::new()
             .method("POST")
             .path("/auth/session-token")
@@ -735,6 +735,13 @@ mod tests {
                 password: "user".to_string(),
             })
             .reply(&generate_session_token(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<auth::Token>();
+        let tok = FilterTester::new()
+            .method("POST")
+            .path(format!("/auth/refresh-token/{}", tok.token()))
+            .reply(&refresh_token(admindb_ref.clone()))
             .await
             .expect_status(StatusCode::OK)
             .expect_body::<auth::Token>();
@@ -751,23 +758,6 @@ mod tests {
         let admin_token = admin_token_full.token();
         let user_token_full = gen_user_tok(admindb_ref.clone()).await;
         let user_token = user_token_full.token();
-
-        // Refresh session token
-        {
-            let admin_token = gen_admin_tok(admindb_ref.clone()).await;
-            let resp = warp::test::request()
-                .method("POST")
-                .path(
-                    format!("/auth/refresh-token/{}", admin_token.token())
-                        .as_str(),
-                )
-                .reply(&refresh_token(admindb_ref.clone()))
-                .await;
-            assert_eq!(resp.status(), StatusCode::OK);
-            let token_obtained: auth::Token =
-                serde_json::from_slice(&*resp.body()).unwrap();
-            assert_ne!(token_obtained.token(), admin_token.token());
-        }
 
         // Get user by token
         {
