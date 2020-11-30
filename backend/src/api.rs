@@ -782,17 +782,14 @@ mod tests {
         drop(usr);
 
         // Get users
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/get/users")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&get_users(admindb_ref.clone()))
-                .await;
-            assert_eq!(resp.status(), StatusCode::OK);
-            assert!(serde_json::from_slice::<Vec<admin::User>>(&*resp.body())
-                .is_ok());
-        }
+        FilterTester::new()
+            .method("GET")
+            .path("/get/users")
+            .header("Authorization", format!("Bearer {}", admin_token))
+            .reply(&get_users(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<Vec<admin::User>>();
 
         // Create/remove user
         {
