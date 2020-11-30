@@ -693,11 +693,13 @@ mod tests {
             assert_eq!(self.status.unwrap(), status);
             self
         }
-        pub fn expect_body<T>(self)
+        pub fn expect_body<T>(self) -> T
         where
             T: serde::de::DeserializeOwned,
         {
-            assert!(serde_json::from_slice::<T>(&self.body.unwrap()).is_ok());
+            let bod = serde_json::from_slice::<T>(&self.body.unwrap());
+            assert!(bod.is_ok());
+            bod.unwrap()
         }
     }
 
@@ -724,8 +726,8 @@ mod tests {
             .expect_status(StatusCode::OK)
             .expect_body::<bool>();
 
-        // Get session token
-        FilterTester::new()
+        // Create/remove session token
+        let tok = FilterTester::new()
             .method("POST")
             .path("/auth/session-token")
             .json(auth::EmailPassword {
@@ -736,15 +738,13 @@ mod tests {
             .await
             .expect_status(StatusCode::OK)
             .expect_body::<auth::Token>();
-
-        // Remove session token
-        let user_tok = gen_user_tok(admindb_ref.clone()).await;
         FilterTester::new()
             .method("DELETE")
-            .path(format!("/auth/remove-token/{}", user_tok.token()))
+            .path(format!("/auth/remove-token/{}", tok.token()))
             .reply(&remove_token(admindb_ref.clone()))
             .await
             .expect_status(StatusCode::NO_CONTENT);
+        drop(tok);
 
         // Generate tokens to be used below
         let admin_token_full = gen_admin_tok(admindb_ref.clone()).await;
