@@ -646,6 +646,7 @@ mod tests {
     struct FilterTester {
         method: String,
         path: String,
+        json: Option<Box<dyn erased_serde::Serialize>>,
         status: Option<StatusCode>,
         body: Option<Vec<u8>>,
     }
@@ -655,6 +656,7 @@ mod tests {
             Self {
                 method: "".to_string(),
                 path: "".to_string(),
+                json: None,
                 status: None,
                 body: None,
             }
@@ -667,16 +669,22 @@ mod tests {
             self.path = path.to_string();
             self
         }
+        pub fn json(mut self, val: impl serde::Serialize + 'static) -> Self {
+            self.json = Some(Box::new(val));
+            self
+        }
         pub async fn reply<F>(mut self, f: &F) -> Self
         where
             F: warp::Filter + 'static,
             F::Extract: warp::Reply + Send,
         {
-            let resp = warp::test::request()
+            let mut req = warp::test::request()
                 .method(self.method.as_str())
-                .path(self.path.as_str())
-                .reply(f)
-                .await;
+                .path(self.path.as_str());
+            if let Some(v) = &self.json {
+                req = req.json(&v);
+            }
+            let resp = req.reply(f).await;
             self.status = Some(resp.status());
             self.body = Some((&*resp.body()).to_vec());
             self
@@ -717,21 +725,17 @@ mod tests {
             .expect_body::<bool>();
 
         // Get session token
-        {
-            let resp = warp::test::request()
-                .method("POST")
-                .path("/auth/session-token")
-                .json(&auth::EmailPassword {
-                    email: "user@example.com".to_string(),
-                    password: "user".to_string(),
-                })
-                .reply(&generate_session_token(admindb_ref.clone()))
-                .await;
-            assert_eq!(resp.status(), StatusCode::OK);
-            assert!(
-                serde_json::from_slice::<auth::Token>(&*resp.body()).is_ok()
-            );
-        }
+        FilterTester::new()
+            .method("POST")
+            .path("/auth/session-token")
+            .json(auth::EmailPassword {
+                email: "user@example.com".to_string(),
+                password: "user".to_string(),
+            })
+            .reply(&generate_session_token(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<auth::Token>();
 
         // Remove session token
         {

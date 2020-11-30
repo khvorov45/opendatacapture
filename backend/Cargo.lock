@@ -346,6 +346,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "erased-serde"
+version = "0.3.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ca8b296792113e1500fd935ae487be6e00ce318952a6880555554824d6ebf38"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "fake-simd"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -993,6 +1002,7 @@ dependencies = [
  "anyhow",
  "base64 0.13.0",
  "chrono",
+ "erased-serde",
  "hex",
  "log",
  "pretty_env_logger",
