@@ -879,21 +879,16 @@ mod tests {
             .expect_status(StatusCode::NO_CONTENT);
 
         // Get table list
-        {
-            let filter = get_table_names(admindb_ref.clone());
-            let response = warp::test::request()
-                .method("GET")
-                .path("/project/test/get/tablenames")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&filter)
-                .await;
-            assert_eq!(response.status(), StatusCode::OK);
-            assert_eq!(
-                serde_json::from_slice::<Vec<String>>(&*response.body())
-                    .unwrap(),
-                vec![table.name.clone()]
-            );
-        }
+        let table_list = FilterTester::new()
+            .method("GET")
+            .path("/project/test/get/tablenames")
+            .bearer_header(admin_token)
+            .reply(&get_table_names(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<Vec<String>>();
+        assert_eq!(table_list, vec![table.name.clone()]);
+        drop(table_list);
 
         // Get table metadata
         {
