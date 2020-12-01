@@ -717,7 +717,12 @@ mod tests {
             T: serde::de::DeserializeOwned,
         {
             let bod = serde_json::from_slice::<T>(&self.body.unwrap());
-            assert!(bod.is_ok());
+            assert!(
+                bod.is_ok(),
+                "body of {} method to {} path",
+                self.method,
+                self.path
+            );
             bod.unwrap()
         }
     }
