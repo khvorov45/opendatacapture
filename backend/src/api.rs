@@ -903,23 +903,16 @@ mod tests {
         drop(table_meta);
 
         // Get all metadata
-        {
-            let filter = get_all_meta(admindb_ref.clone());
-            let response = warp::test::request()
-                .method("GET")
-                .path("/project/test/get/meta")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&filter)
-                .await;
-            assert_eq!(response.status(), StatusCode::OK);
-            assert_eq!(
-                serde_json::from_slice::<db::user::table::TableSpec>(
-                    &*response.body()
-                )
-                .unwrap(),
-                vec![table.clone()]
-            );
-        }
+        let all_meta = FilterTester::new()
+            .method("GET")
+            .path("/project/test/get/meta")
+            .bearer_header(admin_token)
+            .reply(&get_all_meta(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<db::user::table::TableSpec>();
+        assert_eq!(all_meta, vec![table.clone()]);
+        drop(all_meta);
 
         // Insert table data
         let data = crate::tests::get_primary_data();
