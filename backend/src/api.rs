@@ -891,26 +891,16 @@ mod tests {
         drop(table_list);
 
         // Get table metadata
-        {
-            let filter = get_table_meta(admindb_ref.clone());
-            let response = warp::test::request()
-                .method("GET")
-                .path(
-                    format!("/project/test/get/table/{}/meta", table.name)
-                        .as_str(),
-                )
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&filter)
-                .await;
-            assert_eq!(response.status(), StatusCode::OK);
-            assert_eq!(
-                serde_json::from_slice::<db::user::table::TableMeta>(
-                    &*response.body()
-                )
-                .unwrap(),
-                table
-            );
-        }
+        let table_meta = FilterTester::new()
+            .method("GET")
+            .path(format!("/project/test/get/table/{}/meta", table.name))
+            .bearer_header(admin_token)
+            .reply(&get_table_meta(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<db::user::table::TableMeta>();
+        assert_eq!(table_meta, table);
+        drop(table_meta);
 
         // Get all metadata
         {
