@@ -703,7 +703,13 @@ mod tests {
             self
         }
         pub fn expect_status(self, status: StatusCode) -> Self {
-            assert_eq!(self.status.unwrap(), status);
+            assert_eq!(
+                self.status.unwrap(),
+                status,
+                "status of {} method to {} path",
+                self.method,
+                self.path
+            );
             self
         }
         pub fn expect_body<T>(self) -> T
