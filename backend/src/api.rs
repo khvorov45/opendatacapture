@@ -843,49 +843,28 @@ mod tests {
             .reply(&create_project(admindb_ref.clone()))
             .await
             .expect_status(StatusCode::NO_CONTENT);
-
-        // Get projects
-        {
-            let get_projects_filter = get_user_projects(admindb_ref.clone());
-            let get_projects_response = warp::test::request()
-                .method("GET")
-                .path("/get/projects")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&get_projects_filter)
-                .await;
-            assert_eq!(get_projects_response.status(), StatusCode::OK);
-            let projects_obtained =
-                serde_json::from_slice::<Vec<admin::Project>>(
-                    &*get_projects_response.body(),
-                )
-                .unwrap();
-            assert_eq!(projects_obtained.len(), 1);
-            assert_eq!(
-                projects_obtained[0].get_dbname(TEST_DB_NAME),
-                test_project1.get_dbname(TEST_DB_NAME)
-            )
-        }
-
-        // Get project
-        {
-            let filter = get_user_project(admindb_ref.clone());
-            let response = warp::test::request()
-                .method("GET")
-                .path(
-                    format!("/get/project/{}", test_project1.get_name())
-                        .as_str(),
-                )
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&filter)
-                .await;
-            assert_eq!(response.status(), StatusCode::OK);
-            let project_obtained =
-                serde_json::from_slice::<Project>(&*response.body()).unwrap();
-            assert_eq!(
-                project_obtained.get_dbname(TEST_DB_NAME),
-                test_project1.get_dbname(TEST_DB_NAME)
-            )
-        }
+        // Get them
+        let projects_obtained = FilterTester::new()
+            .method("GET")
+            .path("/get/projects")
+            .bearer_header(admin_token)
+            .reply(&get_user_projects(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<Vec<admin::Project>>();
+        assert_eq!(projects_obtained.len(), 1);
+        assert_eq!(projects_obtained[0].get_name(), test_project1.get_name());
+        drop(projects_obtained);
+        let project_obtained = FilterTester::new()
+            .method("GET")
+            .path(format!("/get/project/{}", test_project1.get_name()))
+            .bearer_header(admin_token)
+            .reply(&get_user_project(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<admin::Project>();
+        assert_eq!(project_obtained.get_name(), test_project1.get_name());
+        drop(project_obtained);
 
         // Create table
         let table = crate::tests::get_test_primary_table();
