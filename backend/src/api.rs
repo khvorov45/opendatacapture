@@ -827,7 +827,7 @@ mod tests {
         // Create projects
         FilterTester::new()
             .method("PUT")
-            .path("/create/project/test")
+            .path(format!("/create/project/{}", test_project1.get_name()))
             .bearer_header(admin_token)
             .reply(&create_project(admindb_ref.clone()))
             .await
