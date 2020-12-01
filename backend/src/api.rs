@@ -869,17 +869,14 @@ mod tests {
         // Create table
         let table = crate::tests::get_test_primary_table();
 
-        {
-            let filter = create_table(admindb_ref.clone());
-            let response = warp::test::request()
-                .method("PUT")
-                .path("/project/test/create/table")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .body(serde_json::to_value(table.clone()).unwrap().to_string())
-                .reply(&filter)
-                .await;
-            assert_eq!(response.status(), StatusCode::NO_CONTENT);
-        }
+        FilterTester::new()
+            .method("PUT")
+            .path("/project/test/create/table")
+            .bearer_header(admin_token)
+            .json(table.clone())
+            .reply(&create_table(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::NO_CONTENT);
 
         // Get table list
         {
