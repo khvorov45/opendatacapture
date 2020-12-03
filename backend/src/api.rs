@@ -1229,17 +1229,15 @@ mod tests {
             .expect_origin_header();
 
         // Disallowed header
-        {
-            let resp = warp::test::request()
-                .method("OPTIONS")
-                .path("/health")
-                .header("Origin", "test")
-                .header("Access-Control-Request-Method", "GET")
-                .header("Access-Control-Request-Headers", "X-Username")
-                .reply(&routes_cors)
-                .await;
-            assert_eq!(resp.status(), StatusCode::FORBIDDEN);
-        }
+        FilterTester::new()
+            .method("OPTIONS")
+            .path("/health")
+            .origin_header()
+            .header("Access-Control-Request-Method", "GET")
+            .header("Access-Control-Request-Headers", "X-Username")
+            .reply(&routes_cors)
+            .await
+            .expect_status(StatusCode::FORBIDDEN);
 
         // Remove the test database -------------------------------------------
 
