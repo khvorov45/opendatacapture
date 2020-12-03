@@ -1012,27 +1012,21 @@ mod tests {
             .expect_error("WrongPassword(\"user1\")");
 
         // Wrong token
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/get/user/by/token/123")
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(body, "NoSuchToken(\"123\")");
-        }
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/get/users")
-                .header("Authorization", "Bearer 123")
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(body, "NoSuchToken(\"123\")");
-        }
+        FilterTester::new()
+            .method("GET")
+            .path("/get/user/by/token/123")
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error("NoSuchToken(\"123\")");
+        FilterTester::new()
+            .method("GET")
+            .path("/get/users")
+            .bearer_header("123")
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error("NoSuchToken(\"123\")");
 
         // Insufficient access
         {
