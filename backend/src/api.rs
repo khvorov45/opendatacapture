@@ -1081,6 +1081,13 @@ mod tests {
             .await
             .expect_status(StatusCode::UNAUTHORIZED)
             .expect_error("NoSuchToken(\"123\")");
+        FilterTester::new()
+            .method("POST")
+            .path("/auth/refresh-token/123")
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error("NoSuchToken(\"123\")");
 
         // Insufficient access
         FilterTester::new()
