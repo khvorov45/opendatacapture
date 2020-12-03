@@ -1079,19 +1079,14 @@ mod tests {
             .expect_error("HTTP method not allowed");
 
         // Delete a non-existent project
-        {
-            let resp = warp::test::request()
-                .method("DELETE")
-                .path("/delete/project/test_nonexistent")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::NOT_FOUND);
-            assert_eq!(
-                serde_json::from_slice::<String>(&*resp.body()).unwrap(),
-                "NoSuchProject(1, \"test_nonexistent\")"
-            );
-        }
+        FilterTester::new()
+            .method("DELETE")
+            .path("/delete/project/test_nonexistent")
+            .bearer_header(admin_token)
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::NOT_FOUND)
+            .expect_error("NoSuchProject(1, \"test_nonexistent\")");
 
         // Create a project that will be used later ---------------------------
         {
