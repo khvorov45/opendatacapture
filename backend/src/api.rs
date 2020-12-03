@@ -1142,6 +1142,16 @@ mod tests {
             .expect_status(StatusCode::NOT_FOUND)
             .expect_error("NoSuchProject(1, \"test_nonexistent\")");
 
+        // Get a non-existent project
+        FilterTester::new()
+            .method("GET")
+            .path("/get/project/test_nonexistent")
+            .bearer_header(admin_token)
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::NOT_FOUND)
+            .expect_error("NoSuchProject(1, \"test_nonexistent\")");
+
         // Create a project that will be used later ---------------------------
         FilterTester::new()
             .method("PUT")
