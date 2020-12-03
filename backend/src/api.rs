@@ -950,22 +950,16 @@ mod tests {
             .expect_status(StatusCode::NO_CONTENT);
 
         // Remove table
-        {
-            let filter = remove_table(admindb_ref.clone());
-            let response = warp::test::request()
-                .method("DELETE")
-                .path(
-                    format!(
-                        "/project/test/remove/table/{}",
-                        table.name.as_str()
-                    )
-                    .as_str(),
-                )
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&filter)
-                .await;
-            assert_eq!(response.status(), StatusCode::NO_CONTENT);
-        }
+        FilterTester::new()
+            .method("DELETE")
+            .path(format!(
+                "/project/test/remove/table/{}",
+                table.name.as_str()
+            ))
+            .bearer_header(admin_token)
+            .reply(&remove_table(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::NO_CONTENT);
 
         // Delete projects
         {
