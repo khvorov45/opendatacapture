@@ -1117,15 +1117,12 @@ mod tests {
             .expect_error("NoSuchTable(\"nonexistent\")");
 
         // Delete the project created earlier ---------------------------------
-        {
-            let resp = warp::test::request()
-                .method("DELETE")
-                .path("/delete/project/test")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::NO_CONTENT);
-        }
+        FilterTester::new()
+            .method("DELETE")
+            .path("/delete/project/test")
+            .bearer_header(admin_token)
+            .reply(&routes)
+            .await;
 
         // Token too old
         {
