@@ -1218,20 +1218,15 @@ mod tests {
             .expect_origin_header();
 
         // Options request
-        {
-            let resp = warp::test::request()
-                .method("OPTIONS")
-                .path("/health")
-                .header("Origin", "test")
-                .header("Access-Control-Request-Method", "GET")
-                .reply(&routes_cors)
-                .await;
-            assert_eq!(resp.status(), StatusCode::OK);
-            let heads = resp.headers();
-            let allow_origin =
-                heads.get("access-control-allow-origin").unwrap();
-            assert_eq!(allow_origin, "test");
-        }
+        FilterTester::new()
+            .method("OPTIONS")
+            .path("/health")
+            .origin_header()
+            .header("Access-Control-Request-Method", "GET")
+            .reply(&routes_cors)
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_origin_header();
 
         // Disallowed header
         {
