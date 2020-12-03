@@ -1107,19 +1107,14 @@ mod tests {
             .expect_error("ProjectAlreadyExists(1, \"test\")");
 
         log::info!("delete a non-existent table");
-        {
-            let resp = warp::test::request()
-                .method("DELETE")
-                .path("/project/test/remove/table/nonexistent")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::NOT_FOUND);
-            assert_eq!(
-                serde_json::from_slice::<String>(&*resp.body()).unwrap(),
-                "NoSuchTable(\"nonexistent\")"
-            );
-        }
+        FilterTester::new()
+            .method("DELETE")
+            .path("/project/test/remove/table/nonexistent")
+            .bearer_header(admin_token)
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::NOT_FOUND)
+            .expect_error("NoSuchTable(\"nonexistent\")");
 
         // Delete the project created earlier ---------------------------------
         {
