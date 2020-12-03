@@ -916,7 +916,6 @@ mod tests {
 
         // Insert table data
         let data = crate::tests::get_primary_data();
-
         FilterTester::new()
             .method("PUT")
             .path(format!("/project/test/insert/{}", table.name.as_str()))
@@ -927,27 +926,19 @@ mod tests {
             .expect_status(StatusCode::NO_CONTENT);
 
         // Get table data
-        {
-            let filter = get_table_data(admindb_ref.clone());
-            let response = warp::test::request()
-                .method("GET")
-                .path(
-                    format!(
-                        "/project/test/get/table/{}/data",
-                        table.name.as_str()
-                    )
-                    .as_str(),
-                )
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&filter)
-                .await;
-            assert_eq!(response.status(), StatusCode::OK);
-            assert_eq!(
-                serde_json::from_slice::<Vec<RowJson>>(&*response.body())
-                    .unwrap(),
-                data
-            )
-        }
+        let data_obtained = FilterTester::new()
+            .method("GET")
+            .path(format!(
+                "/project/test/get/table/{}/data",
+                table.name.as_str()
+            ))
+            .bearer_header(admin_token)
+            .reply(&get_table_data(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<Vec<RowJson>>();
+        assert_eq!(data_obtained, data);
+        drop(data_obtained);
 
         // Remove table data
         {
