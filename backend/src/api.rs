@@ -945,7 +945,6 @@ mod tests {
             .method("DELETE")
             .path(format!("/project/test/remove/{}/all", table.name.as_str()))
             .bearer_header(admin_token)
-            .json(data.clone())
             .reply(&remove_all_user_table_data(admindb_ref.clone()))
             .await
             .expect_status(StatusCode::NO_CONTENT);
