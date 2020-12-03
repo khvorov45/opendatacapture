@@ -1167,19 +1167,15 @@ mod tests {
         // CORS ---------------------------------------------------------------
 
         // When not attached
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/health")
-                .header("Origin", "test")
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::OK);
-            let body = serde_json::from_slice::<bool>(&*resp.body()).unwrap();
-            assert!(body);
-            let heads = resp.headers();
-            assert!(heads.get("access-control-allow-origin").is_none());
-        }
+        let resp = warp::test::request()
+            .method("GET")
+            .path("/health")
+            .header("Origin", "test")
+            .reply(&routes)
+            .await;
+        let heads = resp.headers();
+        assert!(heads.get("access-control-allow-origin").is_none());
+        drop(resp);
 
         let routes_cors = routes.clone().with(get_cors());
 
