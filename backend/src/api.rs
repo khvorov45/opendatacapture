@@ -650,6 +650,7 @@ mod tests {
         headers: std::collections::HashMap<String, String>,
         status: Option<StatusCode>,
         body: Option<Vec<u8>>,
+        headers_response: Option<warp::http::HeaderMap>,
     }
 
     impl FilterTester {
@@ -661,6 +662,7 @@ mod tests {
                 headers: std::collections::HashMap::new(),
                 status: None,
                 body: None,
+                headers_response: None,
             }
         }
         pub fn method(mut self, method: &str) -> Self {
@@ -700,6 +702,7 @@ mod tests {
             let resp = req.reply(f).await;
             self.status = Some(resp.status());
             self.body = Some((&*resp.body()).to_vec());
+            self.headers_response = Some(resp.headers().clone());
             self
         }
         pub fn expect_status(self, status: StatusCode) -> Self {
@@ -735,6 +738,19 @@ mod tests {
                 self.method,
                 self.path
             );
+        }
+        pub fn expect_header<T: AsRef<str>>(
+            self,
+            header_name: &str,
+            header_content: T,
+        ) {
+            assert_eq!(
+                self.headers_response.unwrap().get(header_name).unwrap(),
+                header_content.as_ref()
+            );
+        }
+        pub fn expect_no_header(self, header_name: &str) {
+            assert!(self.headers_response.unwrap().get(header_name).is_none());
         }
     }
 
@@ -1167,15 +1183,13 @@ mod tests {
         // CORS ---------------------------------------------------------------
 
         // When not attached
-        let resp = warp::test::request()
+        FilterTester::new()
             .method("GET")
             .path("/health")
             .header("Origin", "test")
             .reply(&routes)
-            .await;
-        let heads = resp.headers();
-        assert!(heads.get("access-control-allow-origin").is_none());
-        drop(resp);
+            .await
+            .expect_no_header("access-control-allow-origin");
 
         let routes_cors = routes.clone().with(get_cors());
 
