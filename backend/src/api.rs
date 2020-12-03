@@ -1097,19 +1097,14 @@ mod tests {
             .await;
 
         // Creating the same project twice
-        {
-            let resp = warp::test::request()
-                .method("PUT")
-                .path("/create/project/test")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::CONFLICT);
-            assert_eq!(
-                serde_json::from_slice::<String>(&*resp.body()).unwrap(),
-                "ProjectAlreadyExists(1, \"test\")"
-            );
-        }
+        FilterTester::new()
+            .method("PUT")
+            .path("/create/project/test")
+            .bearer_header(admin_token)
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::CONFLICT)
+            .expect_error("ProjectAlreadyExists(1, \"test\")");
 
         log::info!("delete a non-existent table");
         {
