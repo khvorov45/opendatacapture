@@ -1058,20 +1058,16 @@ mod tests {
             .expect_error("Missing request header \"Authorization\"");
 
         // Missing body
-        {
-            let resp = warp::test::request()
-                .method("POST")
-                .path("/auth/session-token")
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(
-                body,
+        FilterTester::new()
+            .method("POST")
+            .path("/auth/session-token")
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::BAD_REQUEST)
+            .expect_error(
                 "Request body deserialize error: \
-                EOF while parsing a value at line 1 column 0"
+                EOF while parsing a value at line 1 column 0",
             );
-        }
 
         // Wrong method
         {
