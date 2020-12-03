@@ -1029,17 +1029,14 @@ mod tests {
             .expect_error("NoSuchToken(\"123\")");
 
         // Insufficient access
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/get/users")
-                .header("Authorization", format!("Bearer {}", user_token))
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(body, "InsufficientAccess");
-        }
+        FilterTester::new()
+            .method("GET")
+            .path("/get/users")
+            .bearer_header(user_token)
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error("InsufficientAccess");
 
         // Wrong authentication type
         {
