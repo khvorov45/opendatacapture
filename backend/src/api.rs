@@ -1208,7 +1208,7 @@ mod tests {
             .await
             .expect_origin_header();
 
-        // When request fails
+        log::info!("cors still present when request fails");
         FilterTester::new()
             .method("POST") // Wrong method
             .path("/health")
@@ -1228,7 +1228,7 @@ mod tests {
             .expect_status(StatusCode::OK)
             .expect_origin_header();
 
-        // Disallowed header
+        log::info!("disallowed header");
         FilterTester::new()
             .method("OPTIONS")
             .path("/health")
