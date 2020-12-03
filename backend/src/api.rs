@@ -999,20 +999,17 @@ mod tests {
             .expect_error("NoSuchUserEmail(\"user1@example.com\")");
 
         // Wrong password
-        {
-            let resp = warp::test::request()
-                .method("POST")
-                .path("/auth/session-token")
-                .json(&auth::EmailPassword {
-                    email: "user@example.com".to_string(),
-                    password: "user1".to_string(),
-                })
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(body, "WrongPassword(\"user1\")");
-        }
+        FilterTester::new()
+            .method("POST")
+            .path("/auth/session-token")
+            .json(auth::EmailPassword {
+                email: "user@example.com".to_string(),
+                password: "user1".to_string(),
+            })
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error("WrongPassword(\"user1\")");
 
         // Wrong token
         {
