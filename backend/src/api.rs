@@ -725,6 +725,17 @@ mod tests {
             );
             bod.unwrap()
         }
+        pub fn expect_error<T: AsRef<str>>(self, msg: T) {
+            let bod =
+                serde_json::from_slice::<String>(&self.body.unwrap()).unwrap();
+            assert_eq!(
+                bod,
+                msg.as_ref(),
+                "error of {} method to {} path",
+                self.method,
+                self.path
+            );
+        }
     }
 
     #[tokio::test]
@@ -975,7 +986,7 @@ mod tests {
         let routes = routes(admindb_ref.clone(), "");
 
         // Wrong email
-        let res = FilterTester::new()
+        FilterTester::new()
             .method("POST")
             .path("/auth/session-token")
             .json(auth::EmailPassword {
@@ -985,9 +996,7 @@ mod tests {
             .reply(&routes)
             .await
             .expect_status(StatusCode::UNAUTHORIZED)
-            .expect_body::<String>();
-        assert_eq!(res, "NoSuchUserEmail(\"user1@example.com\")");
-        drop(res);
+            .expect_error("NoSuchUserEmail(\"user1@example.com\")");
 
         // Wrong password
         {
