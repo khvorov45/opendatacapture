@@ -1039,17 +1039,14 @@ mod tests {
             .expect_error("InsufficientAccess");
 
         // Wrong authentication type
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/get/users")
-                .header("Authorization", "Basic a:a")
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(body, "WrongAuthType(\"Basic\")");
-        }
+        FilterTester::new()
+            .method("GET")
+            .path("/get/users")
+            .header("Authorization", "Basic a:a")
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error("WrongAuthType(\"Basic\")");
 
         // Missing header
         {
