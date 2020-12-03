@@ -1194,21 +1194,13 @@ mod tests {
         let routes_cors = routes.clone().with(get_cors());
 
         // When request is good
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/health")
-                .header("Origin", "test")
-                .reply(&routes_cors)
-                .await;
-            assert_eq!(resp.status(), StatusCode::OK);
-            let body = serde_json::from_slice::<bool>(&*resp.body()).unwrap();
-            assert!(body);
-            let heads = resp.headers();
-            let allow_origin =
-                heads.get("access-control-allow-origin").unwrap();
-            assert_eq!(allow_origin, "test");
-        }
+        FilterTester::new()
+            .method("GET")
+            .path("/health")
+            .header("Origin", "test")
+            .reply(&routes_cors)
+            .await
+            .expect_header("access-control-allow-origin", "test");
 
         // When request fails
         {
