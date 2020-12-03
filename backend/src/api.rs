@@ -64,7 +64,7 @@ fn base_routes(
 /// All CORS headers.
 /// Allowes to apply the same cors headers to every path.
 /// Could not get it working when cors headers were different on every path.
-pub fn get_cors() -> warp::cors::Builder {
+fn get_cors() -> warp::cors::Builder {
     warp::cors()
         .allow_any_origin()
         .allow_methods(vec!["GET", "POST", "PUT", "DELETE"])
