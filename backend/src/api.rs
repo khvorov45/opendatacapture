@@ -1049,16 +1049,13 @@ mod tests {
             .expect_error("WrongAuthType(\"Basic\")");
 
         // Missing header
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/get/users")
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(body, "Missing request header \"Authorization\"");
-        }
+        FilterTester::new()
+            .method("GET")
+            .path("/get/users")
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error("Missing request header \"Authorization\"");
 
         // Missing body
         {
