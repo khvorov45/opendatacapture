@@ -1157,14 +1157,12 @@ mod tests {
         drop(old_token);
 
         // Not found
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/")
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::NOT_FOUND);
-        }
+        FilterTester::new()
+            .method("GET")
+            .path("/")
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::NOT_FOUND);
 
         // CORS ---------------------------------------------------------------
 
