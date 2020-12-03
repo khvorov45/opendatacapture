@@ -108,6 +108,8 @@ async fn handle_rejection(
     } else if let Some(e) = err.find::<warp::reject::MissingHeader>() {
         if e.name() == "Authorization" {
             status = StatusCode::UNAUTHORIZED;
+        // I don't require any other headers at the moment so the below
+        // case shouldn't happen
         } else {
             status = StatusCode::BAD_REQUEST;
         }
