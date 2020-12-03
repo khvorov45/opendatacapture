@@ -916,20 +916,15 @@ mod tests {
 
         // Insert table data
         let data = crate::tests::get_primary_data();
-        {
-            let filter = insert_data(admindb_ref.clone());
-            let response = warp::test::request()
-                .method("PUT")
-                .path(
-                    format!("/project/test/insert/{}", table.name.as_str())
-                        .as_str(),
-                )
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .body(serde_json::to_value(&data).unwrap().to_string())
-                .reply(&filter)
-                .await;
-            assert_eq!(response.status(), StatusCode::NO_CONTENT);
-        }
+
+        FilterTester::new()
+            .method("PUT")
+            .path(format!("/project/test/insert/{}", table.name.as_str()))
+            .bearer_header(admin_token)
+            .json(data.clone())
+            .reply(&insert_data(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::NO_CONTENT);
 
         // Get table data
         {
