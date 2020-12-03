@@ -1070,16 +1070,13 @@ mod tests {
             );
 
         // Wrong method
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/auth/session-token")
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::METHOD_NOT_ALLOWED);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(body, "HTTP method not allowed");
-        }
+        FilterTester::new()
+            .method("GET")
+            .path("/auth/session-token")
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::METHOD_NOT_ALLOWED)
+            .expect_error("HTTP method not allowed");
 
         // Delete a non-existent project
         {
