@@ -1209,19 +1209,13 @@ mod tests {
             .expect_origin_header();
 
         // When request fails
-        {
-            let resp = warp::test::request()
-                .method("POST")
-                .path("/health")
-                .header("Origin", "test")
-                .reply(&routes_cors)
-                .await;
-            assert_eq!(resp.status(), StatusCode::METHOD_NOT_ALLOWED);
-            let heads = resp.headers();
-            let allow_origin =
-                heads.get("access-control-allow-origin").unwrap();
-            assert_eq!(allow_origin, "test");
-        }
+        FilterTester::new()
+            .method("POST") // Wrong method
+            .path("/health")
+            .origin_header()
+            .reply(&routes_cors)
+            .await
+            .expect_origin_header();
 
         // Options request
         {
