@@ -1152,6 +1152,16 @@ mod tests {
             .expect_status(StatusCode::NOT_FOUND)
             .expect_error("NoSuchProject(1, \"test_nonexistent\")");
 
+        // Create table in a non-existent project
+        FilterTester::new()
+            .method("PUT")
+            .path("/project/test_nonexistent/create/table")
+            .bearer_header(admin_token)
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::NOT_FOUND)
+            .expect_error("NoSuchProject(1, \"test_nonexistent\")");
+
         // Create a project that will be used later ---------------------------
         FilterTester::new()
             .method("PUT")
