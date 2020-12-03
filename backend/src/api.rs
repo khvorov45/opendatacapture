@@ -1125,39 +1125,36 @@ mod tests {
             .await;
 
         // Token too old
-        {
-            let old_token = admindb_ref
-                .lock()
-                .await
-                .generate_session_token(auth::EmailPassword {
-                    email: "admin@example.com".to_string(),
-                    password: "admin".to_string(),
-                })
-                .await
-                .unwrap();
-            let old_token = old_token.token();
-            sqlx::query(
-                format!(
-                    "UPDATE \"token\" \
-                    SET \"created\" = '2000-08-14 08:15:29.425665+10' \
-                    WHERE \"token\" = '{}'",
-                    auth::hash_fast(old_token)
-                )
-                .as_str(),
-            )
-            .execute(admindb_ref.lock().await.get_pool())
+        let old_token = admindb_ref
+            .lock()
+            .await
+            .generate_session_token(auth::EmailPassword {
+                email: "admin@example.com".to_string(),
+                password: "admin".to_string(),
+            })
             .await
             .unwrap();
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/get/users")
-                .header("Authorization", format!("Bearer {}", old_token))
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(body, "TokenTooOld");
-        }
+        sqlx::query(
+            format!(
+                "UPDATE \"token\" \
+                    SET \"created\" = '2000-08-14 08:15:29.425665+10' \
+                    WHERE \"token\" = '{}'",
+                auth::hash_fast(old_token.token())
+            )
+            .as_str(),
+        )
+        .execute(admindb_ref.lock().await.get_pool())
+        .await
+        .unwrap();
+        FilterTester::new()
+            .method("GET")
+            .path("/get/users")
+            .bearer_header(old_token.token())
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error("TokenTooOld");
+        drop(old_token);
 
         // Not found
         {
