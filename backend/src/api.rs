@@ -685,6 +685,9 @@ mod tests {
         pub fn bearer_header(self, tok: &str) -> Self {
             self.header("Authorization", format!("Bearer {}", tok))
         }
+        pub fn origin_header(self) -> Self {
+            self.header("Origin", "test")
+        }
         pub async fn reply<F>(mut self, f: &F) -> Self
         where
             F: warp::Filter + 'static,
@@ -751,6 +754,9 @@ mod tests {
         }
         pub fn expect_no_header(self, header_name: &str) {
             assert!(self.headers_response.unwrap().get(header_name).is_none());
+        }
+        pub fn expect_origin_header(self) {
+            self.expect_header("access-control-allow-origin", "test");
         }
     }
 
@@ -1197,10 +1203,10 @@ mod tests {
         FilterTester::new()
             .method("GET")
             .path("/health")
-            .header("Origin", "test")
+            .origin_header()
             .reply(&routes_cors)
             .await
-            .expect_header("access-control-allow-origin", "test");
+            .expect_origin_header();
 
         // When request fails
         {
