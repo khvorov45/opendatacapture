@@ -962,7 +962,6 @@ mod tests {
             .expect_status(StatusCode::NO_CONTENT);
 
         // Delete projects
-
         FilterTester::new()
             .method("DELETE")
             .path("/delete/project/test")
@@ -976,20 +975,19 @@ mod tests {
         let routes = routes(admindb_ref.clone(), "");
 
         // Wrong email
-        {
-            let resp = warp::test::request()
-                .method("POST")
-                .path("/auth/session-token")
-                .json(&auth::EmailPassword {
-                    email: "user1@example.com".to_string(),
-                    password: "user".to_string(),
-                })
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(body, "NoSuchUserEmail(\"user1@example.com\")");
-        }
+        let res = FilterTester::new()
+            .method("POST")
+            .path("/auth/session-token")
+            .json(auth::EmailPassword {
+                email: "user1@example.com".to_string(),
+                password: "user".to_string(),
+            })
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_body::<String>();
+        assert_eq!(res, "NoSuchUserEmail(\"user1@example.com\")");
+        drop(res);
 
         // Wrong password
         {
