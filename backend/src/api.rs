@@ -962,33 +962,14 @@ mod tests {
             .expect_status(StatusCode::NO_CONTENT);
 
         // Delete projects
-        {
-            let delete_project_filter = delete_project(admindb_ref.clone());
-            let delete_project_response = warp::test::request()
-                .method("DELETE")
-                .path("/delete/project/test")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&delete_project_filter)
-                .await;
-            assert_eq!(
-                delete_project_response.status(),
-                StatusCode::NO_CONTENT
-            );
-            let get_projects_filter = get_user_projects(admindb_ref.clone());
-            let get_projects_response = warp::test::request()
-                .method("GET")
-                .path("/get/projects")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&get_projects_filter)
-                .await;
-            assert_eq!(get_projects_response.status(), StatusCode::OK);
-            let projects_obtained =
-                serde_json::from_slice::<Vec<admin::Project>>(
-                    &*get_projects_response.body(),
-                )
-                .unwrap();
-            assert_eq!(projects_obtained.len(), 0);
-        }
+
+        FilterTester::new()
+            .method("DELETE")
+            .path("/delete/project/test")
+            .bearer_header(admin_token)
+            .reply(&delete_project(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::NO_CONTENT);
 
         // Rejections ---------------------------------------------------------
 
