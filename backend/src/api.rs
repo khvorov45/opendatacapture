@@ -123,6 +123,8 @@ async fn handle_rejection(
     } else if err.is_not_found() {
         status = StatusCode::NOT_FOUND;
         message = "NOT_FOUND".to_string();
+    // Again, all errors that can happen through requests should be handled
+    // above. If they aren't then log and implement a handler.
     } else {
         status = StatusCode::INTERNAL_SERVER_ERROR;
         message = format!("UNHANDLED_REJECTION: {:?}", err);
