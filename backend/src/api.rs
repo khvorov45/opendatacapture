@@ -1239,6 +1239,17 @@ mod tests {
             .await
             .expect_status(StatusCode::FORBIDDEN);
 
+        // Path prefix --------------------------------------------------------
+
+        let routes_prefixed = super::routes(admindb_ref.clone(), "prefix");
+
+        FilterTester::new()
+            .method("GET")
+            .path("/prefix/health")
+            .reply(&routes_prefixed)
+            .await
+            .expect_status(StatusCode::OK);
+
         // Remove the test database -------------------------------------------
 
         crate::tests::remove_test_db(&*admindb_ref.lock().await.get_db()).await;
