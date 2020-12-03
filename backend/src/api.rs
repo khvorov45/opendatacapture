@@ -8,8 +8,29 @@ use warp::{http::StatusCode, Filter, Reply};
 
 type DBRef = Arc<Mutex<AdminDB>>;
 
-/// All routes
+/// CORS routes
+pub fn routes_cors(
+    db: DBRef,
+    prefix: &str,
+) -> impl Filter<Extract = impl Reply, Error = warp::Rejection> + Clone {
+    // Note here that if cors come before the recover filter then rejection
+    // replies don't have cors on them. Having cors be after the recover
+    // filter makes it so their rejections never enter that filter.
+    // It's possible to have the recover filter on both sides but I'll
+    // just let cors rejections handle themselves
+    routes(db, prefix).with(get_cors())
+}
+
+/// Standard routes
 pub fn routes(
+    db: DBRef,
+    prefix: &str,
+) -> impl Filter<Extract = impl Reply, Error = Infallible> + Clone {
+    base_routes(db, prefix).recover(handle_rejection)
+}
+
+/// All routes, no recovery
+fn base_routes(
     db: DBRef,
     prefix: &str,
 ) -> impl Filter<Extract = impl Reply, Error = warp::Rejection> + Clone {
@@ -33,7 +54,6 @@ pub fn routes(
         .or(get_table_data(db.clone()))
         .or(insert_data(db.clone()))
         .or(remove_all_user_table_data(db))
-        .recover(handle_rejection)
         .boxed();
     if prefix.is_empty() {
         return routes;
@@ -90,9 +110,6 @@ async fn handle_rejection(
         } else {
             status = StatusCode::BAD_REQUEST;
         }
-        message = e.to_string();
-    } else if let Some(e) = err.find::<warp::filters::cors::CorsForbidden>() {
-        status = StatusCode::FORBIDDEN;
         message = e.to_string();
     } else if let Some(e) =
         err.find::<warp::filters::body::BodyDeserializeError>()
@@ -718,11 +735,11 @@ mod tests {
             );
             self
         }
-        pub fn expect_body<T>(self) -> T
+        pub fn expect_body<T>(&self) -> T
         where
             T: serde::de::DeserializeOwned,
         {
-            let bod = serde_json::from_slice::<T>(&self.body.unwrap());
+            let bod = serde_json::from_slice::<T>(&self.body.clone().unwrap());
             assert!(
                 bod.is_ok(),
                 "body of {} method to {} path",
@@ -732,8 +749,7 @@ mod tests {
             bod.unwrap()
         }
         pub fn expect_error<T: AsRef<str>>(self, msg: T) {
-            let bod =
-                serde_json::from_slice::<String>(&self.body.unwrap()).unwrap();
+            let bod = self.expect_body::<String>();
             assert_eq!(
                 bod,
                 msg.as_ref(),
@@ -747,10 +763,21 @@ mod tests {
             header_name: &str,
             header_content: T,
         ) {
-            assert_eq!(
-                self.headers_response.unwrap().get(header_name).unwrap(),
-                header_content.as_ref()
-            );
+            if let Some(head) = self.headers_response.unwrap().get(header_name)
+            {
+                assert_eq!(
+                    head,
+                    header_content.as_ref(),
+                    "header of {} method to {} path",
+                    self.method,
+                    self.path
+                );
+            } else {
+                panic!(
+                    "Missing header {} of {} method to {} path",
+                    header_name, self.method, self.path
+                )
+            }
         }
         pub fn expect_no_header(self, header_name: &str) {
             assert!(self.headers_response.unwrap().get(header_name).is_none());
@@ -1197,7 +1224,7 @@ mod tests {
             .await
             .expect_no_header("access-control-allow-origin");
 
-        let routes_cors = routes.clone().with(get_cors());
+        let routes_cors = routes_cors(admindb_ref.clone(), "");
 
         // When request is good
         FilterTester::new()
