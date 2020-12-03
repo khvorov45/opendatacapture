@@ -95,8 +95,9 @@ async fn handle_rejection(
                 status = StatusCode::NOT_FOUND;
                 message = format!("{:?}", e);
             }
-            // The rest are my errors but there shouldn't be anything the
-            // client can do to fix them, so log them
+            // All my errors that could happen through requests should be
+            // handled above. If they aren't then log them here and implement
+            // a handler above later.
             _ => {
                 status = StatusCode::INTERNAL_SERVER_ERROR;
                 message = format!("{:?}", e);
