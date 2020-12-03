@@ -1089,14 +1089,12 @@ mod tests {
             .expect_error("NoSuchProject(1, \"test_nonexistent\")");
 
         // Create a project that will be used later ---------------------------
-        {
-            warp::test::request()
-                .method("PUT")
-                .path("/create/project/test")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&routes)
-                .await;
-        }
+        FilterTester::new()
+            .method("PUT")
+            .path("/create/project/test")
+            .bearer_header(admin_token)
+            .reply(&routes)
+            .await;
 
         // Creating the same project twice
         {
