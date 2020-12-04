@@ -34,6 +34,10 @@ pub enum Error {
     #[error(transparent)]
     Unauthorized(#[from] Unauthorized),
 
+    /// Token not found
+    #[error("no such token: {0}")]
+    NoSuchToken(String),
+
     /// User ID not found
     #[error("no such user id: {0}")]
     NoSuchUserId(i32),

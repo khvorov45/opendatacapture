@@ -91,7 +91,9 @@ async fn handle_rejection(
                 status = StatusCode::CONFLICT;
                 message = format!("{:?}", e)
             }
-            Error::NoSuchProject(_, _) | Error::NoSuchTable(_) => {
+            Error::NoSuchProject(_, _)
+            | Error::NoSuchTable(_)
+            | Error::NoSuchToken(_) => {
                 status = StatusCode::NOT_FOUND;
                 message = format!("{:?}", e);
             }
@@ -1087,6 +1089,13 @@ mod tests {
             .reply(&routes)
             .await
             .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error("NoSuchToken(\"123\")");
+        FilterTester::new()
+            .method("DELETE")
+            .path("/auth/remove-token/123")
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::NOT_FOUND)
             .expect_error("NoSuchToken(\"123\")");
 
         // Insufficient access
