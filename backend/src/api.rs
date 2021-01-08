@@ -8,8 +8,29 @@ use warp::{http::StatusCode, Filter, Reply};
 
 type DBRef = Arc<Mutex<AdminDB>>;
 
-/// All routes
+/// CORS routes
+pub fn routes_cors(
+    db: DBRef,
+    prefix: &str,
+) -> impl Filter<Extract = impl Reply, Error = warp::Rejection> + Clone {
+    // Note here that if cors come before the recover filter then rejection
+    // replies don't have cors on them. Having cors be after the recover
+    // filter makes it so their rejections never enter that filter.
+    // It's possible to have the recover filter on both sides but I'll
+    // just let cors rejections handle themselves
+    routes(db, prefix).with(get_cors())
+}
+
+/// Standard routes
 pub fn routes(
+    db: DBRef,
+    prefix: &str,
+) -> impl Filter<Extract = impl Reply, Error = Infallible> + Clone {
+    base_routes(db, prefix).recover(handle_rejection)
+}
+
+/// All routes, no recovery
+fn base_routes(
     db: DBRef,
     prefix: &str,
 ) -> impl Filter<Extract = impl Reply, Error = warp::Rejection> + Clone {
@@ -33,7 +54,6 @@ pub fn routes(
         .or(get_table_data(db.clone()))
         .or(insert_data(db.clone()))
         .or(remove_all_user_table_data(db))
-        .recover(handle_rejection)
         .boxed();
     if prefix.is_empty() {
         return routes;
@@ -44,7 +64,7 @@ pub fn routes(
 /// All CORS headers.
 /// Allowes to apply the same cors headers to every path.
 /// Could not get it working when cors headers were different on every path.
-pub fn get_cors() -> warp::cors::Builder {
+fn get_cors() -> warp::cors::Builder {
     warp::cors()
         .allow_any_origin()
         .allow_methods(vec!["GET", "POST", "PUT", "DELETE"])
@@ -71,12 +91,15 @@ async fn handle_rejection(
                 status = StatusCode::CONFLICT;
                 message = format!("{:?}", e)
             }
-            Error::NoSuchProject(_, _) | Error::NoSuchTable(_) => {
+            Error::NoSuchProject(_, _)
+            | Error::NoSuchTable(_)
+            | Error::NoSuchToken(_) => {
                 status = StatusCode::NOT_FOUND;
                 message = format!("{:?}", e);
             }
-            // The rest are my errors but there shouldn't be anything the
-            // client can do to fix them, so log them
+            // All my errors that could happen through requests should be
+            // handled above. If they aren't then log them here and implement
+            // a handler above later.
             _ => {
                 status = StatusCode::INTERNAL_SERVER_ERROR;
                 message = format!("{:?}", e);
@@ -87,12 +110,11 @@ async fn handle_rejection(
     } else if let Some(e) = err.find::<warp::reject::MissingHeader>() {
         if e.name() == "Authorization" {
             status = StatusCode::UNAUTHORIZED;
+        // I don't require any other headers at the moment so the below
+        // case shouldn't happen
         } else {
             status = StatusCode::BAD_REQUEST;
         }
-        message = e.to_string();
-    } else if let Some(e) = err.find::<warp::filters::cors::CorsForbidden>() {
-        status = StatusCode::FORBIDDEN;
         message = e.to_string();
     } else if let Some(e) =
         err.find::<warp::filters::body::BodyDeserializeError>()
@@ -105,6 +127,8 @@ async fn handle_rejection(
     } else if err.is_not_found() {
         status = StatusCode::NOT_FOUND;
         message = "NOT_FOUND".to_string();
+    // Again, all errors that can happen through requests should be handled
+    // above. If they aren't then log and implement a handler.
     } else {
         status = StatusCode::INTERNAL_SERVER_ERROR;
         message = format!("UNHANDLED_REJECTION: {:?}", err);
@@ -642,6 +666,134 @@ mod tests {
             .unwrap()
     }
 
+    /// Meant to test individual filters given good input
+    struct FilterTester {
+        method: String,
+        path: String,
+        json: Option<Box<dyn erased_serde::Serialize>>,
+        headers: std::collections::HashMap<String, String>,
+        status: Option<StatusCode>,
+        body: Option<Vec<u8>>,
+        headers_response: Option<warp::http::HeaderMap>,
+    }
+
+    impl FilterTester {
+        pub fn new() -> Self {
+            Self {
+                method: "".to_string(),
+                path: "".to_string(),
+                json: None,
+                headers: std::collections::HashMap::new(),
+                status: None,
+                body: None,
+                headers_response: None,
+            }
+        }
+        pub fn method(mut self, method: &str) -> Self {
+            self.method = method.to_string();
+            self
+        }
+        pub fn path<T: AsRef<str>>(mut self, path: T) -> Self {
+            self.path = path.as_ref().to_string();
+            self
+        }
+        pub fn json(mut self, val: impl serde::Serialize + 'static) -> Self {
+            self.json = Some(Box::new(val));
+            self
+        }
+        pub fn header<T: AsRef<str>>(mut self, name: &str, value: T) -> Self {
+            self.headers
+                .insert(name.to_string(), value.as_ref().to_string());
+            self
+        }
+        pub fn bearer_header(self, tok: &str) -> Self {
+            self.header("Authorization", format!("Bearer {}", tok))
+        }
+        pub fn origin_header(self) -> Self {
+            self.header("Origin", "test")
+        }
+        pub async fn reply<F>(mut self, f: &F) -> Self
+        where
+            F: warp::Filter + 'static,
+            F::Extract: warp::Reply + Send,
+        {
+            let mut req = warp::test::request()
+                .method(self.method.as_str())
+                .path(self.path.as_str());
+            if let Some(v) = &self.json {
+                req = req.json(&v);
+            }
+            for (name, value) in &self.headers {
+                req = req.header(name, value);
+            }
+            let resp = req.reply(f).await;
+            self.status = Some(resp.status());
+            self.body = Some((&*resp.body()).to_vec());
+            self.headers_response = Some(resp.headers().clone());
+            self
+        }
+        pub fn expect_status(self, status: StatusCode) -> Self {
+            assert_eq!(
+                self.status.unwrap(),
+                status,
+                "status of {} method to {} path",
+                self.method,
+                self.path
+            );
+            self
+        }
+        pub fn expect_body<T>(&self) -> T
+        where
+            T: serde::de::DeserializeOwned,
+        {
+            let bod = serde_json::from_slice::<T>(&self.body.clone().unwrap());
+            assert!(
+                bod.is_ok(),
+                "body of {} method to {} path",
+                self.method,
+                self.path
+            );
+            bod.unwrap()
+        }
+        pub fn expect_error<T: AsRef<str>>(self, msg: T) {
+            let bod = self.expect_body::<String>();
+            assert_eq!(
+                bod,
+                msg.as_ref(),
+                "error of {} method to {} path",
+                self.method,
+                self.path
+            );
+        }
+        pub fn expect_header<T: AsRef<str>>(
+            self,
+            header_name: &str,
+            header_content: T,
+        ) {
+            if let Some(head) = self.headers_response.unwrap().get(header_name)
+            {
+                assert_eq!(
+                    head,
+                    header_content.as_ref(),
+                    "header of {} method to {} path",
+                    self.method,
+                    self.path
+                );
+            } else {
+                panic!(
+                    "Missing header {} of {} method to {} path",
+                    header_name, self.method, self.path
+                )
+            }
+        }
+        pub fn expect_no_header(self, header_name: &str) {
+            assert!(self.headers_response.unwrap().get(header_name).is_none());
+        }
+        pub fn expect_origin_header(self) {
+            self.expect_header("access-control-allow-origin", "test");
+        }
+    }
+
     #[tokio::test]
     async fn test_api() {
         let _ = pretty_env_logger::try_init();
@@ -657,186 +809,92 @@ mod tests {
         // Individual filters given good input --------------------------------
 
         // Health check
-        {
-            let health_filter = health(admindb_ref.clone());
-            let health_resp = warp::test::request()
-                .method("GET")
-                .path("/health")
-                .reply(&health_filter)
-                .await
-                .into_body();
-            let health = serde_json::from_slice::<bool>(&*health_resp).unwrap();
-            assert!(health);
-        }
-
-        // Get session token
-        {
-            let session_token_filter =
-                generate_session_token(admindb_ref.clone());
-            let resp = warp::test::request()
-                .method("POST")
-                .path("/auth/session-token")
-                .json(&auth::EmailPassword {
-                    email: "user@example.com".to_string(),
-                    password: "user".to_string(),
-                })
-                .reply(&session_token_filter)
-                .await;
-            assert_eq!(resp.status(), StatusCode::OK);
-        }
-
-        // Remove session token
-        {
-            let admin_tok = gen_admin_tok(admindb_ref.clone()).await;
-            let user_tok = gen_user_tok(admindb_ref.clone()).await;
-            let resp = warp::test::request()
-                .method("DELETE")
-                .path(
-                    format!("/auth/remove-token/{}", user_tok.token()).as_str(),
-                )
-                .reply(&remove_token(admindb_ref.clone()))
-                .await;
-            assert_eq!(resp.status(), StatusCode::NO_CONTENT);
-            // Shouldn't be able to get user
-            let resp = warp::test::request()
-                .method("GET")
-                .path(
-                    format!("/get/user/by/token/{}", user_tok.token()).as_str(),
-                )
-                .reply(&get_user_by_token(admindb_ref.clone()))
-                .await;
-            // One filter doesn't have rejection handling
-            assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
-            // Should still be able to get admin
-            let resp = warp::test::request()
-                .method("GET")
-                .path(
-                    format!("/get/user/by/token/{}", admin_tok.token())
-                        .as_str(),
-                )
-                .reply(&get_user_by_token(admindb_ref.clone()))
-                .await;
-            assert_eq!(resp.status(), StatusCode::OK);
-            admindb_ref
-                .lock()
-                .await
-                .remove_token(admin_tok.token())
-                .await
-                .unwrap();
-        }
-
-        // Generate tokens to be used below
-        let admin_token_full = admindb_ref
-            .lock()
+        FilterTester::new()
+            .method("GET")
+            .path("/health")
+            .reply(&health(admindb_ref.clone()))
             .await
-            .generate_session_token(auth::EmailPassword {
-                email: "admin@example.com".to_string(),
-                password: "admin".to_string(),
-            })
-            .await
-            .unwrap();
-        let admin_token = admin_token_full.token();
-        let user_token_full = admindb_ref
-            .lock()
-            .await
-            .generate_session_token(auth::EmailPassword {
+            .expect_status(StatusCode::OK)
+            .expect_body::<bool>();
+
+        // Create/refresh/remove session token
+        let tok = FilterTester::new()
+            .method("POST")
+            .path("/auth/session-token")
+            .json(auth::EmailPassword {
                 email: "user@example.com".to_string(),
                 password: "user".to_string(),
             })
+            .reply(&generate_session_token(admindb_ref.clone()))
             .await
-            .unwrap();
+            .expect_status(StatusCode::OK)
+            .expect_body::<auth::Token>();
+        let tok = FilterTester::new()
+            .method("POST")
+            .path(format!("/auth/refresh-token/{}", tok.token()))
+            .reply(&refresh_token(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<auth::Token>();
+        FilterTester::new()
+            .method("DELETE")
+            .path(format!("/auth/remove-token/{}", tok.token()))
+            .reply(&remove_token(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::NO_CONTENT);
+        drop(tok);
+
+        // Generate tokens to be used below
+        let admin_token_full = gen_admin_tok(admindb_ref.clone()).await;
+        let admin_token = admin_token_full.token();
+        let user_token_full = gen_user_tok(admindb_ref.clone()).await;
         let user_token = user_token_full.token();
 
-        // Refresh session token
-        {
-            // Genereate new, will be removed on refresh
-            let admin_token = admindb_ref
-                .lock()
-                .await
-                .generate_session_token(auth::EmailPassword {
-                    email: "admin@example.com".to_string(),
-                    password: "admin".to_string(),
-                })
-                .await
-                .unwrap();
-            let resp = warp::test::request()
-                .method("POST")
-                .path(
-                    format!("/auth/refresh-token/{}", admin_token.token())
-                        .as_str(),
-                )
-                .json(&auth::EmailPassword {
-                    email: "user@example.com".to_string(),
-                    password: "user".to_string(),
-                })
-                .reply(&refresh_token(admindb_ref.clone()))
-                .await;
-            assert_eq!(resp.status(), StatusCode::OK);
-            let token_obtained: auth::Token =
-                serde_json::from_slice(&*resp.body()).unwrap();
-            assert_ne!(token_obtained.token(), admin_token.token());
-        }
-
         // Get user by token
-        {
-            let get_user_by_token_filter =
-                get_user_by_token(admindb_ref.clone());
-            let user_response = warp::test::request()
-                .method("GET")
-                .path(format!("/get/user/by/token/{}", user_token).as_str())
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&get_user_by_token_filter)
-                .await;
-            assert_eq!(user_response.status(), StatusCode::OK);
-            let user_obtained =
-                serde_json::from_slice::<admin::User>(&*user_response.body())
-                    .unwrap();
-            assert_eq!(user_obtained.email(), "user@example.com");
-            assert_eq!(user_obtained.access(), auth::Access::User);
-        }
+        let usr = FilterTester::new()
+            .method("GET")
+            .path(format!("/get/user/by/token/{}", user_token))
+            .reply(&get_user_by_token(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<admin::User>();
+        assert_eq!(usr.email(), "user@example.com");
+        assert_eq!(usr.access(), auth::Access::User);
+        drop(usr);
 
         // Get users
-        {
-            let get_users_filter = get_users(admindb_ref.clone());
-            let users_response = warp::test::request()
-                .method("GET")
-                .path("/get/users")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&get_users_filter)
-                .await;
-            assert_eq!(users_response.status(), StatusCode::OK);
-            let users_obtained = serde_json::from_slice::<Vec<admin::User>>(
-                &*users_response.body(),
-            )
-            .unwrap();
-            assert_eq!(users_obtained.len(), 2);
-        }
+        FilterTester::new()
+            .method("GET")
+            .path("/get/users")
+            .bearer_header(admin_token)
+            .reply(&get_users(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<Vec<admin::User>>();
 
         // Create/remove user
-        {
-            let resp = warp::test::request()
-                .method("PUT")
-                .path("/create/user")
-                .json(&auth::EmailPassword {
-                    email: "newuser@example.com".to_string(),
-                    password: "newpassword".to_string(),
-                })
-                .reply(&create_user(admindb_ref.clone()))
-                .await;
-            assert_eq!(resp.status(), StatusCode::NO_CONTENT);
-            let resp = warp::test::request()
-                .method("DELETE")
-                .path("/remove/user/newuser@example.com")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&remove_user(admindb_ref.clone()))
-                .await;
-            assert_eq!(resp.status(), StatusCode::NO_CONTENT);
-        }
+        FilterTester::new()
+            .method("PUT")
+            .path("/create/user")
+            .json(auth::EmailPassword {
+                email: "newuser@example.com".to_string(),
+                password: "newpassword".to_string(),
+            })
+            .reply(&create_user(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::NO_CONTENT);
+        FilterTester::new()
+            .method("DELETE")
+            .path("/remove/user/newuser@example.com")
+            .bearer_header(admin_token)
+            .reply(&remove_user(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::NO_CONTENT);
 
         // Test projects
         let test_project1 = db::admin::Project::new(1, "test");
 
-        // Make sure test projects aren't present
+        // Make sure the corresponding databases aren't present
         log::info!("remove test projects");
         crate::tests::remove_dbs(
             &*admindb_ref.lock().await,
@@ -845,553 +903,420 @@ mod tests {
         .await;
 
         // Create projects
-        {
-            let create_project_filter = create_project(admindb_ref.clone());
-            let create_project_response = warp::test::request()
-                .method("PUT")
-                .path("/create/project/test")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&create_project_filter)
-                .await;
-            assert_eq!(
-                create_project_response.status(),
-                StatusCode::NO_CONTENT
-            );
-        }
-
-        // Get projects
-        {
-            let get_projects_filter = get_user_projects(admindb_ref.clone());
-            let get_projects_response = warp::test::request()
-                .method("GET")
-                .path("/get/projects")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&get_projects_filter)
-                .await;
-            assert_eq!(get_projects_response.status(), StatusCode::OK);
-            let projects_obtained =
-                serde_json::from_slice::<Vec<admin::Project>>(
-                    &*get_projects_response.body(),
-                )
-                .unwrap();
-            assert_eq!(projects_obtained.len(), 1);
-            assert_eq!(
-                projects_obtained[0].get_dbname(TEST_DB_NAME),
-                test_project1.get_dbname(TEST_DB_NAME)
-            )
-        }
-
-        // Get project
-        {
-            let filter = get_user_project(admindb_ref.clone());
-            let response = warp::test::request()
-                .method("GET")
-                .path(
-                    format!("/get/project/{}", test_project1.get_name())
-                        .as_str(),
-                )
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&filter)
-                .await;
-            assert_eq!(response.status(), StatusCode::OK);
-            let project_obtained =
-                serde_json::from_slice::<Project>(&*response.body()).unwrap();
-            assert_eq!(
-                project_obtained.get_dbname(TEST_DB_NAME),
-                test_project1.get_dbname(TEST_DB_NAME)
-            )
-        }
+        FilterTester::new()
+            .method("PUT")
+            .path(format!("/create/project/{}", test_project1.get_name()))
+            .bearer_header(admin_token)
+            .reply(&create_project(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::NO_CONTENT);
+        // Get them
+        let projects_obtained = FilterTester::new()
+            .method("GET")
+            .path("/get/projects")
+            .bearer_header(admin_token)
+            .reply(&get_user_projects(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<Vec<admin::Project>>();
+        assert_eq!(projects_obtained.len(), 1);
+        assert_eq!(projects_obtained[0].get_name(), test_project1.get_name());
+        drop(projects_obtained);
+        let project_obtained = FilterTester::new()
+            .method("GET")
+            .path(format!("/get/project/{}", test_project1.get_name()))
+            .bearer_header(admin_token)
+            .reply(&get_user_project(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<admin::Project>();
+        assert_eq!(project_obtained.get_name(), test_project1.get_name());
+        drop(project_obtained);
 
         // Create table
         let table = crate::tests::get_test_primary_table();
 
-        {
-            let filter = create_table(admindb_ref.clone());
-            let response = warp::test::request()
-                .method("PUT")
-                .path("/project/test/create/table")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .body(serde_json::to_value(table.clone()).unwrap().to_string())
-                .reply(&filter)
-                .await;
-            assert_eq!(response.status(), StatusCode::NO_CONTENT);
-        }
+        FilterTester::new()
+            .method("PUT")
+            .path("/project/test/create/table")
+            .bearer_header(admin_token)
+            .json(table.clone())
+            .reply(&create_table(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::NO_CONTENT);
 
         // Get table list
-        {
-            let filter = get_table_names(admindb_ref.clone());
-            let response = warp::test::request()
-                .method("GET")
-                .path("/project/test/get/tablenames")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&filter)
-                .await;
-            assert_eq!(response.status(), StatusCode::OK);
-            assert_eq!(
-                serde_json::from_slice::<Vec<String>>(&*response.body())
-                    .unwrap(),
-                vec![table.name.clone()]
-            );
-        }
+        let table_list = FilterTester::new()
+            .method("GET")
+            .path("/project/test/get/tablenames")
+            .bearer_header(admin_token)
+            .reply(&get_table_names(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<Vec<String>>();
+        assert_eq!(table_list, vec![table.name.clone()]);
+        drop(table_list);
 
         // Get table metadata
-        {
-            let filter = get_table_meta(admindb_ref.clone());
-            let response = warp::test::request()
-                .method("GET")
-                .path(
-                    format!("/project/test/get/table/{}/meta", table.name)
-                        .as_str(),
-                )
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&filter)
-                .await;
-            assert_eq!(response.status(), StatusCode::OK);
-            assert_eq!(
-                serde_json::from_slice::<db::user::table::TableMeta>(
-                    &*response.body()
-                )
-                .unwrap(),
-                table
-            );
-        }
+        let table_meta = FilterTester::new()
+            .method("GET")
+            .path(format!("/project/test/get/table/{}/meta", table.name))
+            .bearer_header(admin_token)
+            .reply(&get_table_meta(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<db::user::table::TableMeta>();
+        assert_eq!(table_meta, table);
+        drop(table_meta);
 
         // Get all metadata
-        {
-            let filter = get_all_meta(admindb_ref.clone());
-            let response = warp::test::request()
-                .method("GET")
-                .path("/project/test/get/meta")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&filter)
-                .await;
-            assert_eq!(response.status(), StatusCode::OK);
-            assert_eq!(
-                serde_json::from_slice::<db::user::table::TableSpec>(
-                    &*response.body()
-                )
-                .unwrap(),
-                vec![table.clone()]
-            );
-        }
+        let all_meta = FilterTester::new()
+            .method("GET")
+            .path("/project/test/get/meta")
+            .bearer_header(admin_token)
+            .reply(&get_all_meta(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<db::user::table::TableSpec>();
+        assert_eq!(all_meta, vec![table.clone()]);
+        drop(all_meta);
 
         // Insert table data
         let data = crate::tests::get_primary_data();
-        {
-            let filter = insert_data(admindb_ref.clone());
-            let response = warp::test::request()
-                .method("PUT")
-                .path(
-                    format!("/project/test/insert/{}", table.name.as_str())
-                        .as_str(),
-                )
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .body(serde_json::to_value(&data).unwrap().to_string())
-                .reply(&filter)
-                .await;
-            assert_eq!(response.status(), StatusCode::NO_CONTENT);
-        }
+        FilterTester::new()
+            .method("PUT")
+            .path(format!("/project/test/insert/{}", table.name.as_str()))
+            .bearer_header(admin_token)
+            .json(data.clone())
+            .reply(&insert_data(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::NO_CONTENT);
 
         // Get table data
-        {
-            let filter = get_table_data(admindb_ref.clone());
-            let response = warp::test::request()
-                .method("GET")
-                .path(
-                    format!(
-                        "/project/test/get/table/{}/data",
-                        table.name.as_str()
-                    )
-                    .as_str(),
-                )
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&filter)
-                .await;
-            assert_eq!(response.status(), StatusCode::OK);
-            assert_eq!(
-                serde_json::from_slice::<Vec<RowJson>>(&*response.body())
-                    .unwrap(),
-                data
-            )
-        }
+        let data_obtained = FilterTester::new()
+            .method("GET")
+            .path(format!(
+                "/project/test/get/table/{}/data",
+                table.name.as_str()
+            ))
+            .bearer_header(admin_token)
+            .reply(&get_table_data(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_body::<Vec<RowJson>>();
+        assert_eq!(data_obtained, data);
+        drop(data_obtained);
 
-        // Remove table data
-        {
-            let filter = remove_all_user_table_data(admindb_ref.clone());
-            let response = warp::test::request()
-                .method("DELETE")
-                .path(
-                    format!("/project/test/remove/{}/all", table.name.as_str())
-                        .as_str(),
-                )
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&filter)
-                .await;
-            assert_eq!(response.status(), StatusCode::NO_CONTENT);
-        }
+        // Remove all table data
+        FilterTester::new()
+            .method("DELETE")
+            .path(format!("/project/test/remove/{}/all", table.name.as_str()))
+            .bearer_header(admin_token)
+            .reply(&remove_all_user_table_data(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::NO_CONTENT);
 
         // Remove table
-        {
-            let filter = remove_table(admindb_ref.clone());
-            let response = warp::test::request()
-                .method("DELETE")
-                .path(
-                    format!(
-                        "/project/test/remove/table/{}",
-                        table.name.as_str()
-                    )
-                    .as_str(),
-                )
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&filter)
-                .await;
-            assert_eq!(response.status(), StatusCode::NO_CONTENT);
-        }
+        FilterTester::new()
+            .method("DELETE")
+            .path(format!(
+                "/project/test/remove/table/{}",
+                table.name.as_str()
+            ))
+            .bearer_header(admin_token)
+            .reply(&remove_table(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::NO_CONTENT);
 
         // Delete projects
-        {
-            let delete_project_filter = delete_project(admindb_ref.clone());
-            let delete_project_response = warp::test::request()
-                .method("DELETE")
-                .path("/delete/project/test")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&delete_project_filter)
-                .await;
-            assert_eq!(
-                delete_project_response.status(),
-                StatusCode::NO_CONTENT
-            );
-            let get_projects_filter = get_user_projects(admindb_ref.clone());
-            let get_projects_response = warp::test::request()
-                .method("GET")
-                .path("/get/projects")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&get_projects_filter)
-                .await;
-            assert_eq!(get_projects_response.status(), StatusCode::OK);
-            let projects_obtained =
-                serde_json::from_slice::<Vec<admin::Project>>(
-                    &*get_projects_response.body(),
-                )
-                .unwrap();
-            assert_eq!(projects_obtained.len(), 0);
-        }
+        FilterTester::new()
+            .method("DELETE")
+            .path("/delete/project/test")
+            .bearer_header(admin_token)
+            .reply(&delete_project(admindb_ref.clone()))
+            .await
+            .expect_status(StatusCode::NO_CONTENT);
 
         // Rejections ---------------------------------------------------------
 
         let routes = routes(admindb_ref.clone(), "");
 
         // Wrong email
-        {
-            let resp = warp::test::request()
-                .method("POST")
-                .path("/auth/session-token")
-                .json(&auth::EmailPassword {
-                    email: "user1@example.com".to_string(),
-                    password: "user".to_string(),
-                })
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(body, "NoSuchUserEmail(\"user1@example.com\")");
-        }
+        FilterTester::new()
+            .method("POST")
+            .path("/auth/session-token")
+            .json(auth::EmailPassword {
+                email: "user1@example.com".to_string(),
+                password: "user".to_string(),
+            })
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error("NoSuchUserEmail(\"user1@example.com\")");
 
         // Wrong password
-        {
-            let resp = warp::test::request()
-                .method("POST")
-                .path("/auth/session-token")
-                .json(&auth::EmailPassword {
-                    email: "user@example.com".to_string(),
-                    password: "user1".to_string(),
-                })
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(body, "WrongPassword(\"user1\")");
-        }
+        FilterTester::new()
+            .method("POST")
+            .path("/auth/session-token")
+            .json(auth::EmailPassword {
+                email: "user@example.com".to_string(),
+                password: "user1".to_string(),
+            })
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error("WrongPassword(\"user1\")");
 
         // Wrong token
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/get/user/by/token/123")
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(body, "NoSuchToken(\"123\")");
-        }
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/get/users")
-                .header("Authorization", "Bearer 123")
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(body, "NoSuchToken(\"123\")");
-        }
+        FilterTester::new()
+            .method("GET")
+            .path("/get/user/by/token/123")
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error("NoSuchToken(\"123\")");
+        FilterTester::new()
+            .method("GET")
+            .path("/get/users")
+            .bearer_header("123")
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error("NoSuchToken(\"123\")");
+        FilterTester::new()
+            .method("POST")
+            .path("/auth/refresh-token/123")
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error("NoSuchToken(\"123\")");
+        FilterTester::new()
+            .method("DELETE")
+            .path("/auth/remove-token/123")
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::NOT_FOUND)
+            .expect_error("NoSuchToken(\"123\")");
 
         // Insufficient access
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/get/users")
-                .header("Authorization", format!("Bearer {}", user_token))
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(body, "InsufficientAccess");
-        }
+        FilterTester::new()
+            .method("GET")
+            .path("/get/users")
+            .bearer_header(user_token)
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error("InsufficientAccess");
 
         // Wrong authentication type
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/get/users")
-                .header("Authorization", "Basic a:a")
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(body, "WrongAuthType(\"Basic\")");
-        }
+        FilterTester::new()
+            .method("GET")
+            .path("/get/users")
+            .header("Authorization", "Basic a:a")
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error("WrongAuthType(\"Basic\")");
 
         // Missing header
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/get/users")
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(body, "Missing request header \"Authorization\"");
-        }
+        FilterTester::new()
+            .method("GET")
+            .path("/get/users")
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error("Missing request header \"Authorization\"");
 
         // Missing body
-        {
-            let resp = warp::test::request()
-                .method("POST")
-                .path("/auth/session-token")
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(
-                body,
+        FilterTester::new()
+            .method("POST")
+            .path("/auth/session-token")
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::BAD_REQUEST)
+            .expect_error(
                 "Request body deserialize error: \
-                EOF while parsing a value at line 1 column 0"
+                EOF while parsing a value at line 1 column 0",
             );
-        }
 
         // Wrong method
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/auth/session-token")
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::METHOD_NOT_ALLOWED);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(body, "HTTP method not allowed");
-        }
+        FilterTester::new()
+            .method("GET")
+            .path("/auth/session-token")
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::METHOD_NOT_ALLOWED)
+            .expect_error("HTTP method not allowed");
 
         // Delete a non-existent project
-        {
-            let resp = warp::test::request()
-                .method("DELETE")
-                .path("/delete/project/test_nonexistent")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::NOT_FOUND);
-            assert_eq!(
-                serde_json::from_slice::<String>(&*resp.body()).unwrap(),
-                "NoSuchProject(1, \"test_nonexistent\")"
-            );
-        }
+        FilterTester::new()
+            .method("DELETE")
+            .path("/delete/project/test_nonexistent")
+            .bearer_header(admin_token)
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::NOT_FOUND)
+            .expect_error("NoSuchProject(1, \"test_nonexistent\")");
+
+        // Get a non-existent project
+        FilterTester::new()
+            .method("GET")
+            .path("/get/project/test_nonexistent")
+            .bearer_header(admin_token)
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::NOT_FOUND)
+            .expect_error("NoSuchProject(1, \"test_nonexistent\")");
+
+        // Create table in a non-existent project
+        FilterTester::new()
+            .method("PUT")
+            .path("/project/test_nonexistent/create/table")
+            .bearer_header(admin_token)
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::NOT_FOUND)
+            .expect_error("NoSuchProject(1, \"test_nonexistent\")");
 
         // Create a project that will be used later ---------------------------
-        {
-            warp::test::request()
-                .method("PUT")
-                .path("/create/project/test")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&routes)
-                .await;
-        }
+        FilterTester::new()
+            .method("PUT")
+            .path("/create/project/test")
+            .bearer_header(admin_token)
+            .reply(&routes)
+            .await;
 
         // Creating the same project twice
-        {
-            let resp = warp::test::request()
-                .method("PUT")
-                .path("/create/project/test")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::CONFLICT);
-            assert_eq!(
-                serde_json::from_slice::<String>(&*resp.body()).unwrap(),
-                "ProjectAlreadyExists(1, \"test\")"
-            );
-        }
+        FilterTester::new()
+            .method("PUT")
+            .path("/create/project/test")
+            .bearer_header(admin_token)
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::CONFLICT)
+            .expect_error("ProjectAlreadyExists(1, \"test\")");
 
         log::info!("delete a non-existent table");
-        {
-            let resp = warp::test::request()
-                .method("DELETE")
-                .path("/project/test/remove/table/nonexistent")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::NOT_FOUND);
-            assert_eq!(
-                serde_json::from_slice::<String>(&*resp.body()).unwrap(),
-                "NoSuchTable(\"nonexistent\")"
-            );
-        }
+        FilterTester::new()
+            .method("DELETE")
+            .path("/project/test/remove/table/nonexistent")
+            .bearer_header(admin_token)
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::NOT_FOUND)
+            .expect_error("NoSuchTable(\"nonexistent\")");
 
         // Delete the project created earlier ---------------------------------
-        {
-            let resp = warp::test::request()
-                .method("DELETE")
-                .path("/delete/project/test")
-                .header("Authorization", format!("Bearer {}", admin_token))
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::NO_CONTENT);
-        }
+        FilterTester::new()
+            .method("DELETE")
+            .path("/delete/project/test")
+            .bearer_header(admin_token)
+            .reply(&routes)
+            .await;
 
         // Token too old
-        {
-            let old_token = admindb_ref
-                .lock()
-                .await
-                .generate_session_token(auth::EmailPassword {
-                    email: "admin@example.com".to_string(),
-                    password: "admin".to_string(),
-                })
-                .await
-                .unwrap();
-            let old_token = old_token.token();
-            sqlx::query(
-                format!(
-                    "UPDATE \"token\" \
-                    SET \"created\" = '2000-08-14 08:15:29.425665+10' \
-                    WHERE \"token\" = '{}'",
-                    auth::hash_fast(old_token)
-                )
-                .as_str(),
-            )
-            .execute(admindb_ref.lock().await.get_pool())
+        let old_token = admindb_ref
+            .lock()
+            .await
+            .generate_session_token(auth::EmailPassword {
+                email: "admin@example.com".to_string(),
+                password: "admin".to_string(),
+            })
             .await
             .unwrap();
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/get/users")
-                .header("Authorization", format!("Bearer {}", old_token))
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-            let body = serde_json::from_slice::<String>(&*resp.body()).unwrap();
-            assert_eq!(body, "TokenTooOld");
-        }
+        sqlx::query(
+            format!(
+                "UPDATE \"token\" \
+                    SET \"created\" = '2000-08-14 08:15:29.425665+10' \
+                    WHERE \"token\" = '{}'",
+                auth::hash_fast(old_token.token())
+            )
+            .as_str(),
+        )
+        .execute(admindb_ref.lock().await.get_pool())
+        .await
+        .unwrap();
+        FilterTester::new()
+            .method("GET")
+            .path("/get/users")
+            .bearer_header(old_token.token())
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::UNAUTHORIZED)
+            .expect_error("TokenTooOld");
+        drop(old_token);
 
         // Not found
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/")
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::NOT_FOUND);
-        }
+        FilterTester::new()
+            .method("GET")
+            .path("/")
+            .reply(&routes)
+            .await
+            .expect_status(StatusCode::NOT_FOUND);
 
         // CORS ---------------------------------------------------------------
 
         // When not attached
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/health")
-                .header("Origin", "test")
-                .reply(&routes)
-                .await;
-            assert_eq!(resp.status(), StatusCode::OK);
-            let body = serde_json::from_slice::<bool>(&*resp.body()).unwrap();
-            assert!(body);
-            let heads = resp.headers();
-            assert!(heads.get("access-control-allow-origin").is_none());
-        }
+        FilterTester::new()
+            .method("GET")
+            .path("/health")
+            .header("Origin", "test")
+            .reply(&routes)
+            .await
+            .expect_no_header("access-control-allow-origin");
 
-        let routes_cors = routes.clone().with(get_cors());
+        let routes_cors = routes_cors(admindb_ref.clone(), "");
 
         // When request is good
-        {
-            let resp = warp::test::request()
-                .method("GET")
-                .path("/health")
-                .header("Origin", "test")
-                .reply(&routes_cors)
-                .await;
-            assert_eq!(resp.status(), StatusCode::OK);
-            let body = serde_json::from_slice::<bool>(&*resp.body()).unwrap();
-            assert!(body);
-            let heads = resp.headers();
-            let allow_origin =
-                heads.get("access-control-allow-origin").unwrap();
-            assert_eq!(allow_origin, "test");
-        }
+        FilterTester::new()
+            .method("GET")
+            .path("/health")
+            .origin_header()
+            .reply(&routes_cors)
+            .await
+            .expect_origin_header();
 
-        // When request fails
-        {
-            let resp = warp::test::request()
-                .method("POST")
-                .path("/health")
-                .header("Origin", "test")
-                .reply(&routes_cors)
-                .await;
-            assert_eq!(resp.status(), StatusCode::METHOD_NOT_ALLOWED);
-            let heads = resp.headers();
-            let allow_origin =
-                heads.get("access-control-allow-origin").unwrap();
-            assert_eq!(allow_origin, "test");
-        }
+        log::info!("cors still present when request fails");
+        FilterTester::new()
+            .method("POST") // Wrong method
+            .path("/health")
+            .origin_header()
+            .reply(&routes_cors)
+            .await
+            .expect_origin_header();
 
         // Options request
-        {
-            let resp = warp::test::request()
-                .method("OPTIONS")
-                .path("/health")
-                .header("Origin", "test")
-                .header("Access-Control-Request-Method", "GET")
-                .reply(&routes_cors)
-                .await;
-            assert_eq!(resp.status(), StatusCode::OK);
-            let heads = resp.headers();
-            let allow_origin =
-                heads.get("access-control-allow-origin").unwrap();
-            assert_eq!(allow_origin, "test");
-        }
+        FilterTester::new()
+            .method("OPTIONS")
+            .path("/health")
+            .origin_header()
+            .header("Access-Control-Request-Method", "GET")
+            .reply(&routes_cors)
+            .await
+            .expect_status(StatusCode::OK)
+            .expect_origin_header();
 
-        // Disallowed header
-        {
-            let resp = warp::test::request()
-                .method("OPTIONS")
-                .path("/health")
-                .header("Origin", "test")
-                .header("Access-Control-Request-Method", "GET")
-                .header("Access-Control-Request-Headers", "X-Username")
-                .reply(&routes_cors)
-                .await;
-            assert_eq!(resp.status(), StatusCode::FORBIDDEN);
-        }
+        log::info!("disallowed header");
+        FilterTester::new()
+            .method("OPTIONS")
+            .path("/health")
+            .origin_header()
+            .header("Access-Control-Request-Method", "GET")
+            .header("Access-Control-Request-Headers", "X-Username")
+            .reply(&routes_cors)
+            .await
+            .expect_status(StatusCode::FORBIDDEN);
+
+        // Path prefix --------------------------------------------------------
+
+        let routes_prefixed = super::routes(admindb_ref.clone(), "prefix");
+
+        FilterTester::new()
+            .method("GET")
+            .path("/prefix/health")
+            .reply(&routes_prefixed)
+            .await
+            .expect_status(StatusCode::OK);
 
         // Remove the test database -------------------------------------------
 

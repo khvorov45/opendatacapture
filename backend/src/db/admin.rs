@@ -318,11 +318,17 @@ impl AdminDB {
     }
     /// Remove the given token regardless of its validity
     pub async fn remove_token(&self, token: &str) -> Result<()> {
+        use sqlx::Done;
         log::debug!("removing token {}", token);
-        sqlx::query("DELETE FROM \"token\" WHERE \"token\" = $1")
-            .bind(auth::hash_fast(token))
-            .execute(self.get_pool())
-            .await?;
+        let rows_affected =
+            sqlx::query("DELETE FROM \"token\" WHERE \"token\" = $1")
+                .bind(auth::hash_fast(token))
+                .execute(self.get_pool())
+                .await?
+                .rows_affected();
+        if rows_affected == 0 {
+            return Err(Error::NoSuchToken(token.to_string()));
+        }
         Ok(())
     }
 

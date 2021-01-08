@@ -10,6 +10,7 @@
     "dbhost",
     "dbname",
     "dbport",
+    "deserialization",
     "initialise",
     "initialised",
     "initialising",
@@ -20,6 +21,7 @@
     "odctest",
     "postgres",
     "splitn",
+    "sqlx",
     "structopt",
     "testdb"
   ]
