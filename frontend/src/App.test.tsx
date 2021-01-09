@@ -1,12 +1,7 @@
 /* istanbul ignore file */
 
 import React from "react"
-import {
-  render,
-  fireEvent,
-  waitForDomChange,
-  wait,
-} from "@testing-library/react"
+import { render, fireEvent, waitFor } from "@testing-library/react"
 import App from "./App"
 import { themeInit } from "./lib/theme"
 import httpStatusCodes from "http-status-codes"
@@ -24,16 +19,12 @@ import { user1 } from "./tests/data"
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
-
-mockedAxios.post.mockImplementation(constructPost())
-mockedAxios.get.mockImplementation(constructGet())
-mockedAxios.put.mockImplementation(constructPut())
-const deletereq = mockedAxios.delete.mockImplementation(constructDelete())
-afterEach(() => {
+let deletereq: any
+beforeEach(() => {
+  mockedAxios.post.mockImplementation(constructPost())
   mockedAxios.get.mockImplementation(constructGet())
   mockedAxios.put.mockImplementation(constructPut())
-  mockedAxios.delete.mockImplementation(constructDelete())
-  mockedAxios.post.mockImplementation(constructPost())
+  deletereq = mockedAxios.delete.mockImplementation(constructDelete())
 })
 
 function renderApp(token?: string) {
@@ -61,33 +52,33 @@ test("theme switching", () => {
   expectTheme("dark")
 })
 
-test("route to homepage from login", async () => {
-  // Attempt to render the homepage
-  const { getByTestId } = renderApp()
-  // Will only work if successfully redirected to login
-  fireEvent.click(getByTestId("login-submit"))
-  await waitForDomChange()
-  expect(localStorage.getItem("token")).toBe(
-    (await defaultPost.fetchToken()).data.token
-  )
-  // Check that successful login redirects to homepage
-  expect(getByTestId("homepage")).toBeInTheDocument()
-})
-
 test("reroute to login when token is wrong", async () => {
   const { getByTestId } = renderApp()
   expect(getByTestId("login-form")).toBeInTheDocument()
 })
 
+test("route to homepage from login", async () => {
+  // Attempt to render the homepage
+  const { getByTestId } = renderApp()
+  // Will only work if successfully redirected to login
+  fireEvent.click(getByTestId("login-submit"))
+  const expectedToken = await defaultPost.fetchToken()
+  await waitFor(() =>
+    expect(localStorage.getItem("token")).toBe(expectedToken.data.token)
+  )
+  // Check that successful login redirects to homepage
+  expect(getByTestId("homepage")).toBeInTheDocument()
+})
+
 test("route to project page", async () => {
   const { getByTestId, getByText } = renderApp("123")
   const firstProjectName = (await defaultGet.getUserProjects()).data[0].name
-  await wait(() => {
+  await waitFor(() => {
     expect(getByText(firstProjectName)).toBeInTheDocument()
     expect(getByTestId("nav-project-info")).toHaveClass("nodisplay")
   })
   fireEvent.click(getByText(firstProjectName))
-  await wait(() => {
+  await waitFor(() => {
     // Check redirection
     expect(getByTestId(`project-page-${firstProjectName}`)).toBeInTheDocument()
     // Check that project info on nav updated
@@ -96,14 +87,13 @@ test("route to project page", async () => {
 
   // Go back
   fireEvent.click(getByText("Projects"))
-  await waitForDomChange()
-
-  // Project info should disappear
-  expect(getByTestId("nav-project-info")).toHaveClass("nodisplay")
-
-  // We should be at the project list
-  expect(getByTestId("homepage")).toBeInTheDocument()
-  expect(getByTestId("home-link")).toHaveClass("active")
+  await waitFor(() => {
+    // Project info should disappear
+    expect(getByTestId("nav-project-info")).toHaveClass("nodisplay")
+    // We should be at the project list
+    expect(getByTestId("homepage")).toBeInTheDocument()
+    expect(getByTestId("home-link")).toHaveClass("active")
+  })
 })
 
 test("token refresh", async () => {
@@ -118,7 +108,7 @@ test("token refresh", async () => {
   )
   localStorage.removeItem("last-refresh")
   renderApp("123")
-  await wait(() => {
+  await waitFor(() => {
     expect(localStorage.getItem("last-refresh")).toBe(curTime)
   })
   expect(localStorage.getItem("token")).toBe("234")
@@ -136,7 +126,7 @@ test("token refresh error", async () => {
   )
   localStorage.removeItem("last-refresh")
   renderApp("123")
-  await wait(() => {
+  await waitFor(() => {
     expect(console.error).toHaveBeenLastCalledWith("some refresh error")
   })
   consoleSpy.mockRestore()
@@ -151,14 +141,15 @@ test("error - token validation", async () => {
     })
   )
   const app = renderApp("123")
-  await waitForDomChange()
-  expect(app.getByTestId("login-form")).toBeInTheDocument()
+  await waitFor(() => {
+    expect(app.getByTestId("login-form")).toBeInTheDocument()
+  })
 })
 
 test("logout", async () => {
   localStorage.setItem("last-refresh", new Date().toISOString())
   const app = renderApp("123")
-  await wait(() => {
+  await waitFor(() => {
     expect(app.getByTestId("homepage")).toBeInTheDocument()
   })
   const logout = app.getByTestId("logout-button")
@@ -182,13 +173,13 @@ test("fail to remove token", async () => {
     })
   )
   const app = renderApp("123")
-  await wait(() => {
+  await waitFor(() => {
     expect(app.getByTestId("homepage")).toBeInTheDocument()
   })
   fireEvent.click(app.getByTestId("logout-button"))
   // We still logout locally even if the remove token api call fails
   // The token then remains valid but we no longer know what it is
-  await wait(() => {
+  await waitFor(() => {
     expect(consoleSpy).toHaveBeenLastCalledWith("some delete token error")
   })
   // If we somehow manage to logout with no current token then the api call
@@ -197,7 +188,7 @@ test("fail to remove token", async () => {
   localStorage.setItem("last-refresh", new Date().toISOString())
   const deleteCalls = deletereq.mock.calls.length
   fireEvent.click(app.getByTestId("logout-button"))
-  await wait(() => {
+  await waitFor(() => {
     expect(localStorage.getItem("last-refresh")).toBeNull()
   })
   expect(consoleSpy).toHaveBeenCalledTimes(1)
@@ -207,7 +198,7 @@ test("fail to remove token", async () => {
 
 test("admin dashboard access", async () => {
   const app = renderApp("123")
-  await wait(() => {
+  await waitFor(() => {
     expect(app.getByTestId("homepage")).toBeInTheDocument()
   })
   const adminLink = app.getByText("Admin")
@@ -216,7 +207,7 @@ test("admin dashboard access", async () => {
   expect(app.getByTestId("admin-dashboard")).toBeInTheDocument()
   // It somehow remembers the last postion on the next render, so better go back
   fireEvent.click(app.getByText("Projects"))
-  await wait(() => {
+  await waitFor(() => {
     expect(app.getByTestId("homepage")).toBeInTheDocument()
   })
 })
@@ -231,7 +222,7 @@ test("admin dashboard user no access", async () => {
     })
   )
   const app = renderApp("123")
-  await wait(() => {
+  await waitFor(() => {
     expect(app.getByTestId("homepage")).toBeInTheDocument()
   })
   const adminLink = app.getByText("Admin")
@@ -239,7 +230,7 @@ test("admin dashboard user no access", async () => {
   fireEvent.click(adminLink)
   expect(app.queryByTestId("admin-dashboard")).not.toBeInTheDocument()
   fireEvent.click(app.getByText("Projects"))
-  await wait(() => {
+  await waitFor(() => {
     expect(app.getByTestId("homepage")).toBeInTheDocument()
   })
 })

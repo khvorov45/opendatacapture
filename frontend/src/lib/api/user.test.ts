@@ -3,13 +3,10 @@
 
 import axios from "axios"
 import httpStatusCodes from "http-status-codes"
-import { constructPut } from "../../tests/api"
 import { user1Cred } from "../../tests/data"
 import { createUser } from "./user"
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
-
-mockedAxios.put.mockImplementation(constructPut())
 
 test("createUser", async () => {
   mockedAxios.put.mockResolvedValueOnce({

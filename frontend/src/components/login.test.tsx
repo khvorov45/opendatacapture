@@ -2,12 +2,7 @@
 import React from "react"
 import axios from "axios"
 import httpStatusCodes from "http-status-codes"
-import {
-  render,
-  fireEvent,
-  waitForDomChange,
-  wait,
-} from "@testing-library/react"
+import { render, fireEvent, waitFor } from "@testing-library/react"
 import Login from "./login"
 import { EmailPassword, Token } from "../lib/api/auth"
 import { API_ROOT } from "../lib/config"
@@ -16,9 +11,9 @@ import { constructPost } from "../tests/api"
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
-const postreq = mockedAxios.post.mockImplementation(constructPost())
-afterEach(() => {
-  mockedAxios.post.mockImplementation(constructPost())
+let postreq: any
+beforeEach(() => {
+  postreq = mockedAxios.post.mockImplementation(constructPost())
 })
 
 function renderLogin(updateToken?: (t: Token) => void) {
@@ -41,7 +36,7 @@ test("login - basic functionality", async () => {
   fireEvent.change(passwordInput, { target: { value: cred.password } })
   expect(passwordInput.value).toBe(cred.password)
   fireEvent.click(submitButton)
-  await wait(() => {
+  await waitFor(() => {
     expect(postreq).toHaveBeenCalledWith(
       `${API_ROOT}/auth/session-token`,
       cred,
@@ -82,10 +77,11 @@ test("login errors", async () => {
     })
   )
   fireEvent.click(submitButton)
-  await waitForDomChange()
-  expect(submitButtonMsg.innerHTML).toBe("")
-  verifyFieldError(emailField, "Email not found")
-  verifyFieldError(passwordField, "")
+  await waitFor(() => {
+    expect(submitButtonMsg.innerHTML).toBe("")
+    verifyFieldError(emailField, "Email not found")
+    verifyFieldError(passwordField, "")
+  })
 
   // Wrong password
   mockedAxios.post.mockImplementation(
@@ -97,10 +93,11 @@ test("login errors", async () => {
     })
   )
   fireEvent.click(submitButton)
-  await waitForDomChange()
-  expect(submitButtonMsg.innerHTML).toBe("")
-  verifyFieldError(emailField, "")
-  verifyFieldError(passwordField, "Wrong password")
+  await waitFor(() => {
+    expect(submitButtonMsg.innerHTML).toBe("")
+    verifyFieldError(emailField, "")
+    verifyFieldError(passwordField, "Wrong password")
+  })
 
   // Unhandled axios error
   mockedAxios.post.mockImplementation(
@@ -111,8 +108,9 @@ test("login errors", async () => {
     })
   )
   fireEvent.click(submitButton)
-  await waitForDomChange()
-  expect(submitButtonMsg.innerHTML).toBe("Network Error")
-  verifyFieldError(emailField, "")
-  verifyFieldError(passwordField, "")
+  await waitFor(() => {
+    expect(submitButtonMsg.innerHTML).toBe("Network Error")
+    verifyFieldError(emailField, "")
+    verifyFieldError(passwordField, "")
+  })
 })

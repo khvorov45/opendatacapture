@@ -1,11 +1,6 @@
 /* istanbul ignore file */
 import axios from "axios"
-import {
-  fireEvent,
-  render,
-  wait,
-  waitForDomChange,
-} from "@testing-library/react"
+import { fireEvent, render, waitFor } from "@testing-library/react"
 import httpStatusCodes from "http-status-codes"
 import { defaultAdmin, user1Cred } from "../../tests/data"
 import { constructDelete, constructGet, constructPut } from "../../tests/api"
@@ -17,14 +12,12 @@ import { API_ROOT } from "../../lib/config"
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
-mockedAxios.get.mockImplementation(constructGet())
-const mockedDelete = mockedAxios.delete.mockImplementation(constructDelete())
-const mockedPut = mockedAxios.put.mockImplementation(constructPut())
-
-afterEach(() => {
+let mockedDelete: any
+let mockedPut: any
+beforeEach(() => {
   mockedAxios.get.mockImplementation(constructGet())
-  mockedAxios.delete.mockImplementation(constructDelete())
-  mockedAxios.put.mockImplementation(constructPut())
+  mockedDelete = mockedAxios.delete.mockImplementation(constructDelete())
+  mockedPut = mockedAxios.put.mockImplementation(constructPut())
 })
 
 function renderUsers() {
@@ -33,7 +26,7 @@ function renderUsers() {
 
 test("new user form open/close", async () => {
   const users = renderUsers()
-  await wait(() => {
+  await waitFor(() => {
     expect(users.getByTestId("users-admin-widget")).toBeInTheDocument()
   })
   const frm = users.getByTestId("new-user-form")
@@ -47,7 +40,7 @@ test("new user form open/close", async () => {
 
 test("refresh users", async () => {
   const users = renderUsers()
-  await wait(() => {
+  await waitFor(() => {
     expect(users.getByTestId("users-admin-widget")).toBeInTheDocument()
   })
   // Only admin should be in the table
@@ -64,11 +57,11 @@ test("refresh users", async () => {
     })
   )
   fireEvent.click(users.getByTestId("refresh-users-button"))
-  await waitForDomChange()
-
-  // Both user and admin should be in the table
-  expect(users.getByText(defaultAdmin.email)).toBeInTheDocument()
-  expect(users.getByText(user1.email)).toBeInTheDocument()
+  await waitFor(() => {
+    // Both user and admin should be in the table
+    expect(users.getByText(defaultAdmin.email)).toBeInTheDocument()
+    expect(users.getByText(user1.email)).toBeInTheDocument()
+  })
 })
 
 test("delete user", async () => {
@@ -82,7 +75,7 @@ test("delete user", async () => {
     })
   )
   const users = renderUsers()
-  await wait(() => {
+  await waitFor(() => {
     expect(users.getByTestId("users-admin-widget")).toBeInTheDocument()
   })
   expect(mockedDelete).not.toHaveBeenCalled()
@@ -91,17 +84,17 @@ test("delete user", async () => {
   const allDeleteBtn = users.getAllByTestId("remove-user")
   const lastDeleteBtn = allDeleteBtn[allDeleteBtn.length - 1]
   fireEvent.click(lastDeleteBtn)
-  await waitForDomChange()
-
-  expect(mockedDelete).toHaveBeenLastCalledWith(
-    `${API_ROOT}/remove/user/${user1.email}`,
-    expect.anything()
-  )
+  await waitFor(() => {
+    expect(mockedDelete).toHaveBeenLastCalledWith(
+      `${API_ROOT}/remove/user/${user1.email}`,
+      expect.anything()
+    )
+  })
 })
 
 test("create user", async () => {
   const users = renderUsers()
-  await wait(() => {
+  await waitFor(() => {
     expect(users.getByTestId("users-admin-widget")).toBeInTheDocument()
   })
   fireEvent.click(users.getByTestId("open-new-user-form-button"))
@@ -112,10 +105,11 @@ test("create user", async () => {
     target: { value: user1Cred.password },
   })
   fireEvent.click(users.getByTestId("user-submit"))
-  await waitForDomChange()
-  expect(mockedPut).toHaveBeenLastCalledWith(
-    `${API_ROOT}/create/user`,
-    user1Cred,
-    expect.anything()
-  )
+  await waitFor(() => {
+    expect(mockedPut).toHaveBeenLastCalledWith(
+      `${API_ROOT}/create/user`,
+      user1Cred,
+      expect.anything()
+    )
+  })
 })
