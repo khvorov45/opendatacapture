@@ -1,11 +1,6 @@
 /* istanbul ignore file */
 import httpStatusCodes from "http-status-codes"
-import {
-  fireEvent,
-  render,
-  waitForDomChange,
-  within,
-} from "@testing-library/react"
+import { fireEvent, render, within, waitFor } from "@testing-library/react"
 import axios from "axios"
 import { TableMeta, ColMeta } from "../../lib/api/project"
 import { API_ROOT } from "../../lib/config"
@@ -21,13 +16,13 @@ import {
 
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
-const getreq = mockedAxios.get.mockImplementation(constructGet())
-const putreq = mockedAxios.put.mockImplementation(constructPut())
-const deletereq = mockedAxios.delete.mockImplementation(constructDelete())
-afterEach(() => {
-  mockedAxios.get.mockImplementation(constructGet())
-  mockedAxios.put.mockImplementation(constructPut())
-  mockedAxios.delete.mockImplementation(constructDelete())
+let getreq: any
+let putreq: any
+let deletereq: any
+beforeEach(() => {
+  getreq = mockedAxios.get.mockImplementation(constructGet())
+  putreq = mockedAxios.put.mockImplementation(constructPut())
+  deletereq = mockedAxios.delete.mockImplementation(constructDelete())
 })
 
 const testProjectName = "some-project"
@@ -44,7 +39,7 @@ function performSelectAction(selectElement: HTMLElement, value: string) {
   const popovers = document.querySelectorAll<HTMLElement>(
     '[role="presentation"]'
   )
-  if (popovers.length == 0) {
+  if (popovers.length === 0) {
     throw Error("no popover from material ui")
   }
   // The last popover is the one we want
@@ -104,29 +99,10 @@ function fillTableForm(form: HTMLElement, table: TableMeta) {
     fireEvent.click(select.getByTestId("add-column"))
   }
   // Fill column entries
-  table.cols.map((c, i) => {
+  table.cols.forEach((c, i) => {
     const colEntry = select.getByTestId(`new-column-entry-${i}`)
     fillColumnEntry(colEntry, c)
   })
-}
-
-// Thanks, Material UI, for easy-to-test components
-function expectMuiSelectToBeEmpty(select: HTMLElement) {
-  const textContent = within(select).getByRole("button").childNodes[0]
-    .textContent
-  // Was this really necessary or was it just to mess with me?
-  expect(textContent).toEqual("\u200B")
-}
-
-function expectTableFormToBeEmpty(form: HTMLElement) {
-  expect(within(form).getByTestId("new-table-name-field")).toHaveValue("")
-  // The following should fail if there is more than one column entry
-  expect(within(form).getByTestId("new-column-name-field")).toHaveValue("")
-  expectMuiSelectToBeEmpty(within(form).getByTestId("new-column-type-select"))
-  expect(within(form).getByTestId("primary-key")).not.toBeChecked()
-  expect(within(form).getByTestId("not-null")).not.toBeChecked()
-  expect(within(form).getByTestId("unique")).not.toBeChecked()
-  expect(within(form).getByTestId("foreign-key")).not.toBeChecked()
 }
 
 test("new table form - no initial tables", async () => {
@@ -136,21 +112,25 @@ test("new table form - no initial tables", async () => {
     })
   )
   const tablePanel = renderTablePanel()
-  await waitForDomChange()
-  const newTableForm = tablePanel.getByTestId("new-table-form")
-  expect(newTableForm).not.toHaveClass("nodisplay")
+  await waitFor(() => {
+    const newTableForm = tablePanel.getByTestId("new-table-form")
+    expect(newTableForm).not.toHaveClass("nodisplay")
+  })
 })
 
 test("new table form - some initial tables", async () => {
   const tablePanel = renderTablePanel()
-  await waitForDomChange()
-  const newTableForm = tablePanel.getByTestId("new-table-form")
-  expect(newTableForm).toHaveClass("nodisplay")
+  await waitFor(() => {
+    const newTableForm = tablePanel.getByTestId("new-table-form")
+    expect(newTableForm).toHaveClass("nodisplay")
+  })
 })
 
 test("new table form - open/close", async () => {
   const tablePanel = renderTablePanel()
-  await waitForDomChange()
+  await waitFor(() => {
+    expect(tablePanel.getByTestId("new-table-form")).toBeInTheDocument()
+  })
   const newTableForm = tablePanel.getByTestId("new-table-form")
   expect(newTableForm).toHaveClass("nodisplay")
   const createTableButton = tablePanel.getByTestId("create-table-button")
@@ -162,22 +142,27 @@ test("new table form - open/close", async () => {
 
 test("new table form - fill and submit", async () => {
   const tablePanel = renderTablePanel()
-  await waitForDomChange()
+  await waitFor(() => {
+    expect(tablePanel.getByTestId("new-table-form")).toBeInTheDocument()
+  })
   const newTableForm = tablePanel.getByTestId("new-table-form")
   fillTableForm(newTableForm, table1)
   const tableSubmit = tablePanel.getByTestId("submit-table-button")
   fireEvent.click(tableSubmit)
-  await waitForDomChange()
-  expect(putreq).toHaveBeenCalledWith(
-    expect.anything(),
-    table1,
-    expect.anything()
-  )
+  await waitFor(() => {
+    expect(putreq).toHaveBeenCalledWith(
+      expect.anything(),
+      table1,
+      expect.anything()
+    )
+  })
 })
 
 test("new table form - viability checks", async () => {
   let tablePanel = renderTablePanel()
-  await waitForDomChange()
+  await waitFor(() => {
+    expect(tablePanel.getByTestId("submit-table-button")).toBeInTheDocument()
+  })
 
   const tableSubmit = tablePanel.getByTestId("submit-table-button")
 
@@ -221,7 +206,9 @@ test("new table form - viability checks", async () => {
 
 test("new table form - FK behavior", async () => {
   let { getByTestId, getAllByRole } = renderTablePanel()
-  await waitForDomChange()
+  await waitFor(() => {
+    expect(getByTestId("create-table-button")).toBeInTheDocument()
+  })
 
   fireEvent.click(getByTestId("create-table-button"))
   const newTableForm = getByTestId("new-table-form")
@@ -266,17 +253,20 @@ test("new table form - FK behavior", async () => {
 
   // See that the expected table would be created
   fireEvent.click(getByTestId("submit-table-button"))
-  await waitForDomChange()
-  expect(putreq).toHaveBeenCalledWith(
-    expect.anything(),
-    newTable,
-    expect.anything()
-  )
+  await waitFor(() => {
+    expect(putreq).toHaveBeenCalledWith(
+      expect.anything(),
+      newTable,
+      expect.anything()
+    )
+  })
 })
 
 test("new table form - column removal", async () => {
   let { getByTestId } = renderTablePanel()
-  await waitForDomChange()
+  await waitFor(() => {
+    expect(getByTestId("new-table-form")).toBeInTheDocument()
+  })
 
   const newTableForm = getByTestId("new-table-form")
   fillTableForm(newTableForm, table1)
@@ -342,42 +332,54 @@ test("new table form - column removal", async () => {
 
 test("refresh button", async () => {
   const tablePanel = renderTablePanel()
-  await waitForDomChange()
+  await waitFor(() => {
+    expect(tablePanel.getByTestId("refresh-tables-button")).toBeInTheDocument()
+  })
   fireEvent.click(tablePanel.getByTestId("refresh-tables-button"))
-  await waitForDomChange()
-  expect(getreq).toHaveBeenLastCalledWith(
-    `${API_ROOT}/project/${testProjectName}/get/meta`,
-    expect.anything()
-  )
+  await waitFor(() => {
+    expect(getreq).toHaveBeenLastCalledWith(
+      `${API_ROOT}/project/${testProjectName}/get/meta`,
+      expect.anything()
+    )
+  })
 })
 
 test("table cards presence", async () => {
   const tablePanel = renderTablePanel()
-  await waitForDomChange()
   const tableNames = (await defaultGet.getAllTableNames()).data
-  tableNames.map((t: string) => {
-    expect(tablePanel.getByTestId(`table-card-${t}`)).toBeInTheDocument()
+  await waitFor(() => {
+    tableNames.forEach((t: string) => {
+      expect(tablePanel.getByTestId(`table-card-${t}`)).toBeInTheDocument()
+    })
   })
 })
 
 test("table card - remove table", async () => {
   const tablePanel = renderTablePanel()
-  await waitForDomChange()
   const table1Name = (await defaultGet.getAllTableNames()).data[0]
+  await waitFor(() => {
+    expect(
+      tablePanel.getByTestId(`table-card-${table1Name}`)
+    ).toBeInTheDocument()
+  })
+
   const table1Card = tablePanel.getByTestId(`table-card-${table1Name}`)
   const deleteButton = within(table1Card).getByTestId("delete-table-button")
   fireEvent.click(deleteButton)
-  await waitForDomChange()
-  expect(deletereq).toHaveBeenLastCalledWith(
-    `${API_ROOT}/project/${testProjectName}/remove/table/${table1Name}`,
-    expect.anything()
-  )
+  await waitFor(() => {
+    expect(deletereq).toHaveBeenLastCalledWith(
+      `${API_ROOT}/project/${testProjectName}/remove/table/${table1Name}`,
+      expect.anything()
+    )
+  })
 })
 
 test("table card - set editable", async () => {
   const firstTableName = (await defaultGet.getAllTableNames()).data[0]
   let { getByTestId } = renderTablePanel()
-  await waitForDomChange()
+  await waitFor(() => {
+    expect(getByTestId(`table-card-${firstTableName}`)).toBeInTheDocument()
+  })
   // Table card should be disabled
   const card = getByTestId(`table-card-${firstTableName}`)
   const tableNameField = within(card).getByTestId("table-card-name-field")
@@ -399,13 +401,15 @@ test("error - project refresh", async () => {
     })
   )
   let { getByTestId, getByText } = renderTablePanel()
-  await waitForDomChange()
-  expect(getByText("some refresh error")).toBeInTheDocument()
+  await waitFor(() => {
+    expect(getByText("some refresh error")).toBeInTheDocument()
+  })
   // Error should go away on successful refresh
   mockedAxios.get.mockImplementation(constructGet())
   fireEvent.click(getByTestId("refresh-tables-button"))
-  await waitForDomChange()
-  expect(getByTestId("refresh-tables-error")).toHaveTextContent("")
+  await waitFor(() => {
+    expect(getByTestId("refresh-tables-error")).toHaveTextContent("")
+  })
 })
 
 test("error - table delete", async () => {
@@ -418,18 +422,23 @@ test("error - table delete", async () => {
   )
   const firstTableName = (await defaultGet.getAllTableNames()).data[0]
   let { getByTestId, getByText } = renderTablePanel()
-  await waitForDomChange()
+  await waitFor(() => {
+    expect(getByTestId(`table-card-${firstTableName}`)).toBeInTheDocument()
+  })
   let table1card = getByTestId(`table-card-${firstTableName}`)
   fireEvent.click(within(table1card).getByTestId("delete-table-button"))
-  await waitForDomChange()
-  expect(getByText("some delete error")).toBeInTheDocument()
+  await waitFor(() => {
+    expect(getByText("some delete error")).toBeInTheDocument()
+  })
+
   // Error should go away on successful delete
   mockedAxios.delete.mockImplementation(constructDelete())
   fireEvent.click(within(table1card).getByTestId("delete-table-button"))
-  await waitForDomChange()
-  expect(
-    within(table1card).getByTestId("delete-table-error")
-  ).toHaveTextContent("")
+  await waitFor(() => {
+    expect(
+      within(table1card).getByTestId("delete-table-error")
+    ).toHaveTextContent("")
+  })
 })
 
 test("error - submit table", async () => {
@@ -441,15 +450,20 @@ test("error - submit table", async () => {
     })
   )
   let { getByTestId, getByText } = renderTablePanel()
-  await waitForDomChange()
-  expect(getByTestId("table-submit-error")).toHaveTextContent("")
+  await waitFor(() => {
+    expect(getByTestId("table-submit-error")).toHaveTextContent("")
+  })
+
   fillTableForm(getByTestId("new-table-form"), table1)
   fireEvent.click(getByTestId("submit-table-button"))
-  await waitForDomChange()
-  expect(getByText("some table submit error")).toBeInTheDocument()
+  await waitFor(() => {
+    expect(getByText("some table submit error")).toBeInTheDocument()
+  })
+
   // Should go away on successful submit
   mockedAxios.put.mockImplementation(constructPut())
   fireEvent.click(getByTestId("submit-table-button"))
-  await waitForDomChange()
-  expect(getByTestId("table-submit-error")).toHaveTextContent("")
+  await waitFor(() => {
+    expect(getByTestId("table-submit-error")).toHaveTextContent("")
+  })
 })

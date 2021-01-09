@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 import axios from "axios"
-import { fireEvent, render, wait } from "@testing-library/react"
+import { fireEvent, render, waitFor } from "@testing-library/react"
 import { constructGet } from "../../tests/api"
 import React from "react"
 import { MemoryRouter, Route, Redirect, Switch } from "react-router-dom"
@@ -9,9 +9,7 @@ import AdminDashboard from "./admin"
 jest.mock("axios")
 const mockedAxios = axios as jest.Mocked<typeof axios>
 
-mockedAxios.get.mockImplementation(constructGet())
-
-afterEach(() => mockedAxios.get.mockImplementation(constructGet()))
+beforeEach(() => mockedAxios.get.mockImplementation(constructGet()))
 
 export function renderAdminPage(
   token?: string | null,
@@ -37,11 +35,11 @@ export function renderAdminPage(
 
 test("navigation", async () => {
   const admin = renderAdminPage()
-  await wait(() =>
+  await waitFor(() =>
     expect(admin.getByTestId("users-admin-widget")).toBeInTheDocument()
   )
   fireEvent.click(admin.getByText("All projects"))
-  await wait(() => {
+  await waitFor(() => {
     expect(admin.getByTestId("projects-admin-widget")).toBeInTheDocument()
   })
 })

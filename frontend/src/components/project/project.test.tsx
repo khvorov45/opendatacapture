@@ -1,12 +1,6 @@
 /* istanbul ignore file */
 import axios from "axios"
-import {
-  fireEvent,
-  render,
-  wait,
-  waitForDomChange,
-  within,
-} from "@testing-library/react"
+import { fireEvent, render, within, waitFor } from "@testing-library/react"
 import httpStatusCodes from "http-status-codes"
 import toProperCase from "../../lib/to-proper-case"
 import React from "react"
@@ -56,29 +50,35 @@ test("project page with null token", async () => {
 
 test("links", async () => {
   let home = renderProjectPage()
-  await waitForDomChange()
-  expect(home.getByTestId("table-panel")).toBeInTheDocument()
-  expect(home.getByText("Tables").parentElement).toHaveClass("active")
+  await waitFor(() => {
+    expect(home.getByTestId("table-panel")).toBeInTheDocument()
+    expect(home.getByText("Tables").parentElement).toHaveClass("active")
+  })
+
   fireEvent.click(home.getByText("Data"))
-  await wait(() => {
+  await waitFor(() => {
     expect(home.getByText("Tables").parentElement).not.toHaveClass("active")
     expect(home.getByText("Data").parentElement).toHaveClass("active")
     expect(home.getByTestId("data-panel")).toBeInTheDocument()
   })
   fireEvent.click(home.getByText("Tables"))
-  await waitForDomChange()
-  expect(home.getByTestId("table-panel")).toBeInTheDocument()
+  await waitFor(() => {
+    expect(home.getByTestId("table-panel")).toBeInTheDocument()
+  })
 })
 
 test("render on table page", async () => {
   let tables = renderProjectPage("123", "tables")
-  await waitForDomChange()
-  expect(tables.getByTestId("table-panel")).toBeInTheDocument()
+  await waitFor(() => {
+    expect(tables.getByTestId("table-panel")).toBeInTheDocument()
+  })
 })
 
 test("render on data page", async () => {
   let data = renderProjectPage("123", "data")
-  await wait(() => expect(data.getByTestId("data-panel")).toBeInTheDocument())
+  await waitFor(() =>
+    expect(data.getByTestId("data-panel")).toBeInTheDocument()
+  )
 })
 
 test("data links", async () => {
@@ -96,7 +96,9 @@ test("data links", async () => {
     })
   )
   let data = renderProjectPage("123", "data")
-  await waitForDomChange()
+  await waitFor(() => {
+    expect(data.getByTestId("project-page-links")).toBeInTheDocument()
+  })
 
   const projectPageLinks = data.getByTestId("project-page-links")
   const tableDataLinks = data.getByTestId("table-data-links")
@@ -132,8 +134,8 @@ test("data links", async () => {
   expectActive(mockedTables[0])
 
   // Select the other tables
-  mockedTables.slice(1).map(async (t) => {
+  for (const t of mockedTables.slice(1)) {
     fireEvent.click(within(tableDataLinks).getByText(toProperCase(t)))
-    await wait(() => expectActive(t))
-  })
+    await waitFor(() => expectActive(t))
+  }
 })

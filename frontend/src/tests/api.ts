@@ -19,7 +19,7 @@ function findTableEntry(tableName: string) {
 
 type RequestFns = Record<
   string,
-  (...[]: any[]) => Promise<{ status: number; data?: any }>
+  (...args: any[]) => Promise<{ status: number; data?: any }>
 >
 
 export const defaultGet: RequestFns = {
