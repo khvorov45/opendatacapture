@@ -318,7 +318,7 @@ impl AdminDB {
     }
     /// Remove the given token regardless of its validity
     pub async fn remove_token(&self, token: &str) -> Result<()> {
-        use sqlx::Done;
+        // use sqlx::Done;
         log::debug!("removing token {}", token);
         let rows_affected =
             sqlx::query("DELETE FROM \"token\" WHERE \"token\" = $1")

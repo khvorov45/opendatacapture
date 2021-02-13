@@ -113,7 +113,7 @@ pub struct EmailPassword {
     PartialOrd,
     sqlx::Type,
 )]
-#[sqlx(rename = "odc_user_access")]
+#[sqlx(type_name = "odc_user_access")]
 // Need to modify the postgres type declaration in `admin` on any changes
 pub enum Access {
     User,
@@ -126,7 +126,6 @@ mod tests {
     #[test]
     fn test_access() {
         assert!(Access::Admin > Access::User);
-        assert_eq!(Access::Admin, Access::Admin);
     }
     #[test]
     fn test_parse_header() {
