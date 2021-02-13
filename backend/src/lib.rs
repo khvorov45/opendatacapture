@@ -56,8 +56,8 @@ mod tests {
             .host("localhost")
             .port(5432)
             .database(dbname)
-            .username("odcapi")
-            .password("odcapi")
+            .username("postgres")
+            .password("postgres")
     }
 
     /// Remove test database
