@@ -336,8 +336,6 @@ mod tests {
     fn compare_metadata() {
         let primary_meta1 = crate::tests::get_test_primary_table();
         let secondary_meta1 = crate::tests::get_test_secondary_table();
-        assert_eq!(primary_meta1, primary_meta1);
-        assert_eq!(secondary_meta1, secondary_meta1);
         assert_ne!(primary_meta1, secondary_meta1);
 
         let mut primary_meta2 = primary_meta1.clone();
