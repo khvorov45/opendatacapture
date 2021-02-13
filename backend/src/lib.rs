@@ -12,25 +12,13 @@ type Result<T> = std::result::Result<T, Error>;
 /// opendatacapture
 #[derive(StructOpt, Debug)]
 pub struct Opt {
-    /// Database host name. Ignored if DATABASE_URL is defined.
-    #[structopt(long, default_value = "localhost")]
-    pub dbhost: String,
-    /// Database host port. Ignored if DATABASE_URL is defined.
-    #[structopt(long, default_value = "5432")]
-    pub dbport: u16,
-    /// Admin database name.
-    /// Will be used as an administrative database for keeping track of users.
-    /// Ignored if DATABASE_URL is defined.
-    #[structopt(long, default_value = "odcadmin")]
-    pub admindbname: String,
-    /// API user name. Will be used to perform all database actions.
-    /// Ignored if DATABASE_URL is defined.
-    #[structopt(long, default_value = "odcapi")]
-    pub apiusername: String,
-    /// API user password.
-    /// Ignored if DATABASE_URL is defined.
-    #[structopt(long, default_value = "odcapi")]
-    pub apiuserpassword: String,
+    /// Database URL.
+    #[structopt(
+        long,
+        env = "DATABASE_URL",
+        default_value = "postgres://postgres:postgres@localhost:5432/postgres"
+    )]
+    pub database_url: String,
     /// Port for the api to listen to.
     #[structopt(long, env = "ODC_API_PORT", default_value = "4321")]
     pub apiport: u16,
@@ -68,17 +56,17 @@ mod tests {
             .host("localhost")
             .port(5432)
             .database(dbname)
-            .username("odcapi")
-            .password("odcapi")
+            .username("postgres")
+            .password("postgres")
     }
 
     /// Remove test database
-    /// Assumes the odcadmin database exists - will connect to it with the
+    /// Assumes the postgres database exists - will connect to it with the
     /// same settings as those of `db`
     pub async fn remove_test_db(db: &DB) {
         log::info!("removing test database {}", db.get_name());
         db.get_pool().close().await;
-        let config = db.get_config().clone().database("odcadmin");
+        let config = db.get_config().clone().database("postgres");
         let mut con = config.connect().await.unwrap();
         sqlx::query(
             format!("DROP DATABASE IF EXISTS \"{0}\"", db.get_name()).as_str(),
@@ -89,10 +77,10 @@ mod tests {
     }
 
     /// Makes sure the test database database exists.
-    /// Assumes the odcadmin database exists
+    /// Assumes the postgres database exists
     pub async fn setup_test_db(dbname: &str) {
         log::info!("setting up database {}", dbname);
-        let config = gen_test_config("odcadmin");
+        let config = gen_test_config("postgres");
         let mut con = config.connect().await.unwrap();
         sqlx::query(
             format!("DROP DATABASE IF EXISTS \"{0}\"", dbname).as_str(),
@@ -118,7 +106,8 @@ mod tests {
             setup_test_db(dbname).await;
         }
         let mut opt = crate::Opt::from_iter(vec!["appname"]);
-        opt.admindbname = dbname.to_string();
+        opt.database_url =
+            format!("postgres://postgres:postgres@localhost:5432/{}", dbname);
         opt.clean = clean;
         db::admin::AdminDB::new(&opt).await.unwrap()
     }

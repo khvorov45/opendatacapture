@@ -640,7 +640,7 @@ mod tests {
     use std::sync::Arc;
     use warp::http::StatusCode;
 
-    const TEST_DB_NAME: &str = "odcadmin_test_api";
+    const TEST_DB_NAME: &str = "postgres_test_api";
 
     async fn gen_user_tok(admindb: DBRef) -> auth::Token {
         admindb

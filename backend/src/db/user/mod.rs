@@ -251,7 +251,7 @@ impl UserDB {
 mod tests {
     use super::*;
 
-    const TEST_DB_NAME: &str = "odcadmin_test_user";
+    const TEST_DB_NAME: &str = "postgres_test_user";
 
     // Test database
     #[tokio::test]

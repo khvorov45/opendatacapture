@@ -4,12 +4,7 @@
   connect to.
 
       - Postgres connection details can be passed to the api via command-line
-      arguments at launch. The defaults are:
-          - `--dbhost`: localhost
-          - `--dbport`: 5432
-          - `--admindbname`: odcadmin
-          - `--apiusername`: odcapi
-          - `--apiuserpassword`: odcapi
+      arguments at launch.
 
 - Launch the app, pass the port it's supposed to listen to (`--apiport`) with
   the default being 4321.

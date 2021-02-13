@@ -685,7 +685,7 @@ mod tests {
     use super::*;
     use sqlx::Row;
 
-    const TEST_DB_NAME: &str = "odcadmin_test_admin";
+    const TEST_DB_NAME: &str = "postgres_test_admin";
 
     // Extract first admin
     async fn extract_first_user(db: &AdminDB) -> User {
@@ -777,7 +777,7 @@ mod tests {
         log::info!("restart");
         test_db.get_pool().close().await;
         let test_db = crate::tests::create_test_admindb(
-            "odcadmin_test_admin",
+            "postgres_test_admin",
             false,
             false,
         )
@@ -795,7 +795,7 @@ mod tests {
         log::info!("start clean again");
         test_db.get_pool().close().await;
         let test_db = crate::tests::create_test_admindb(
-            "odcadmin_test_admin",
+            "postgres_test_admin",
             true,
             false,
         )
@@ -951,8 +951,8 @@ mod tests {
         let test_project1_dbname = test_project1.get_dbname(TEST_DB_NAME);
         let test_project2_dbname = test_project2.get_dbname(TEST_DB_NAME);
 
-        assert_eq!(test_project1_dbname, "odcadmin_test_admin_user1_test");
-        assert_eq!(test_project2_dbname, "odcadmin_test_admin_user2_test");
+        assert_eq!(test_project1_dbname, "postgres_test_admin_user1_test");
+        assert_eq!(test_project2_dbname, "postgres_test_admin_user2_test");
 
         // Make sure test projects aren't present
         log::info!("remove test projects");
@@ -989,7 +989,7 @@ mod tests {
         log::info!("reconnect cleanly");
         test_db.get_pool().close().await;
         let mut test_db = crate::tests::create_test_admindb(
-            "odcadmin_test_admin",
+            "postgres_test_admin",
             true,
             false,
         )

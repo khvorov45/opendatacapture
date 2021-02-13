@@ -32,9 +32,9 @@ jobs:
       postgres:
         image: postgres:12
         env:
-          POSTGRES_USER: odcapi
-          POSTGRES_PASSWORD: odcapi
-          POSTGRES_DB: odcadmin
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
         ports:
           - 5432:5432
         # Set health checks to wait until postgres has started

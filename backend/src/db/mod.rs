@@ -33,11 +33,12 @@ impl DB {
     /// Construction from opt
     async fn from_opt(opt: &crate::Opt) -> Result<Self> {
         let config = ConnectionConfig::from_opt(opt);
-        Ok(Self {
-            pool: create_pool(config.clone()).await?,
-            config,
-            name: opt.admindbname.to_string(),
-        })
+        let pool = create_pool(config.clone()).await?;
+        let name = sqlx::query("SELECT current_database();")
+            .fetch_one(&pool)
+            .await?
+            .get(0);
+        Ok(Self { pool, config, name })
     }
 
     /// Reference to connection pool
@@ -88,22 +89,11 @@ trait FromOpt {
 
 impl FromOpt for ConnectionConfig {
     fn from_opt(opt: &crate::Opt) -> Self {
-        if let Ok(url) = std::env::var("DATABASE_URL") {
-            log::debug!("parsing DATABASE_URL: {}", url);
-            match url.parse() {
-                Ok(o) => return o,
-                Err(e) => log::error!(
-                    "error parsing DATABASE_URL, fall back to args: {}",
-                    e
-                ),
-            }
+        log::debug!("parsing DATABASE_URL: {}", opt.database_url);
+        match opt.database_url.parse() {
+            Ok(o) => o,
+            Err(e) => panic!("error parsing DATABASE_URL: {}", e),
         }
-        Self::new()
-            .host(opt.dbhost.as_str())
-            .port(opt.dbport)
-            .database(opt.admindbname.as_str())
-            .username(opt.apiusername.as_str())
-            .password(opt.apiuserpassword.as_str())
     }
 }
 
@@ -122,7 +112,7 @@ async fn create_pool(config: ConnectionConfig) -> Result<Pool> {
 mod tests {
     use super::*;
 
-    const TEST_DB_NAME: &str = "odcadmin_test_db";
+    const TEST_DB_NAME: &str = "postgres_test_db";
 
     #[tokio::test]
     pub async fn test_db() {
